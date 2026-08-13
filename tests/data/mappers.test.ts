@@ -72,6 +72,7 @@ describe('строки таблиц → типы ядра', () => {
         startsOn: dateColumn('2026-06-10'),
         endsOn: dateColumn('2026-06-14'),
         note: null,
+        enteredByAdmin: false,
       }),
     ).toEqual({ id: 'a1', userId: 'u1', type: 'SICK_LEAVE', startsOn: '2026-06-10', endsOn: '2026-06-14' });
 
@@ -103,6 +104,7 @@ describe('строки таблиц → типы ядра', () => {
         reviewedAt: new Date('2026-06-03T09:00:00.000Z'),
         reviewComment: null,
         historical: false,
+        enteredByAdmin: false,
       }),
     ).toEqual({
       id: 'c1',
@@ -122,6 +124,7 @@ describe('строки таблиц → типы ядра', () => {
       startsOn: dateColumn('2026-06-10'),
       endsOn: dateColumn('2026-06-14'),
       note: null,
+      enteredByAdmin: false,
     };
     // Удалёнка в расчёте не учитывается (§4.1) — такой строки в базе быть
     // не должно, и подставлять вместо неё отпуск нельзя.

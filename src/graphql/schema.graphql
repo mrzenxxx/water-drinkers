@@ -230,10 +230,16 @@ type Mutation {
 
   # Администрирование
   setOpeningBalances(input: OpeningBalancesInput!): Fund! # ADMIN
-  addParticipant(email: String!, joinedAt: Date!): User! # ADMIN
+  addParticipant(email: String!, joinedAt: Date!, openingBalance: Money = 0): User! # ADMIN
   deactivateParticipant(id: ID!, leftAt: Date!): User! # ADMIN
+  reactivateParticipant(id: ID!): User! # ADMIN
+  setParticipantRole(id: ID!, role: Role!): User! # ADMIN
   settleParticipant(id: ID!, amount: Money!, note: String!): User! # ADMIN
   createAdjustment(userId: ID, amount: Money!, comment: String!): Fund! # ADMIN
+
+  # Ввод за участника (§6.7)
+  addContributionFor(input: ContributionForInput!): Contribution! # ADMIN
+  addAbsenceFor(input: AbsenceForInput!): Absence! # ADMIN
 
   # Помощник
   askAssistant(question: String!): AssistantMessage!
@@ -243,11 +249,34 @@ input OpeningBalancesInput {
   startDate: Date!
   fundOpeningBalance: Money!
   openingBalances: [OpeningBalanceInput!]!
+  """
+  Кнопка «Распределить поровну» (§4.2): доли считает сервер методом наибольших
+  остатков, а в журнал аудита идёт пометка equal-split. Переданные вручную
+  значения при этом игнорируются — иначе непонятно, какое из двух правил главнее.
+  """
+  equalSplit: Boolean = false
 }
 
 input OpeningBalanceInput {
   userId: ID!
   amount: Money!
+}
+
+"Взнос, внесённый администратором за участника (§6.7). Подтверждение всё равно требуется."
+input ContributionForInput {
+  userId: ID!
+  amount: Money!
+  paidAt: Date!
+  receiptFileId: ID
+}
+
+"Отсутствие, внесённое администратором за участника (§6.7)."
+input AbsenceForInput {
+  userId: ID!
+  type: AbsenceType!
+  startsOn: Date!
+  endsOn: Date!
+  note: String
 }
 
 input WaterOrderInput {
