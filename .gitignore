@@ -8,6 +8,10 @@ node_modules/
 out/
 build/
 dist/
+*.tsbuildinfo
+
+# Клиент Prisma — генерируется из схемы (npm run db:generate)
+/src/generated/
 
 # Окружение — секреты в репозиторий не попадают
 .env
