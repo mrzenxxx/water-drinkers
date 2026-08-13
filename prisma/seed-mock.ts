@@ -1,0 +1,273 @@
+import 'dotenv/config';
+
+import { prisma } from '../src/lib/db';
+
+/**
+ * Демонстрационные данные для разработки.
+ *
+ * Реальных пользователей ещё нет, а посмотреть, как экраны выглядят
+ * с настоящей историей, нужно уже сейчас. Здесь полгода жизни офиса:
+ * заказы, взносы, отпуска, больничные, очередь на подтверждение,
+ * один участник с долгом и один вышедший из состава.
+ *
+ * ⚠️ Только для разработки. Скрипт **стирает** взносы, заказы, отсутствия
+ * и журнал операций, после чего наполняет их заново.
+ *
+ *   npm run db:seed:mock
+ *
+ * Данные детерминированы: один и тот же прогон даёт одну и ту же картинку,
+ * иначе скриншоты и отладка разъезжались бы от запуска к запуску.
+ */
+
+const DOMAIN = 'sspk.spb.ru';
+const ADMIN_EMAIL = `e.kondobarov@${DOMAIN}`;
+
+/** Учёт начат полгода назад, ровно в первое число месяца. */
+const START = startOfMonthMonthsAgo(6);
+
+/** 500 ₽ в копейках. */
+const RUB = 100;
+const STANDARD_CONTRIBUTION = 500 * RUB;
+
+type Person = {
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: 'ADMIN' | 'PARTICIPANT';
+  /** Смещение даты вступления от начала учёта, в днях. */
+  joinOffset: number;
+  /** Смещение выхода из состава, если человек ушёл. */
+  leftOffset?: number;
+};
+
+const PEOPLE: Person[] = [
+  { email: ADMIN_EMAIL, firstName: 'Евгений', lastName: 'Кондобаров', role: 'ADMIN', joinOffset: 0 },
+  { email: `i.petrov@${DOMAIN}`, firstName: 'Иван', lastName: 'Петров', role: 'PARTICIPANT', joinOffset: 0 },
+  { email: `a.smirnova@${DOMAIN}`, firstName: 'Анна', lastName: 'Смирнова', role: 'PARTICIPANT', joinOffset: 0 },
+  { email: `d.volkov@${DOMAIN}`, firstName: 'Дмитрий', lastName: 'Волков', role: 'PARTICIPANT', joinOffset: 0 },
+  { email: `m.orlova@${DOMAIN}`, firstName: 'Мария', lastName: 'Орлова', role: 'PARTICIPANT', joinOffset: 0 },
+  { email: `s.gusev@${DOMAIN}`, firstName: 'Сергей', lastName: 'Гусев', role: 'PARTICIPANT', joinOffset: 0 },
+  // Пришёл в середине периода — проверяет, что дни присутствия считаются от вступления.
+  { email: `k.novikova@${DOMAIN}`, firstName: 'Ксения', lastName: 'Новикова', role: 'PARTICIPANT', joinOffset: 74 },
+  // Ушёл, но остаток за ним числится — экран должен показывать и таких.
+  { email: `p.lebedev@${DOMAIN}`, firstName: 'Павел', lastName: 'Лебедев', role: 'PARTICIPANT', joinOffset: 0, leftOffset: 128 },
+];
+
+/** Заказы: смещение в днях от начала учёта, сумма в рублях, бутылей. */
+const ORDERS: { day: number; rubles: number; bottles: number }[] = [
+  { day: 3, rubles: 2400, bottles: 8 },
+  { day: 24, rubles: 2400, bottles: 8 },
+  { day: 45, rubles: 3000, bottles: 10 },
+  { day: 67, rubles: 2400, bottles: 8 },
+  { day: 88, rubles: 2700, bottles: 9 },
+  { day: 110, rubles: 3000, bottles: 10 },
+  { day: 131, rubles: 2400, bottles: 8 },
+  { day: 152, rubles: 3300, bottles: 11 },
+  { day: 170, rubles: 2400, bottles: 8 },
+];
+
+/** Отсутствия: индекс участника, тип, начало и конец в днях от старта. */
+const ABSENCES: { person: number; type: 'VACATION' | 'SICK_LEAVE'; from: number; to: number }[] = [
+  { person: 1, type: 'VACATION', from: 40, to: 54 },
+  { person: 2, type: 'SICK_LEAVE', from: 62, to: 68 },
+  { person: 3, type: 'VACATION', from: 95, to: 116 },
+  { person: 0, type: 'VACATION', from: 120, to: 133 },
+  { person: 4, type: 'SICK_LEAVE', from: 141, to: 145 },
+  { person: 5, type: 'VACATION', from: 150, to: 164 },
+  { person: 2, type: 'VACATION', from: 172, to: 179 },
+];
+
+/**
+ * Взносы: индекс участника и дни, когда он скидывался.
+ * Сергей (5) намеренно отстаёт — на главной он должен светиться должником.
+ */
+const CONTRIBUTION_DAYS: Record<number, number[]> = {
+  0: [2, 44, 87, 130, 169],
+  1: [2, 44, 87, 130, 169],
+  2: [4, 46, 89, 132],
+  3: [2, 45, 88, 131, 170],
+  4: [5, 47, 90, 133],
+  5: [6, 48],
+  6: [76, 118, 161],
+  7: [2, 44, 86],
+};
+
+/** Взносы на подтверждении — наполняют очередь администратора. */
+const PENDING_DAYS: Record<number, number[]> = {
+  4: [176],
+  5: [178],
+};
+
+async function main(): Promise<void> {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Refusing to seed mock data in production');
+  }
+
+  console.info(`Начало учёта: ${iso(START)}`);
+
+  await prisma.fundSettings.upsert({
+    where: { id: 1 },
+    update: { defaultContribution: BigInt(STANDARD_CONTRIBUTION) },
+    create: { id: 1, defaultContribution: BigInt(STANDARD_CONTRIBUTION) },
+  });
+
+  // Порядок важен: сначала то, на что ссылаются, потом то, что ссылается.
+  await prisma.fundTransaction.deleteMany();
+  await prisma.contribution.deleteMany();
+  await prisma.waterOrder.deleteMany();
+  await prisma.absence.deleteMany();
+
+  const users = [];
+  for (const person of PEOPLE) {
+    const user = await prisma.user.upsert({
+      where: { email: person.email },
+      update: {
+        firstName: person.firstName,
+        lastName: person.lastName,
+        role: person.role,
+        joinedAt: dayFromStart(person.joinOffset),
+        leftAt: person.leftOffset === undefined ? null : dayFromStart(person.leftOffset),
+      },
+      create: {
+        email: person.email,
+        firstName: person.firstName,
+        lastName: person.lastName,
+        role: person.role,
+        joinedAt: dayFromStart(person.joinOffset),
+        leftAt: person.leftOffset === undefined ? null : dayFromStart(person.leftOffset),
+      },
+    });
+    users.push(user);
+  }
+
+  const admin = users[0]!;
+
+  for (const absence of ABSENCES) {
+    await prisma.absence.create({
+      data: {
+        userId: users[absence.person]!.id,
+        type: absence.type,
+        startsOn: dayFromStart(absence.from),
+        endsOn: dayFromStart(absence.to),
+        note: absence.type === 'VACATION' ? 'Отпуск' : 'Больничный',
+      },
+    });
+  }
+
+  let orderTotal = 0;
+  for (const order of ORDERS) {
+    const amount = order.rubles * RUB;
+    const created = await prisma.waterOrder.create({
+      data: {
+        amount: BigInt(amount),
+        orderedAt: dayFromStart(order.day),
+        bottlesCount: order.bottles,
+        supplier: 'Аквафор Доставка',
+        createdBy: admin.id,
+      },
+    });
+
+    // Каждый заказ обязан иметь зеркальную операцию в журнале, иначе
+    // остаток фонда разойдётся с историей и инвариант §5 упадёт.
+    await prisma.fundTransaction.create({
+      data: {
+        type: 'ORDER',
+        amount: BigInt(-amount),
+        refId: created.id,
+        createdBy: admin.id,
+        createdAt: dayFromStart(order.day),
+      },
+    });
+    orderTotal += amount;
+  }
+
+  let confirmedTotal = 0;
+  let confirmedCount = 0;
+  for (const [index, days] of Object.entries(CONTRIBUTION_DAYS)) {
+    const user = users[Number(index)]!;
+
+    for (const day of days) {
+      const contribution = await prisma.contribution.create({
+        data: {
+          userId: user.id,
+          amount: BigInt(STANDARD_CONTRIBUTION),
+          paidAt: dayFromStart(day),
+          status: 'CONFIRMED',
+          submittedAt: dayFromStart(day),
+          reviewedBy: admin.id,
+          reviewedAt: dayFromStart(day + 1),
+        },
+      });
+
+      await prisma.fundTransaction.create({
+        data: {
+          type: 'CONTRIBUTION',
+          amount: BigInt(STANDARD_CONTRIBUTION),
+          userId: user.id,
+          refId: contribution.id,
+          createdBy: admin.id,
+          createdAt: dayFromStart(day + 1),
+        },
+      });
+
+      confirmedTotal += STANDARD_CONTRIBUTION;
+      confirmedCount += 1;
+    }
+  }
+
+  // Неподтверждённые взносы в журнал не попадают: до проверки администратором
+  // деньги фондом не считаются (§4.5).
+  let pendingCount = 0;
+  for (const [index, days] of Object.entries(PENDING_DAYS)) {
+    for (const day of days) {
+      await prisma.contribution.create({
+        data: {
+          userId: users[Number(index)]!.id,
+          amount: BigInt(STANDARD_CONTRIBUTION),
+          paidAt: dayFromStart(day),
+          status: 'PENDING',
+          submittedAt: dayFromStart(day),
+        },
+      });
+      pendingCount += 1;
+    }
+  }
+
+  const fund = confirmedTotal - orderTotal;
+
+  console.info(
+    [
+      '',
+      `Участников:        ${users.length} (один вышел из состава)`,
+      `Заказов:           ${ORDERS.length} на ${(orderTotal / RUB).toLocaleString('ru-RU')} ₽`,
+      `Взносов принято:   ${confirmedCount} на ${(confirmedTotal / RUB).toLocaleString('ru-RU')} ₽`,
+      `На подтверждении:  ${pendingCount}`,
+      `Отсутствий:        ${ABSENCES.length}`,
+      `Остаток фонда:     ${(fund / RUB).toLocaleString('ru-RU')} ₽`,
+      '',
+      'Проверить инвариант: сумма балансов должна совпасть с остатком фонда.',
+    ].join('\n'),
+  );
+}
+
+/** Первое число месяца, N месяцев назад — чтобы период выглядел ровно. */
+function startOfMonthMonthsAgo(months: number): Date {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - months, 1));
+}
+
+function dayFromStart(days: number): Date {
+  return new Date(START.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
+function iso(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+main()
+  .then(() => prisma.$disconnect())
+  .catch(async (error: unknown) => {
+    console.error(error);
+    await prisma.$disconnect();
+    process.exit(1);
+  });
