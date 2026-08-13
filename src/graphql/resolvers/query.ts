@@ -1,11 +1,15 @@
+import type { GraphQLContext } from '@/graphql/context';
 import type { QueryResolvers } from '@/graphql/generated/graphql';
 
 /**
- * Заглушки этапа 0: пустые списки и нули. Настоящие данные появляются
- * на этапе 3, расчёт балансов опирается на src/lib/calc (этап 1).
+ * `me` работает с этапа 2. Остальное — заглушки: пустые списки и нули.
+ * Настоящие данные появляются на этапе 3, расчёт опирается на src/lib/calc.
  */
-export const Query: QueryResolvers = {
-  me: () => null,
+export const Query: QueryResolvers<GraphQLContext> = {
+  me: async (_parent, _args, ctx) => {
+    if (ctx.userId === null) return null;
+    return ctx.db.user.findUnique({ where: { id: ctx.userId } });
+  },
   fund: () => ({
     balance: 0,
     openingBalance: 0,

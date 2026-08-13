@@ -115,13 +115,21 @@ CREATE TABLE "audit_log" (
 
 -- Отклонение от §11: добавлен суррогатный "id". В спецификации у таблицы нет
 -- первичного ключа, но Prisma требует уникальный идентификатор у каждой модели.
+-- В §11 первичного ключа не было, но Prisma требует уникальный идентификатор
+-- у каждой модели — добавлен суррогатный BIGSERIAL.
+-- created_at нужен для лимита «не больше 3 запросов кода на адрес в час» (§7):
+-- выводить его из expires_at можно, но тогда лимит молча поедет при смене TTL.
 CREATE TABLE "login_codes" (
   "id"         BIGSERIAL PRIMARY KEY,
   "email"      CITEXT NOT NULL,
   "code_hash"  TEXT NOT NULL,
   "expires_at" TIMESTAMPTZ NOT NULL,
-  "attempts"   SMALLINT NOT NULL DEFAULT 0
+  "attempts"   SMALLINT NOT NULL DEFAULT 0,
+  "created_at" TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Оба запроса по кодам идут по адресу: поиск живого кода и подсчёт запросов за час.
+CREATE INDEX "login_codes_email_created_at_idx" ON "login_codes" ("email", "created_at");
 
 CREATE TABLE "assistant_messages" (
   "id"         UUID PRIMARY KEY,

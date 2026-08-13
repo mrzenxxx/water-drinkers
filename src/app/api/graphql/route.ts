@@ -15,3 +15,7 @@ const { handleRequest } = createYoga({
 export { handleRequest as GET, handleRequest as POST, handleRequest as OPTIONS };
 
 export const runtime = 'nodejs';
+
+// Эндпоинт читает cookie сессии и ходит в базу на каждом запросе — предрассчитывать
+// тут нечего, а попытка собрать его статически требует базы во время сборки.
+export const dynamic = 'force-dynamic';

@@ -1,6 +1,7 @@
 import type { Resolvers } from '@/graphql/generated/graphql';
 import { Mutation } from '@/graphql/resolvers/mutation';
 import { Query } from '@/graphql/resolvers/query';
+import { User } from '@/graphql/resolvers/user';
 import { DateScalar, DateTimeScalar, JSONScalar, MoneyScalar } from '@/graphql/scalars';
 
 export const resolvers: Resolvers = {
@@ -10,4 +11,5 @@ export const resolvers: Resolvers = {
   JSON: JSONScalar,
   Query,
   Mutation,
+  User,
 };

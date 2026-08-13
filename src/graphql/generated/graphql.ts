@@ -1,7 +1,9 @@
 import type { GraphQLResolveInfo, GraphQLScalarType, GraphQLScalarTypeConfig } from 'graphql';
+import type { User as PrismaUser, Contribution as PrismaContribution, WaterOrder as PrismaWaterOrder, Absence as PrismaAbsence, Receipt as PrismaReceipt, AuditEntry as PrismaAuditEntry, AssistantMessage as PrismaAssistantMessage } from '@/generated/prisma/client';
 import type { GraphQLContext } from '../context';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
+export type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
 export type RequireFields<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: NonNullable<T[P]> };
 /** All built-in and custom scalars, mapped to their actual values */
 export type Scalars = {
@@ -457,16 +459,16 @@ export type DirectiveResolverFn<TResult = Record<PropertyKey, never>, TParent = 
 
 /** Mapping between all available schema types and the resolvers types */
 export type ResolversTypes = {
-  Absence: ResolverTypeWrapper<Absence>;
+  Absence: ResolverTypeWrapper<PrismaAbsence>;
   AbsenceType: AbsenceType;
-  AssistantMessage: ResolverTypeWrapper<AssistantMessage>;
-  AuditEntry: ResolverTypeWrapper<AuditEntry>;
-  AuthResult: ResolverTypeWrapper<AuthResult>;
-  Balance: ResolverTypeWrapper<Balance>;
-  BalanceBreakdown: ResolverTypeWrapper<BalanceBreakdown>;
+  AssistantMessage: ResolverTypeWrapper<PrismaAssistantMessage>;
+  AuditEntry: ResolverTypeWrapper<PrismaAuditEntry>;
+  AuthResult: ResolverTypeWrapper<Omit<AuthResult, 'user'> & { user: ResolversTypes['User'] }>;
+  Balance: ResolverTypeWrapper<Omit<Balance, 'breakdown' | 'user'> & { breakdown: ResolversTypes['BalanceBreakdown'], user: ResolversTypes['User'] }>;
+  BalanceBreakdown: ResolverTypeWrapper<Omit<BalanceBreakdown, 'orderShares'> & { orderShares: Array<ResolversTypes['OrderShare']> }>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   Confidence: Confidence;
-  Contribution: ResolverTypeWrapper<Contribution>;
+  Contribution: ResolverTypeWrapper<PrismaContribution>;
   ContributionStatus: ContributionStatus;
   Date: ResolverTypeWrapper<Scalars['Date']['output']>;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
@@ -479,29 +481,29 @@ export type ResolversTypes = {
   MonthlyStat: ResolverTypeWrapper<MonthlyStat>;
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   OpeningBalanceInput: OpeningBalanceInput;
-  OrderShare: ResolverTypeWrapper<OrderShare>;
+  OrderShare: ResolverTypeWrapper<Omit<OrderShare, 'order'> & { order: ResolversTypes['WaterOrder'] }>;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
-  Receipt: ResolverTypeWrapper<Receipt>;
+  Receipt: ResolverTypeWrapper<PrismaReceipt>;
   ReceiptExtraction: ResolverTypeWrapper<ReceiptExtraction>;
   RequestCodeResult: ResolverTypeWrapper<RequestCodeResult>;
   Role: Role;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   Subscription: ResolverTypeWrapper<Record<PropertyKey, never>>;
-  User: ResolverTypeWrapper<User>;
-  WaterOrder: ResolverTypeWrapper<WaterOrder>;
+  User: ResolverTypeWrapper<PrismaUser>;
+  WaterOrder: ResolverTypeWrapper<PrismaWaterOrder>;
   WaterOrderInput: WaterOrderInput;
 };
 
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = {
-  Absence: Absence;
-  AssistantMessage: AssistantMessage;
-  AuditEntry: AuditEntry;
-  AuthResult: AuthResult;
-  Balance: Balance;
-  BalanceBreakdown: BalanceBreakdown;
+  Absence: PrismaAbsence;
+  AssistantMessage: PrismaAssistantMessage;
+  AuditEntry: PrismaAuditEntry;
+  AuthResult: Omit<AuthResult, 'user'> & { user: ResolversParentTypes['User'] };
+  Balance: Omit<Balance, 'breakdown' | 'user'> & { breakdown: ResolversParentTypes['BalanceBreakdown'], user: ResolversParentTypes['User'] };
+  BalanceBreakdown: Omit<BalanceBreakdown, 'orderShares'> & { orderShares: Array<ResolversParentTypes['OrderShare']> };
   Boolean: Scalars['Boolean']['output'];
-  Contribution: Contribution;
+  Contribution: PrismaContribution;
   Date: Scalars['Date']['output'];
   DateTime: Scalars['DateTime']['output'];
   Fund: Fund;
@@ -513,15 +515,15 @@ export type ResolversParentTypes = {
   MonthlyStat: MonthlyStat;
   Mutation: Record<PropertyKey, never>;
   OpeningBalanceInput: OpeningBalanceInput;
-  OrderShare: OrderShare;
+  OrderShare: Omit<OrderShare, 'order'> & { order: ResolversParentTypes['WaterOrder'] };
   Query: Record<PropertyKey, never>;
-  Receipt: Receipt;
+  Receipt: PrismaReceipt;
   ReceiptExtraction: ReceiptExtraction;
   RequestCodeResult: RequestCodeResult;
   String: Scalars['String']['output'];
   Subscription: Record<PropertyKey, never>;
-  User: User;
-  WaterOrder: WaterOrder;
+  User: PrismaUser;
+  WaterOrder: PrismaWaterOrder;
   WaterOrderInput: WaterOrderInput;
 };
 
