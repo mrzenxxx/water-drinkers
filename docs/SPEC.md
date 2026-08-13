@@ -1,0 +1,904 @@
+# WaterDrinkers — функциональная спецификация
+
+**Версия:** 1.0
+**Дата:** 14.08.2026
+**Основание:** [BRIEF.md](./BRIEF.md)
+**Стек:** Next.js (App Router) + GraphQL + PostgreSQL
+
+---
+
+## 1. Что уточнилось относительно брифа
+
+| Вопрос из брифа | Решение |
+|---|---|
+| Гранулярность расчётного периода | Период потребления заказа — интервал от одного заказа до следующего. См. §4. |
+| Начальный баланс при миграции | Фонд и личные балансы переносятся из Excel через операцию `OPENING` на дату миграции. См. §4.2. |
+| Распознавание чеков | Провайдер-агностичный интерфейс `ReceiptExtractor`, реализация по умолчанию — Claude Opus 5. См. §8. |
+| Новый раздел | «Помощник» — ИИ-консультант с контекстом проекта и данных, умеет объяснять расчёт и независимо его перепроверять. См. §9. |
+
+---
+
+## 2. Доменная модель
+
+### 2.1 Сущности
+
+| Сущность | Назначение |
+|---|---|
+| **Участник** (`User`) | Сотрудник офиса. Имеет период членства `[joinedAt, leftAt)` и начальное сальдо. |
+| **Взнос** (`Contribution`) | Платёж участника в фонд. Проходит модерацию администратором. |
+| **Заказ** (`WaterOrder`) | Покупка воды. Списание из фонда. |
+| **Отсутствие** (`Absence`) | Период отсутствия участника — отпуск или больничный. Исключается из расчёта дней потребления. |
+| **Фонд** (`Fund`) | Синглтон: начальное сальдо, дата миграции, размер типового взноса. |
+| **Чек** (`Receipt`) | Файл-подтверждение и результат его распознавания. |
+| **Запись аудита** (`AuditEntry`) | Кто, что и когда изменил. |
+
+### 2.2 Денежные величины
+
+**Все суммы хранятся в копейках, целыми числами (`BIGINT`).** Числа с плавающей точкой в проекте запрещены: инвариант §5 требует точного равенства, а `0.1 + 0.2 !== 0.3`. Конвертация в рубли — только на слое представления.
+
+### 2.3 Операции фонда
+
+Единый журнал `FundTransaction` — источник истины для остатка фонда:
+
+| Тип | Знак | Источник |
+|---|---|---|
+| `OPENING` | + | Миграция из Excel |
+| `CONTRIBUTION` | + | Подтверждённый взнос участника |
+| `ORDER` | − | Заказ воды |
+| `SETTLEMENT` | − | Выплата остатка выходящему участнику |
+| `ADJUSTMENT` | ± | Ручная корректировка администратора (обязателен комментарий) |
+
+Ни одна запись журнала не удаляется и не редактируется. Ошибка исправляется компенсирующей операцией `ADJUSTMENT`.
+
+---
+
+## 3. Роли и права
+
+| Действие | Участник | Администратор |
+|---|:---:|:---:|
+| Видеть фонд, все взносы, все заказы, все балансы | ✅ | ✅ |
+| Добавить свой взнос с чеком | ✅ | ✅ |
+| Указать свой отпуск | ✅ | ✅ |
+| Подтвердить / отклонить взнос | ❌ | ✅ |
+| Внести заказ воды | ❌ | ✅ |
+| Добавить / деактивировать участника | ❌ | ✅ |
+| Провести миграцию, корректировку, выплату | ❌ | ✅ |
+| Задать вопрос Помощнику | ✅ | ✅ |
+
+Приложение полностью прозрачно: участник видит всё, что видит администратор. Разница только в праве изменять.
+
+---
+
+## 4. Расчётная модель
+
+Ядро продукта. Всё остальное — интерфейс к этим формулам.
+
+### 4.1 Дни присутствия
+
+Для участника `i` и произвольного отрезка `[a, b)`:
+
+```
+days(i, a, b) = |{ d ∈ [a, b) :
+                   d ∈ [joinedAt(i), leftAt(i))  и
+                   d ∉ отсутствия участника i }|
+```
+
+**Отсутствия — это отпуск и больничный.** Оба типа влияют на расчёт одинаково: человек не в офисе, воду не пьёт, за эти дни не платит. Тип хранится (`VACATION` / `SICK_LEAVE`) для наглядности в календаре и статистике, но в формулу не входит.
+
+**Удалённая работа в расчёте не учитывается** — сознательное решение. Учитывать её означало бы вести табель присутствия, что превращает бытовое приложение в систему учёта рабочего времени. Если человек работает из дома неделю и это заметно бьёт по справедливости, он оформляет это как отсутствие вручную; регулярную удалёнку модель не покрывает.
+
+Гранулярность — календарный день. Выходные и праздники не учитываются (вода в офисе стоит и в выходные, а усложнение не окупается).
+
+### 4.2 Начальное сальдо (миграция из Excel)
+
+Учёт начинается не с нуля: на момент запуска в фонде уже есть деньги, и у участников уже есть личные балансы.
+
+Администратор один раз проводит миграцию, указав:
+
+- `migrationDate` — дата, на которую зафиксировано состояние;
+- `fundOpeningBalance` — сколько денег в фонде на эту дату;
+- `openingBalance(i)` — личный баланс каждого участника на эту дату.
+
+**Миграция не сохраняется, пока не выполнено условие:**
+
+```
+Σ openingBalance(i)  ==  fundOpeningBalance
+```
+
+Это тот же инвариант §5, применённый к стартовой точке. Если он нарушен, форма показывает величину расхождения и не даёт продолжить.
+
+Если исторические личные балансы неизвестны, в форме есть кнопка **«Распределить поровну»**: `openingBalance(i) = fundOpeningBalance / N` с раздачей остатка по правилу §4.6. Это осознанная потеря точности — она фиксируется в журнале аудита с пометкой `equal-split`.
+
+Все взносы, заказы и отпуска до `migrationDate` в расчёт не входят: они уже свёрнуты в начальные сальдо. Их можно занести в систему как исторические записи (флаг `historical = true`) — для наглядности, но без влияния на балансы.
+
+### 4.3 Период потребления заказа
+
+Заказ `k` (дата `t_k`, сумма `C_k`) потребляется в период
+
+```
+P_k = [ t_k , t_{k+1} )        для всех заказов, кроме последнего
+P_last = [ t_last , сегодня ]  для последнего заказа — период открыт
+```
+
+Логика: вода, купленная в день `t_k`, выпивается до следующей закупки.
+
+### 4.4 Распределение стоимости заказа
+
+```
+D_k     = Σ_i days(i, P_k)            — все человеко-дни периода
+share_k(i) = C_k × days(i, P_k) / D_k  — доля участника i в заказе k
+```
+
+Свойство: `Σ_i share_k(i) = C_k` **всегда и точно** (обеспечивается §4.6). Заказ распределяется на 100 % в момент внесения — деньги ушли из фонда, значит балансы должны отреагировать сразу.
+
+Доли внутри открытого периода `P_last` пересчитываются каждый день: пока период идёт, соотношение между участниками уточняется, но сумма остаётся равной `C_last`. Ушедший в отпуск участник со следующего дня начинает получать меньшую долю, а остальные — большую.
+
+**Вырожденный случай.** Если `D_k = 0` (все участники были в отпуске весь период), стоимость делится поровну между участниками, активными на дату `t_k`. Ситуация логируется и показывается администратору как аномалия.
+
+### 4.5 Итоговые формулы
+
+```
+Расход(i)  = Σ_k share_k(i)                             по заказам после migrationDate
+Взносы(i)  = Σ подтверждённых взносов участника i        после migrationDate
+Выплаты(i) = Σ SETTLEMENT и ADJUSTMENT по участнику i
+
+Баланс(i)  = openingBalance(i) + Взносы(i) − Расход(i) + Выплаты(i)
+
+Фонд = fundOpeningBalance + Σ все подтверждённые взносы
+                          − Σ все заказы
+                          − Σ все выплаты
+                          ± Σ все корректировки
+```
+
+**Триггер «пора скидываться»:** `Баланс(i) < 0`. На главной у такого участника — «Ты должен N ₽». У остальных — «Пока скидываться не надо».
+
+### 4.6 Округление
+
+Доли считаются в копейках. Чтобы `Σ share_k(i)` точно равнялась `C_k`, применяется **метод наибольших остатков**:
+
+1. Для каждого участника считается точная доля как рациональное число.
+2. Берётся целая часть в копейках.
+3. Нераспределённый остаток (не более `N−1` копеек) раздаётся по одной копейке участникам с наибольшей дробной частью; при равенстве — в порядке `userId` (детерминированно).
+
+Тот же алгоритм используется в кнопке «Распределить поровну» при миграции.
+
+### 4.7 Пример
+
+Дано: 8 участников, миграция 01.06 с фондом 1 000 ₽ (по 125 ₽ на человека). Заказ 05.06 на 3 000 ₽. Сегодня 05.07 — следующего заказа не было. Иван был в отпуске 15 дней из этого периода.
+
+```
+Период P₁ = [05.06, 05.07] = 30 дней
+Человеко-дней: 7 × 30 + 1 × 15 = 225
+Цена дня: 3 000 / 225 = 13,3333 ₽
+
+Иван:      15 × 13,3333 = 200,00 ₽
+Остальные: 30 × 13,3333 = 400,00 ₽
+Сумма долей: 200 + 7 × 400 = 3 000 ₽ ✓
+```
+
+Каждый внёс по 500 ₽ (подтверждено):
+
+| Участник | Начальное | Внёс | Расход | Баланс |
+|---|---:|---:|---:|---:|
+| Иван | 125 ₽ | 500 ₽ | 200 ₽ | **+425 ₽** |
+| Остальные (×7) | 125 ₽ | 500 ₽ | 400 ₽ | **+225 ₽** |
+
+```
+Фонд = 1 000 + 8 × 500 − 3 000 = 2 000 ₽
+Σ балансов = 425 + 7 × 225 = 2 000 ₽ ✓
+```
+
+---
+
+## 5. Инвариант и самопроверка
+
+```
+Σ_i Баланс(i)  ==  Остаток фонда
+```
+
+Равенство точное, в копейках, без допусков.
+
+Где проверяется:
+
+1. **Автотест** на генеративных данных: случайные последовательности взносов, заказов, отпусков, входов и выходов участников — инвариант обязан держаться после каждой операции. Это главный тест проекта.
+2. **Рантайм-проверка** при каждом пересчёте. Расхождение → запись в лог уровня `error` + баннер администратору.
+3. **Раздел «Фонд»** показывает обе величины рядом и зелёную отметку схождения. Это и есть обещанная брифом проверяемость.
+
+Расхождение — всегда баг в коде, а не в данных.
+
+---
+
+## 6. Экраны
+
+### 6.1 Главная
+
+- Остаток фонда крупно.
+- Личный баланс со знаком.
+- Статус: «Ты должен N ₽» / «Пока скидываться не надо».
+- Кто ещё в минусе (список с суммами) — очередь видна всем.
+- Лента последних событий: взносы, заказы, подтверждения.
+
+### 6.2 Мои взносы
+
+Список своих платежей со статусами `PENDING` / `CONFIRMED` / `REJECTED` (у отклонённого виден комментарий администратора).
+
+Форма добавления:
+1. Прикрепить фото или скриншот чека.
+2. Дата и сумма подставляются автоматически из распознавания (§8), поля остаются редактируемыми, рядом — индикатор уверенности.
+3. Отправить → статус `PENDING`.
+
+### 6.3 Все взносы
+
+Таблица: участник, сумма, дата платежа, дата подачи, статус, кто подтвердил. Фильтры по участнику, периоду, статусу. Ссылка на чек.
+
+### 6.4 Фонд
+
+- Остаток и сходимость инварианта.
+- График динамики: поступления и траты по месяцам.
+- Таблица балансов всех участников.
+- **Раскрытие расчёта:** клик по балансу открывает построчную выкладку — какие взносы, какие заказы, сколько дней присутствия, какая доля. Требование брифа «любое число можно раскрыть» реализуется здесь.
+
+### 6.5 Заказы воды
+
+История: дата, количество бутылей, сумма, поставщик, кто оформил, чек. У каждого заказа — раскрытие распределения по участникам.
+
+### 6.6 Отсутствия
+
+Календарь команды на месяц вперёд и назад. Отпуск и больничный различаются цветом и подписью. Форма добавления своих дат с выбором типа. Пересекающиеся отсутствия одного участника запрещены независимо от типа — нельзя быть одновременно в отпуске и на больничном.
+
+### 6.7 Админ
+
+- Очередь взносов на подтверждение: чек рядом с распознанными и введёнными значениями, кнопки «Подтвердить» / «Отклонить с комментарием».
+- Внесение заказа.
+- Управление участниками: добавить, деактивировать (`leftAt`), провести выплату остатка.
+- Миграция (доступна один раз).
+- Журнал аудита.
+
+### 6.8 Помощник
+
+См. §9.
+
+---
+
+## 7. Аутентификация
+
+Вход по одноразовому коду на рабочую почту.
+
+1. Пользователь вводит email. Домен проверяется по белому списку; сам адрес — по списку разрешённых участников. Ответ сервера одинаков для разрешённого и неразрешённого адреса (не раскрываем состав команды).
+2. На почту уходит 6-значный код, действующий 10 минут. В базе хранится только хеш.
+3. Не более 5 попыток на код и не более 3 запросов кода на адрес в час.
+4. Успешная проверка → сессия в httpOnly-cookie, срок 30 дней.
+5. При первом входе — заполнение имени и фамилии.
+
+Хранимые персональные данные: рабочий email, имя, фамилия. Больше ничего. Это сознательное ограничение из брифа, позволяющее не выстраивать полноценную политику обработки персональных данных.
+
+Архитектура закладывается под Telegram (этап 2): таблица `identities` с полями `provider` (`email` | `telegram`) и `providerId`, привязанная к `users`. Добавление Telegram — новая строка в `identities`, а не переделка модели.
+
+---
+
+## 8. Распознавание чеков
+
+### 8.1 Провайдер-агностичный слой
+
+Приложение не знает, кто именно распознаёт чек. Оно знает интерфейс.
+
+```ts
+// src/lib/receipts/types.ts
+
+export type ReceiptInput = {
+  data: Buffer;
+  mediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'application/pdf';
+};
+
+export type Confidence = 'high' | 'medium' | 'low';
+
+export type ReceiptExtraction = {
+  paidAt: string | null;        // ISO 8601, дата платежа
+  amountKopecks: number | null; // сумма в копейках
+  payerHint: string | null;     // имя отправителя, если видно
+  confidence: Confidence;
+  notes: string;                // что мешало распознать
+  provider: string;             // идентификатор реализации
+  rawResponse: unknown;         // сырой ответ, для отладки и аудита
+};
+
+export interface ReceiptExtractor {
+  readonly id: string;
+  extract(input: ReceiptInput): Promise<ReceiptExtraction>;
+}
+```
+
+Реализации:
+
+| Реализация | Роль |
+|---|---|
+| `ClaudeReceiptExtractor` | По умолчанию. Claude Opus 5, vision + структурированный вывод. |
+| `ManualReceiptExtractor` | Заглушка: возвращает пустое извлечение с `confidence: 'low'`. Используется, когда ключ API не задан, и в тестах. |
+
+Выбор реализации — через фабрику по переменной окружения `RECEIPT_EXTRACTOR`. Замена провайдера не затрагивает ни один слой выше `src/lib/receipts/`.
+
+### 8.2 Реализация на Claude
+
+```ts
+// src/lib/receipts/claude.ts
+import Anthropic from '@anthropic-ai/sdk';
+
+const client = new Anthropic();
+
+const RECEIPT_SCHEMA = {
+  type: 'object',
+  properties: {
+    paidAt:     { type: ['string', 'null'], description: 'Дата платежа в формате YYYY-MM-DD' },
+    amount:     { type: ['number', 'null'], description: 'Сумма платежа в рублях' },
+    payerHint:  { type: ['string', 'null'], description: 'Имя отправителя, если видно на чеке' },
+    confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
+    notes:      { type: 'string', description: 'Что помешало распознать, если что-то помешало' },
+  },
+  required: ['paidAt', 'amount', 'payerHint', 'confidence', 'notes'],
+  additionalProperties: false,
+} as const;
+
+const PROMPT = `Это чек или скриншот банковского перевода. Извлеки дату платежа и сумму.
+
+Даты в российских чеках чаще записаны как ДД.ММ.ГГГГ — приведи к YYYY-MM-DD.
+Если на чеке несколько сумм, выбери сумму перевода, а не комиссию и не остаток по счёту.
+Если значение не читается, верни null и объясни причину в notes. Не угадывай.`;
+
+export const claudeReceiptExtractor: ReceiptExtractor = {
+  id: 'claude-opus-5',
+
+  async extract({ data, mediaType }) {
+    const response = await client.messages.create({
+      model: 'claude-opus-5',
+      max_tokens: 2048,
+      output_config: {
+        effort: 'medium',
+        format: { type: 'json_schema', schema: RECEIPT_SCHEMA },
+      },
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: data.toString('base64') } },
+          { type: 'text', text: PROMPT },
+        ],
+      }],
+    });
+
+    if (response.stop_reason === 'refusal') {
+      return emptyExtraction('claude-opus-5', 'Модель отклонила запрос');
+    }
+
+    const block = response.content.find((b) => b.type === 'text');
+    const parsed = JSON.parse(block!.text);
+
+    return {
+      paidAt: parsed.paidAt,
+      amountKopecks: parsed.amount === null ? null : Math.round(parsed.amount * 100),
+      payerHint: parsed.payerHint,
+      confidence: parsed.confidence,
+      notes: parsed.notes,
+      provider: 'claude-opus-5',
+      rawResponse: parsed,
+    };
+  },
+};
+```
+
+Заметки по API, важные для реализации:
+
+- `output_config.format` со схемой `json_schema` гарантирует валидный JSON — парсер с ретраями не нужен.
+- `additionalProperties: false` и полный список в `required` обязательны для строгой схемы.
+- На Opus 5 параметры `temperature`, `top_p`, `top_k` не принимаются — вернётся ошибка 400. Поведение задаётся промптом.
+- `stop_reason: 'refusal'` приходит с HTTP 200. Проверять его нужно **до** чтения `content`.
+- `effort: 'medium'` подобран под задачу: механическое извлечение из изображения. Если чеки с рук читаются плохо — поднять до `high`.
+
+### 8.3 Правила использования результата
+
+- Распознавание **никогда не создаёт взнос автоматически**. Оно только предзаполняет форму.
+- Пользователь видит и правит оба поля перед отправкой.
+- Администратор видит и чек, и распознанные значения, и введённые пользователем — расхождение подсвечивается.
+- `confidence: 'low'` помечает взнос флагом «требует внимания» в очереди администратора.
+- `rawResponse` хранится: он нужен, когда через полгода придётся разбираться, откуда взялась дата.
+
+---
+
+## 9. Раздел «Помощник»
+
+Чат-помощник с контекстом проекта и текущих данных. Задачи: объяснять, как считается баланс, и независимо перепроверять расчёты.
+
+### 9.1 Сценарии
+
+1. **«Почему я должен 340 ₽?»** — помощник разбирает баланс по составляющим: начальное сальдо, взносы, доли в конкретных заказах, влияние отпуска.
+2. **«Как вообще считается?»** — объяснение модели §4 человеческим языком, с примером на текущих данных.
+3. **«Проверь, всё ли сходится»** — режим аудита: помощник получает журнал операций и **пересчитывает балансы самостоятельно**, затем сравнивает со значениями приложения. Расхождение — сигнал о баге.
+4. **«Кому сейчас скидываться?»** — сводка по очереди.
+
+### 9.2 Устройство контекста
+
+Системный промпт состоит из двух частей с разной изменчивостью — это важно для кеширования:
+
+| Часть | Содержимое | Изменчивость |
+|---|---|---|
+| Стабильная | Описание продукта, полная расчётная модель §4, инвариант §5, правила общения | Меняется с релизом |
+| Волатильная | Текущий снимок данных: участники, фонд, заказы, взносы, отпуска, балансы — в JSON | Меняется постоянно |
+
+Стабильная часть помечается `cache_control: { type: 'ephemeral' }`. На Opus 5 минимальный кешируемый префикс — 512 токенов; описание модели его превышает, так что кеш будет работать с первого дня. Волатильная часть идёт **после** точки кеширования, иначе кеш сбрасывается на каждом запросе.
+
+```ts
+const response = await client.messages.create({
+  model: 'claude-opus-5',
+  max_tokens: 8000,
+  system: [
+    { type: 'text', text: PRODUCT_AND_CALCULATION_MODEL, cache_control: { type: 'ephemeral' } },
+  ],
+  output_config: { effort: 'high' },
+  messages: [
+    { role: 'user', content: `Текущее состояние:\n\n${JSON.stringify(snapshot)}\n\nВопрос: ${question}` },
+  ],
+  stream: true,
+});
+```
+
+Ответ стримится в интерфейс.
+
+### 9.3 Ограничения
+
+- **Только чтение.** У помощника нет инструментов записи. Он не может создать взнос, подтвердить платёж или изменить баланс.
+- **Данные не приватные.** Помощник видит ровно то, что и так видит любой участник в интерфейсе. Дополнительной утечки нет по построению.
+- **Лимит:** 20 сообщений на участника в сутки. Защита от случайного разорения на токенах.
+- **Дисклеймер в интерфейсе:** источник истины — таблицы и инвариант, а не ответ помощника. Раздел вспомогательный.
+- История диалога хранится в БД по участнику: удобно для отладки промпта.
+
+---
+
+## 10. GraphQL API
+
+### 10.1 Зачем здесь GraphQL
+
+Учебная цель проекта. На этой предметной области хорошо видны именно те свойства, ради которых GraphQL и берут:
+
+- **Один эндпоинт вместо десятка.** Главная, «Фонд» и «Все взносы» тянут пересекающиеся данные разными срезами — в REST это три ручки, здесь один запрос с разным набором полей.
+- **Клиент выбирает поля.** Главной нужен только `myBalance.amount`, экрану «Фонд» — вся раскладка. Один и тот же тип, разный объём ответа.
+- **Сквозная типизация.** Схема → codegen → типы TypeScript на клиенте и сервере. Переименовал поле в схеме — компилятор показал все места, где оно используется.
+- **Проблема N+1 и DataLoader.** Запрос `contributions { user { firstName } }` на 200 взносов без батчинга даст 200 запросов к базе. Это классическая ловушка GraphQL, и здесь она возникнет естественным образом — хороший повод разобраться с `DataLoader`.
+- **Что GraphQL не даёт бесплатно:** кеширование HTTP, загрузку файлов, ограничение сложности запроса. Чек грузится обычным `POST /api/upload`, GraphQL получает только `fileId` — это нормальная практика, а не костыль.
+
+### 10.2 Схема
+
+```graphql
+scalar Date       # YYYY-MM-DD
+scalar DateTime   # ISO 8601
+scalar Money      # копейки, целое число
+
+enum Role               { PARTICIPANT ADMIN }
+enum ContributionStatus { PENDING CONFIRMED REJECTED }
+enum Confidence         { HIGH MEDIUM LOW }
+enum AbsenceType        { VACATION SICK_LEAVE }
+
+# ─── Участники ───────────────────────────────────────────
+
+type User {
+  id: ID!
+  email: String!
+  firstName: String
+  lastName: String
+  role: Role!
+  joinedAt: Date!
+  leftAt: Date
+  isActive: Boolean!
+  openingBalance: Money!
+  balance: Balance!
+  absences: [Absence!]!
+  contributions(status: ContributionStatus): [Contribution!]!
+}
+
+type Balance {
+  user: User!
+  amount: Money!            # < 0 → участник должен
+  owes: Boolean!
+  breakdown: BalanceBreakdown!
+}
+
+"Раскрытие баланса — то, что показывает экран «Фонд» по клику"
+type BalanceBreakdown {
+  openingBalance: Money!
+  contributionsTotal: Money!
+  expensesTotal: Money!
+  settlementsTotal: Money!
+  orderShares: [OrderShare!]!
+}
+
+type OrderShare {
+  order: WaterOrder!
+  daysPresent: Int!
+  totalPersonDays: Int!
+  share: Money!
+}
+
+# ─── Фонд ────────────────────────────────────────────────
+
+type Fund {
+  balance: Money!
+  openingBalance: Money!
+  migrationDate: Date
+  defaultContribution: Money!
+  balancesSum: Money!        # для проверки инварианта
+  isConsistent: Boolean!     # balance == balancesSum
+  monthlyStats: [MonthlyStat!]!
+}
+
+type MonthlyStat {
+  month: String!             # YYYY-MM
+  contributions: Money!
+  orders: Money!
+  endBalance: Money!
+}
+
+# ─── Взносы ──────────────────────────────────────────────
+
+type Contribution {
+  id: ID!
+  user: User!
+  amount: Money!
+  paidAt: Date!
+  status: ContributionStatus!
+  receipt: Receipt
+  submittedAt: DateTime!
+  reviewedBy: User
+  reviewedAt: DateTime
+  reviewComment: String
+  needsAttention: Boolean!   # низкая уверенность или расхождение с чеком
+}
+
+type Receipt {
+  id: ID!
+  url: String!
+  extraction: ReceiptExtraction
+}
+
+type ReceiptExtraction {
+  paidAt: Date
+  amount: Money
+  payerHint: String
+  confidence: Confidence!
+  notes: String!
+  provider: String!
+}
+
+# ─── Заказы и отсутствия ─────────────────────────────────
+
+type WaterOrder {
+  id: ID!
+  amount: Money!
+  orderedAt: Date!
+  bottlesCount: Int
+  supplier: String
+  note: String
+  createdBy: User!
+  receipt: Receipt
+  consumptionPeriodEnd: Date  # null → период ещё открыт
+  shares: [OrderShare!]!
+}
+
+type Absence {
+  id: ID!
+  user: User!
+  type: AbsenceType!
+  startsOn: Date!
+  endsOn: Date!
+  note: String
+}
+
+# ─── Запросы ─────────────────────────────────────────────
+
+type Query {
+  me: User
+  fund: Fund!
+  participants(includeInactive: Boolean = false): [User!]!
+  balances: [Balance!]!
+  contributions(userId: ID, status: ContributionStatus,
+                from: Date, to: Date): [Contribution!]!
+  waterOrders(from: Date, to: Date): [WaterOrder!]!
+  absences(from: Date, to: Date, type: AbsenceType): [Absence!]!
+  pendingContributions: [Contribution!]!          # только ADMIN
+  auditLog(limit: Int = 50): [AuditEntry!]!       # только ADMIN
+  assistantThread: [AssistantMessage!]!
+}
+
+# ─── Мутации ─────────────────────────────────────────────
+
+type Mutation {
+  # Аутентификация
+  requestLoginCode(email: String!): RequestCodeResult!
+  verifyLoginCode(email: String!, code: String!): AuthResult!
+  logout: Boolean!
+  updateProfile(firstName: String!, lastName: String!): User!
+
+  # Взносы
+  extractReceipt(fileId: ID!): ReceiptExtraction!
+  submitContribution(amount: Money!, paidAt: Date!, receiptFileId: ID): Contribution!
+  confirmContribution(id: ID!): Contribution!                      # ADMIN
+  rejectContribution(id: ID!, comment: String!): Contribution!     # ADMIN
+
+  # Заказы
+  createWaterOrder(input: WaterOrderInput!): WaterOrder!            # ADMIN
+
+  # Отсутствия
+  addAbsence(type: AbsenceType!, startsOn: Date!, endsOn: Date!, note: String): Absence!
+  deleteAbsence(id: ID!): Boolean!
+
+  # Администрирование
+  runMigration(input: MigrationInput!): Fund!                      # ADMIN, однократно
+  addParticipant(email: String!, joinedAt: Date!): User!           # ADMIN
+  deactivateParticipant(id: ID!, leftAt: Date!): User!             # ADMIN
+  settleParticipant(id: ID!, amount: Money!, note: String!): User! # ADMIN
+  createAdjustment(userId: ID, amount: Money!, comment: String!): Fund! # ADMIN
+
+  # Помощник
+  askAssistant(question: String!): AssistantMessage!
+}
+
+input MigrationInput {
+  migrationDate: Date!
+  fundOpeningBalance: Money!
+  openingBalances: [OpeningBalanceInput!]!
+}
+
+input OpeningBalanceInput { userId: ID!, amount: Money! }
+
+input WaterOrderInput {
+  amount: Money!
+  orderedAt: Date!
+  bottlesCount: Int
+  supplier: String
+  note: String
+  receiptFileId: ID
+}
+
+type Subscription {
+  fundUpdated: Fund!    # опционально, этап 1.5
+}
+```
+
+### 10.3 Технические решения
+
+| Аспект | Решение |
+|---|---|
+| Сервер | GraphQL Yoga в Route Handler Next.js (`app/api/graphql/route.ts`) |
+| Клиент | urql или Apollo Client, React Server Components — для первичной загрузки |
+| Типизация | GraphQL Code Generator: схема → типы + типизированные хуки |
+| N+1 | DataLoader на `User`, `Receipt`, `OrderShare` |
+| Авторизация | Проверка роли в резолверах через контекст; `pendingContributions`, `auditLog` и админ-мутации — только `ADMIN` |
+| Ограничение сложности | `graphql-depth-limit` + лимит стоимости запроса |
+| Ошибки | Типизированные коды в `extensions.code`, не строки |
+| Загрузка файлов | Вне GraphQL: `POST /api/upload` → `fileId` |
+
+---
+
+## 11. Схема базы данных
+
+```sql
+CREATE TABLE users (
+  id                UUID PRIMARY KEY,
+  email             CITEXT UNIQUE NOT NULL,
+  first_name        TEXT,
+  last_name         TEXT,
+  role              TEXT NOT NULL DEFAULT 'PARTICIPANT',
+  joined_at         DATE NOT NULL,
+  left_at           DATE,
+  opening_balance   BIGINT NOT NULL DEFAULT 0,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE identities (
+  id           UUID PRIMARY KEY,
+  user_id      UUID NOT NULL REFERENCES users(id),
+  provider     TEXT NOT NULL,          -- 'email' | 'telegram'
+  provider_id  TEXT NOT NULL,
+  UNIQUE (provider, provider_id)
+);
+
+CREATE TABLE fund_settings (
+  id                   SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  opening_balance      BIGINT NOT NULL DEFAULT 0,
+  migration_date       DATE,
+  default_contribution BIGINT NOT NULL DEFAULT 50000   -- 500 ₽
+);
+
+CREATE TABLE receipts (
+  id          UUID PRIMARY KEY,
+  storage_key TEXT NOT NULL,
+  media_type  TEXT NOT NULL,
+  extraction  JSONB,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE contributions (
+  id             UUID PRIMARY KEY,
+  user_id        UUID NOT NULL REFERENCES users(id),
+  amount         BIGINT NOT NULL CHECK (amount > 0),
+  paid_at        DATE NOT NULL,
+  status         TEXT NOT NULL DEFAULT 'PENDING',
+  receipt_id     UUID REFERENCES receipts(id),
+  submitted_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  reviewed_by    UUID REFERENCES users(id),
+  reviewed_at    TIMESTAMPTZ,
+  review_comment TEXT,
+  historical     BOOLEAN NOT NULL DEFAULT false
+);
+
+CREATE TABLE water_orders (
+  id             UUID PRIMARY KEY,
+  amount         BIGINT NOT NULL CHECK (amount > 0),
+  ordered_at     DATE NOT NULL,
+  bottles_count  INT,
+  supplier       TEXT,
+  note           TEXT,
+  receipt_id     UUID REFERENCES receipts(id),
+  created_by     UUID NOT NULL REFERENCES users(id),
+  historical     BOOLEAN NOT NULL DEFAULT false,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE absences (
+  id         UUID PRIMARY KEY,
+  user_id    UUID NOT NULL REFERENCES users(id),
+  type       TEXT NOT NULL,          -- VACATION | SICK_LEAVE
+  starts_on  DATE NOT NULL,
+  ends_on    DATE NOT NULL,
+  note       TEXT,
+  CHECK (ends_on >= starts_on),
+  EXCLUDE USING gist (
+    user_id WITH =,
+    daterange(starts_on, ends_on, '[]') WITH &&
+  )
+);
+
+CREATE TABLE fund_transactions (
+  id          UUID PRIMARY KEY,
+  type        TEXT NOT NULL,          -- OPENING | CONTRIBUTION | ORDER | SETTLEMENT | ADJUSTMENT
+  amount      BIGINT NOT NULL,        -- со знаком
+  user_id     UUID REFERENCES users(id),
+  ref_id      UUID,                   -- ссылка на contribution / water_order
+  comment     TEXT,
+  created_by  UUID REFERENCES users(id),
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE audit_log (
+  id          BIGSERIAL PRIMARY KEY,
+  actor_id    UUID REFERENCES users(id),
+  action      TEXT NOT NULL,
+  entity      TEXT NOT NULL,
+  entity_id   UUID,
+  before      JSONB,
+  after       JSONB,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE login_codes (
+  email       CITEXT NOT NULL,
+  code_hash   TEXT NOT NULL,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  attempts    SMALLINT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE assistant_messages (
+  id         UUID PRIMARY KEY,
+  user_id    UUID NOT NULL REFERENCES users(id),
+  role       TEXT NOT NULL,           -- user | assistant
+  content    TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+`EXCLUDE USING gist` на `absences` запрещает пересекающиеся отсутствия одного участника на уровне базы — независимо от типа. Ограничение намеренно не учитывает `type`: одновременно быть в отпуске и на больничном нельзя, а если бы такая запись прошла, день вычелся бы дважды и инвариант поехал. Правило стоит в базе, а не в приложении, чтобы его нельзя было обойти прямой записью.
+
+---
+
+## 12. Дизайн
+
+- Водная палитра: глубокий синий, голубой, белый. Акцент — бирюзовый.
+- Светлая и тёмная темы обязательны, через CSS-переменные. Тема определяется по `prefers-color-scheme`, переключатель сохраняет выбор.
+- Главный экран должен читаться без чтения: цвет и размер числа отвечают на вопрос «должен или нет» раньше текста. Долг — тёплый акцент, положительный баланс — спокойный синий.
+- Цвет никогда не единственный носитель смысла: рядом всегда знак или подпись.
+- Mobile-first. Таблицы на узких экранах превращаются в карточки, а не в горизонтальный скролл.
+- Компоненты: Tailwind CSS + shadcn/ui.
+- Контраст не ниже AA в обеих темах.
+
+---
+
+## 13. Структура проекта
+
+```
+WaterDrinkers/
+├── docs/                     BRIEF.md, SPEC.md
+├── prisma/                   schema.prisma, migrations, seed.ts
+└── src/
+    ├── app/
+    │   ├── (auth)/login/
+    │   ├── (app)/            главная, взносы, фонд, заказы, отпуска, помощник
+    │   ├── (admin)/          очередь, участники, миграция, аудит
+    │   └── api/
+    │       ├── graphql/route.ts
+    │       └── upload/route.ts
+    ├── graphql/
+    │   ├── schema.graphql
+    │   ├── resolvers/
+    │   ├── loaders/          DataLoader
+    │   └── generated/        codegen
+    ├── lib/
+    │   ├── calc/             ← ядро: dates.ts, shares.ts, balances.ts, invariant.ts
+    │   ├── receipts/         types.ts, claude.ts, manual.ts, factory.ts
+    │   ├── assistant/        prompt.ts, snapshot.ts, client.ts
+    │   ├── auth/
+    │   └── money.ts
+    ├── components/
+    └── styles/
+```
+
+`src/lib/calc/` — чистые функции без обращений к базе и сети. Принимают на вход данные, возвращают результат. Это делает ядро полностью тестируемым и позволяет прогонять на нём генеративные тесты §5.
+
+---
+
+## 14. Этапы
+
+### Этап 0 — Каркас
+Next.js, PostgreSQL, Prisma, GraphQL Yoga, codegen, темы, деплой.
+
+### Этап 1 — Ядро расчёта
+`src/lib/calc/` целиком. Генеративные тесты инварианта. **Пишется до интерфейса**: если ядро неверно, всё остальное бессмысленно.
+
+### Этап 2 — Аутентификация
+Одноразовые коды, белый список, сессии, профиль.
+
+### Этап 3 — Данные
+Взносы, заказы, отсутствия, модерация. GraphQL-схема, DataLoader.
+
+### Этап 4 — Миграция
+Форма переноса из Excel с проверкой начального инварианта.
+
+### Этап 5 — Интерфейс
+Все экраны, раскрытие расчёта, графики, темы, мобильная вёрстка.
+
+### Этап 6 — Чеки
+`ReceiptExtractor`, реализация на Claude, предзаполнение формы, флаг «требует внимания».
+
+### Этап 7 — Помощник
+Промпт, снимок данных, кеширование, стриминг, режим аудита, лимиты.
+
+### Этап 8 — Telegram (отдельный этап после запуска)
+Бот, Mini App, вход через Telegram, уведомления.
+
+---
+
+## 15. Тестирование
+
+| Уровень | Что покрывает |
+|---|---|
+| Генеративные | Инвариант `Σ балансов == фонд` на случайных последовательностях операций. **Главный тест проекта.** |
+| Модульные | `calc/`: дни присутствия, доли, округление, вырожденные случаи, границы отсутствий, вход и выход участника |
+| Интеграционные | GraphQL: права по ролям, модерация взносов, повторная миграция |
+| E2E | Ключевые сценарии: вход → подача взноса → подтверждение → изменение баланса |
+| Ручные | Распознавание чеков на реальной выборке; качество ответов помощника |
+
+Обязательные модульные случаи: заказ в первый день отсутствия; отсутствие, накрывающее период целиком; отпуск и больничный встык у одного участника; участник, вошедший в середине периода; период с нулём человеко-дней; распределение остатка копеек между 3, 7 и 8 участниками.
+
+---
+
+## 16. Открытые вопросы
+
+Не блокируют старт разработки, но должны быть закрыты до соответствующих этапов.
+
+| № | Вопрос | Нужен к этапу |
+|---|---|---|
+| 1 | Состав участников и кто администратор | 2 |
+| 2 | Домен рабочей почты для белого списка | 2 |
+| 3 | Судьба остатка при выходе участника: возврат, сгорание в пользу фонда или перенос | 5 |
+| 4 | Хостинг: Vercel или свой сервер; почтовый провайдер для кодов | 0 |
+| 5 | Есть ли исторические данные из Excel для переноса как `historical` | 4 |
+| 6 | Хранилище чеков: S3-совместимое или файловая система сервера | 6 |
+
+По умолчанию, если ответа на №3 нет: возврат остатка через `SETTLEMENT`.
+
+**Закрыто:** больничный учитывается наравне с отпуском (§4.1); удалённая работа в расчёте не учитывается (§4.1).

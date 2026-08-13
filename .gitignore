@@ -1,0 +1,39 @@
+# Зависимости
+node_modules/
+.pnp
+.pnp.js
+
+# Сборка
+.next/
+out/
+build/
+dist/
+
+# Окружение — секреты в репозиторий не попадают
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Тесты и покрытие
+coverage/
+.nyc_output/
+
+# Логи
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# ОС и редакторы
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Загруженные чеки при локальной разработке
+/uploads/
+/storage/
+
+# Личные настройки Claude Code (общие лежат в .claude/settings.json)
+.claude/settings.local.json
