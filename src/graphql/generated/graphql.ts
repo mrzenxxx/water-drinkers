@@ -1,5 +1,6 @@
 import type { GraphQLResolveInfo, GraphQLScalarType, GraphQLScalarTypeConfig } from 'graphql';
 import type { User as PrismaUser, Contribution as PrismaContribution, WaterOrder as PrismaWaterOrder, Absence as PrismaAbsence, Receipt as PrismaReceipt, AuditEntry as PrismaAuditEntry, AssistantMessage as PrismaAssistantMessage } from '@/generated/prisma/client';
+import type { FundSettings as CalcFundSettings, Balance as CalcBalance, BalanceBreakdown as CalcBalanceBreakdown, OrderShare as CalcOrderShare } from '@/lib/calc/types';
 import type { GraphQLContext } from '../context';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
@@ -73,6 +74,7 @@ export type Balance = {
 /** Раскрытие баланса — то, что показывает экран «Фонд» по клику */
 export type BalanceBreakdown = {
   __typename?: 'BalanceBreakdown';
+  adjustmentsTotal: Scalars['Money']['output'];
   contributionsTotal: Scalars['Money']['output'];
   expensesTotal: Scalars['Money']['output'];
   openingBalance: Scalars['Money']['output'];
@@ -464,15 +466,15 @@ export type ResolversTypes = {
   AssistantMessage: ResolverTypeWrapper<PrismaAssistantMessage>;
   AuditEntry: ResolverTypeWrapper<PrismaAuditEntry>;
   AuthResult: ResolverTypeWrapper<Omit<AuthResult, 'user'> & { user: ResolversTypes['User'] }>;
-  Balance: ResolverTypeWrapper<Omit<Balance, 'breakdown' | 'user'> & { breakdown: ResolversTypes['BalanceBreakdown'], user: ResolversTypes['User'] }>;
-  BalanceBreakdown: ResolverTypeWrapper<Omit<BalanceBreakdown, 'orderShares'> & { orderShares: Array<ResolversTypes['OrderShare']> }>;
+  Balance: ResolverTypeWrapper<CalcBalance>;
+  BalanceBreakdown: ResolverTypeWrapper<CalcBalanceBreakdown>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   Confidence: Confidence;
   Contribution: ResolverTypeWrapper<PrismaContribution>;
   ContributionStatus: ContributionStatus;
   Date: ResolverTypeWrapper<Scalars['Date']['output']>;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
-  Fund: ResolverTypeWrapper<Fund>;
+  Fund: ResolverTypeWrapper<CalcFundSettings>;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
   JSON: ResolverTypeWrapper<Scalars['JSON']['output']>;
@@ -481,7 +483,7 @@ export type ResolversTypes = {
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   OpeningBalanceInput: OpeningBalanceInput;
   OpeningBalancesInput: OpeningBalancesInput;
-  OrderShare: ResolverTypeWrapper<Omit<OrderShare, 'order'> & { order: ResolversTypes['WaterOrder'] }>;
+  OrderShare: ResolverTypeWrapper<CalcOrderShare>;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   Receipt: ResolverTypeWrapper<PrismaReceipt>;
   ReceiptExtraction: ResolverTypeWrapper<ReceiptExtraction>;
@@ -500,13 +502,13 @@ export type ResolversParentTypes = {
   AssistantMessage: PrismaAssistantMessage;
   AuditEntry: PrismaAuditEntry;
   AuthResult: Omit<AuthResult, 'user'> & { user: ResolversParentTypes['User'] };
-  Balance: Omit<Balance, 'breakdown' | 'user'> & { breakdown: ResolversParentTypes['BalanceBreakdown'], user: ResolversParentTypes['User'] };
-  BalanceBreakdown: Omit<BalanceBreakdown, 'orderShares'> & { orderShares: Array<ResolversParentTypes['OrderShare']> };
+  Balance: CalcBalance;
+  BalanceBreakdown: CalcBalanceBreakdown;
   Boolean: Scalars['Boolean']['output'];
   Contribution: PrismaContribution;
   Date: Scalars['Date']['output'];
   DateTime: Scalars['DateTime']['output'];
-  Fund: Fund;
+  Fund: CalcFundSettings;
   ID: Scalars['ID']['output'];
   Int: Scalars['Int']['output'];
   JSON: Scalars['JSON']['output'];
@@ -515,7 +517,7 @@ export type ResolversParentTypes = {
   Mutation: Record<PropertyKey, never>;
   OpeningBalanceInput: OpeningBalanceInput;
   OpeningBalancesInput: OpeningBalancesInput;
-  OrderShare: Omit<OrderShare, 'order'> & { order: ResolversParentTypes['WaterOrder'] };
+  OrderShare: CalcOrderShare;
   Query: Record<PropertyKey, never>;
   Receipt: PrismaReceipt;
   ReceiptExtraction: ReceiptExtraction;
@@ -567,6 +569,7 @@ export type BalanceResolvers<ContextType = GraphQLContext, ParentType extends Re
 };
 
 export type BalanceBreakdownResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['BalanceBreakdown'] = ResolversParentTypes['BalanceBreakdown']> = {
+  adjustmentsTotal?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
   contributionsTotal?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
   expensesTotal?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
   openingBalance?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
