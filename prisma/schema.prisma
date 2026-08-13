@@ -1,0 +1,201 @@
+// WaterDrinkers — схема базы данных.
+// Точное отражение SQL-схемы из docs/SPEC.md §11.
+//
+// Соглашения:
+//  * Деньги — BigInt (копейки). Плавающая точка в денежных полях запрещена (CLAUDE.md, правило 2).
+//  * Перечисления (role, status, type) хранятся как TEXT — ровно как в §11,
+//    без создания PostgreSQL-типов. Допустимые значения перечислены в комментариях.
+//  * Ссылочные действия заданы явно как NoAction: это поведение SQL-схемы (§11 не задаёт
+//    ON DELETE / ON UPDATE, значит действует NO ACTION). Умолчания Prisma другие
+//    (Restrict / SetNull), поэтому их приходится переопределять.
+//  * CHECK-ограничения и EXCLUDE USING gist Prisma не выражает — они живут
+//    в ручной миграции prisma/migrations/0_init/migration.sql.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id             String    @id @default(uuid()) @db.Uuid
+  email          String    @unique @db.Citext
+  firstName      String?   @map("first_name")
+  lastName       String?   @map("last_name")
+  /// PARTICIPANT | ADMIN
+  role           String    @default("PARTICIPANT")
+  joinedAt       DateTime  @map("joined_at") @db.Date
+  leftAt         DateTime? @map("left_at") @db.Date
+  openingBalance BigInt    @default(0) @map("opening_balance")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  identities             Identity[]
+  contributions          Contribution[]    @relation("ContributionAuthor")
+  reviewedContributions  Contribution[]    @relation("ContributionReviewer")
+  createdWaterOrders     WaterOrder[]      @relation("WaterOrderCreator")
+  absences               Absence[]
+  fundTransactions       FundTransaction[] @relation("FundTransactionUser")
+  createdFundTransactions FundTransaction[] @relation("FundTransactionCreator")
+  auditEntries           AuditEntry[]
+  assistantMessages      AssistantMessage[]
+
+  @@map("users")
+}
+
+model Identity {
+  id         String @id @default(uuid()) @db.Uuid
+  userId     String @map("user_id") @db.Uuid
+  /// email | telegram
+  provider   String
+  providerId String @map("provider_id")
+
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([provider, providerId])
+  @@map("identities")
+}
+
+/// Одна строка на всю систему: CHECK (id = 1) стоит в ручной миграции.
+model FundSettings {
+  id                  Int       @id @default(1) @db.SmallInt
+  openingBalance      BigInt    @default(0) @map("opening_balance")
+  migrationDate       DateTime? @map("migration_date") @db.Date
+  /// 50000 копеек = 500 ₽
+  defaultContribution BigInt    @default(50000) @map("default_contribution")
+
+  @@map("fund_settings")
+}
+
+model Receipt {
+  id         String   @id @default(uuid()) @db.Uuid
+  storageKey String   @map("storage_key")
+  mediaType  String   @map("media_type")
+  extraction Json?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  contributions Contribution[]
+  waterOrders   WaterOrder[]
+
+  @@map("receipts")
+}
+
+model Contribution {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  /// копейки, CHECK (amount > 0) в ручной миграции
+  amount BigInt
+  paidAt DateTime @map("paid_at") @db.Date
+  /// PENDING | CONFIRMED | REJECTED
+  status        String    @default("PENDING")
+  receiptId     String?   @map("receipt_id") @db.Uuid
+  submittedAt   DateTime  @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  reviewedBy    String?   @map("reviewed_by") @db.Uuid
+  reviewedAt    DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  reviewComment String?   @map("review_comment")
+  historical    Boolean   @default(false)
+
+  user     User     @relation("ContributionAuthor", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reviewer User?    @relation("ContributionReviewer", fields: [reviewedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  receipt  Receipt? @relation(fields: [receiptId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("contributions")
+}
+
+model WaterOrder {
+  id String @id @default(uuid()) @db.Uuid
+  /// копейки, CHECK (amount > 0) в ручной миграции
+  amount       BigInt
+  orderedAt    DateTime @map("ordered_at") @db.Date
+  bottlesCount Int?     @map("bottles_count")
+  supplier     String?
+  note         String?
+  receiptId    String?  @map("receipt_id") @db.Uuid
+  createdBy    String   @map("created_by") @db.Uuid
+  historical   Boolean  @default(false)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  creator User     @relation("WaterOrderCreator", fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  receipt Receipt? @relation(fields: [receiptId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("water_orders")
+}
+
+/// CHECK (ends_on >= starts_on) и запрет пересечений (EXCLUDE USING gist)
+/// заданы в ручной миграции: Prisma такие ограничения не описывает.
+model Absence {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  /// VACATION | SICK_LEAVE
+  type     String
+  startsOn DateTime @map("starts_on") @db.Date
+  endsOn   DateTime @map("ends_on") @db.Date
+  note     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("absences")
+}
+
+/// Журнал операций фонда. Неизменяем: только вставка (CLAUDE.md, правило 4).
+model FundTransaction {
+  id String @id @default(uuid()) @db.Uuid
+  /// OPENING | CONTRIBUTION | ORDER | SETTLEMENT | ADJUSTMENT
+  type String
+  /// копейки, со знаком
+  amount    BigInt
+  userId    String?  @map("user_id") @db.Uuid
+  /// ссылка на contribution / water_order
+  refId     String?  @map("ref_id") @db.Uuid
+  comment   String?
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user    User? @relation("FundTransactionUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  creator User? @relation("FundTransactionCreator", fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("fund_transactions")
+}
+
+model AuditEntry {
+  id       BigInt  @id @default(autoincrement())
+  actorId  String? @map("actor_id") @db.Uuid
+  action   String
+  entity   String
+  entityId String? @map("entity_id") @db.Uuid
+  before   Json?
+  after    Json?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("audit_log")
+}
+
+/// Отклонение от §11: в SQL у таблицы нет первичного ключа, а Prisma требует
+/// уникальный идентификатор у каждой модели. Добавлен суррогатный id;
+/// набор содержательных колонок и их типы не изменены.
+model LoginCode {
+  id        BigInt   @id @default(autoincrement())
+  email     String   @db.Citext
+  codeHash  String   @map("code_hash")
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  attempts  Int      @default(0) @db.SmallInt
+
+  @@map("login_codes")
+}
+
+model AssistantMessage {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  /// user | assistant
+  role      String
+  content   String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("assistant_messages")
+}
