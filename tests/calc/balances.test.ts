@@ -8,7 +8,7 @@ import type { CalcInput, Contribution, FundSettings, Participant } from '@/lib/c
 const RUB = 100;
 
 function fund(over: Partial<FundSettings> = {}): FundSettings {
-  return { openingBalance: 0, migrationDate: null, defaultContribution: 500 * RUB, ...over };
+  return { openingBalance: 0, startDate: null, defaultContribution: 500 * RUB, ...over };
 }
 
 function participant(id: string, over: Partial<Participant> = {}): Participant {
@@ -26,7 +26,7 @@ function balanceOf(result: ReturnType<typeof computeBalances>, userId: string): 
 }
 
 describe('worked example of §4.7', () => {
-  // 8 participants, migration on 01.06 with 1 000 ₽ in the fund (125 ₽ each).
+  // 8 participants, accounting started on 01.06 with 1 000 ₽ in the fund (125 ₽ each).
   // An order of 3 000 ₽ on 05.06, today is 05.07, no further orders.
   // Ivan was away for 15 of those days. Everybody contributed 500 ₽.
   const ivan = 'u1';
@@ -39,7 +39,7 @@ describe('worked example of §4.7', () => {
     absences: [{ id: 'a1', userId: ivan, type: 'VACATION', startsOn: '2026-06-05', endsOn: '2026-06-19' }],
     orders: [{ id: 'o1', amount: 3000 * RUB, orderedAt: '2026-06-05' }],
     contributions: participants.map((p) => confirmed(`c-${p.id}`, p.id, 500 * RUB, '2026-06-10')),
-    fund: fund({ openingBalance: 1000 * RUB, migrationDate: '2026-06-01' }),
+    fund: fund({ openingBalance: 1000 * RUB, startDate: '2026-06-01' }),
     asOf: '2026-07-05',
   };
 
@@ -102,11 +102,11 @@ describe('balances (§4.5)', () => {
     assertInvariant(result);
   });
 
-  it('excludes everything before the migration date and every historical record (§4.2)', () => {
+  it('excludes everything before the start date and every historical record (§4.2)', () => {
     const result = computeBalances({
       ...base,
       participants: base.participants.map((p) => ({ ...p, openingBalance: 100 * RUB })),
-      fund: fund({ openingBalance: 200 * RUB, migrationDate: '2026-06-01' }),
+      fund: fund({ openingBalance: 200 * RUB, startDate: '2026-06-01' }),
       contributions: [
         confirmed('old', 'u1', 999 * RUB, '2026-05-31'),
         { ...confirmed('hist', 'u1', 888 * RUB, '2026-06-02'), historical: true },
@@ -169,7 +169,7 @@ describe('balances (§4.5)', () => {
     const result = computeBalances({
       ...base,
       participants: base.participants.map((p) => ({ ...p, openingBalance: 100 * RUB })),
-      fund: fund({ openingBalance: 200 * RUB, migrationDate: '2026-05-01' }),
+      fund: fund({ openingBalance: 200 * RUB, startDate: '2026-05-01' }),
       contributions: [confirmed('c1', 'u1', 500 * RUB, '2026-06-01')],
       orders: [{ id: 'o1', amount: 300 * RUB, orderedAt: '2026-06-01' }],
       transactions: [{ id: 't1', type: 'ADJUSTMENT', amount: -1000, userId: 'u1', occurredOn: '2026-06-05' }],
@@ -213,7 +213,7 @@ describe('balances (§4.5)', () => {
 });
 
 describe('opening balances (§4.2)', () => {
-  it('refuses a migration whose opening balances do not add up', () => {
+  it('refuses an opening state whose opening balances do not add up', () => {
     const participants = [
       participant('u1', { openingBalance: 400 * RUB }),
       participant('u2', { openingBalance: 500 * RUB }),
@@ -233,13 +233,13 @@ describe('opening balances (§4.2)', () => {
     }
   });
 
-  it('carries a mismatched migration through to a failing invariant', () => {
+  it('carries a mismatched opening state through to a failing invariant', () => {
     const result = computeBalances({
       participants: [participant('u1', { openingBalance: 400 * RUB })],
       absences: [],
       orders: [],
       contributions: [],
-      fund: fund({ openingBalance: 1000 * RUB, migrationDate: '2026-06-01' }),
+      fund: fund({ openingBalance: 1000 * RUB, startDate: '2026-06-01' }),
       asOf: '2026-07-01',
     });
     // The core does not paper over bad data: the invariant reports the gap.

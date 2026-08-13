@@ -113,15 +113,9 @@ export type Fund = {
   balancesSum: Scalars['Money']['output'];
   defaultContribution: Scalars['Money']['output'];
   isConsistent: Scalars['Boolean']['output'];
-  migrationDate?: Maybe<Scalars['Date']['output']>;
   monthlyStats: Array<MonthlyStat>;
   openingBalance: Scalars['Money']['output'];
-};
-
-export type MigrationInput = {
-  fundOpeningBalance: Scalars['Money']['input'];
-  migrationDate: Scalars['Date']['input'];
-  openingBalances: Array<OpeningBalanceInput>;
+  startDate?: Maybe<Scalars['Date']['output']>;
 };
 
 export type MonthlyStat = {
@@ -146,7 +140,7 @@ export type Mutation = {
   logout: Scalars['Boolean']['output'];
   rejectContribution: Contribution;
   requestLoginCode: RequestCodeResult;
-  runMigration: Fund;
+  setOpeningBalances: Fund;
   settleParticipant: User;
   submitContribution: Contribution;
   updateProfile: User;
@@ -217,8 +211,8 @@ export type MutationRequestLoginCodeArgs = {
 };
 
 
-export type MutationRunMigrationArgs = {
-  input: MigrationInput;
+export type MutationSetOpeningBalancesArgs = {
+  input: OpeningBalancesInput;
 };
 
 
@@ -250,6 +244,12 @@ export type MutationVerifyLoginCodeArgs = {
 export type OpeningBalanceInput = {
   amount: Scalars['Money']['input'];
   userId: Scalars['ID']['input'];
+};
+
+export type OpeningBalancesInput = {
+  fundOpeningBalance: Scalars['Money']['input'];
+  openingBalances: Array<OpeningBalanceInput>;
+  startDate: Scalars['Date']['input'];
 };
 
 export type OrderShare = {
@@ -476,11 +476,11 @@ export type ResolversTypes = {
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
   JSON: ResolverTypeWrapper<Scalars['JSON']['output']>;
-  MigrationInput: MigrationInput;
   Money: ResolverTypeWrapper<Scalars['Money']['output']>;
   MonthlyStat: ResolverTypeWrapper<MonthlyStat>;
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   OpeningBalanceInput: OpeningBalanceInput;
+  OpeningBalancesInput: OpeningBalancesInput;
   OrderShare: ResolverTypeWrapper<Omit<OrderShare, 'order'> & { order: ResolversTypes['WaterOrder'] }>;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   Receipt: ResolverTypeWrapper<PrismaReceipt>;
@@ -510,11 +510,11 @@ export type ResolversParentTypes = {
   ID: Scalars['ID']['output'];
   Int: Scalars['Int']['output'];
   JSON: Scalars['JSON']['output'];
-  MigrationInput: MigrationInput;
   Money: Scalars['Money']['output'];
   MonthlyStat: MonthlyStat;
   Mutation: Record<PropertyKey, never>;
   OpeningBalanceInput: OpeningBalanceInput;
+  OpeningBalancesInput: OpeningBalancesInput;
   OrderShare: Omit<OrderShare, 'order'> & { order: ResolversParentTypes['WaterOrder'] };
   Query: Record<PropertyKey, never>;
   Receipt: PrismaReceipt;
@@ -601,9 +601,9 @@ export type FundResolvers<ContextType = GraphQLContext, ParentType extends Resol
   balancesSum?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
   defaultContribution?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
   isConsistent?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
-  migrationDate?: Resolver<Maybe<ResolversTypes['Date']>, ParentType, ContextType>;
   monthlyStats?: Resolver<Array<ResolversTypes['MonthlyStat']>, ParentType, ContextType>;
   openingBalance?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
+  startDate?: Resolver<Maybe<ResolversTypes['Date']>, ParentType, ContextType>;
 };
 
 export interface JsonScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['JSON'], any> {
@@ -634,7 +634,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   logout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   rejectContribution?: Resolver<ResolversTypes['Contribution'], ParentType, ContextType, RequireFields<MutationRejectContributionArgs, 'comment' | 'id'>>;
   requestLoginCode?: Resolver<ResolversTypes['RequestCodeResult'], ParentType, ContextType, RequireFields<MutationRequestLoginCodeArgs, 'email'>>;
-  runMigration?: Resolver<ResolversTypes['Fund'], ParentType, ContextType, RequireFields<MutationRunMigrationArgs, 'input'>>;
+  setOpeningBalances?: Resolver<ResolversTypes['Fund'], ParentType, ContextType, RequireFields<MutationSetOpeningBalancesArgs, 'input'>>;
   settleParticipant?: Resolver<ResolversTypes['User'], ParentType, ContextType, RequireFields<MutationSettleParticipantArgs, 'amount' | 'id' | 'note'>>;
   submitContribution?: Resolver<ResolversTypes['Contribution'], ParentType, ContextType, RequireFields<MutationSubmitContributionArgs, 'amount' | 'paidAt'>>;
   updateProfile?: Resolver<ResolversTypes['User'], ParentType, ContextType, RequireFields<MutationUpdateProfileArgs, 'firstName' | 'lastName'>>;

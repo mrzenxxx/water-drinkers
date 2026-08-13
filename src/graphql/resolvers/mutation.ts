@@ -82,7 +82,7 @@ export const Mutation: MutationResolvers<GraphQLContext> = {
   deleteAbsence: () => false,
 
   // ─── Администрирование — этапы 3 и 4 ───────────────────
-  runMigration: () => notImplemented('runMigration'),
+  setOpeningBalances: () => notImplemented('setOpeningBalances'),
   addParticipant: () => notImplemented('addParticipant'),
   deactivateParticipant: () => notImplemented('deactivateParticipant'),
   settleParticipant: () => notImplemented('settleParticipant'),

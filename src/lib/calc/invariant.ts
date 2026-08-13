@@ -56,8 +56,8 @@ export function assertInvariant(result: CalcResult): InvariantReport {
 }
 
 /**
- * The same invariant applied to the starting point (§4.2): a migration must not
- * be saved unless `Σ openingBalance(i) == fundOpeningBalance`. The form shows
+ * The same invariant applied to the starting point (§4.2): opening balances must
+ * not be saved unless `Σ openingBalance(i) == fundOpeningBalance`. The form shows
  * `difference` and refuses to continue while it is non-zero.
  */
 export function checkOpeningInvariant(

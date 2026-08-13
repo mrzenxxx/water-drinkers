@@ -13,7 +13,7 @@ export const Query: QueryResolvers<GraphQLContext> = {
   fund: () => ({
     balance: 0,
     openingBalance: 0,
-    migrationDate: null,
+    startDate: null,
     defaultContribution: 0,
     balancesSum: 0,
     isConsistent: true,

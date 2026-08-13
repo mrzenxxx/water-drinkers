@@ -77,7 +77,7 @@ type OrderShare {
 type Fund {
   balance: Money!
   openingBalance: Money!
-  migrationDate: Date
+  startDate: Date
   defaultContribution: Money!
   balancesSum: Money! # для проверки инварианта
   isConsistent: Boolean! # balance == balancesSum
@@ -228,7 +228,7 @@ type Mutation {
   deleteAbsence(id: ID!): Boolean!
 
   # Администрирование
-  runMigration(input: MigrationInput!): Fund! # ADMIN, однократно
+  setOpeningBalances(input: OpeningBalancesInput!): Fund! # ADMIN
   addParticipant(email: String!, joinedAt: Date!): User! # ADMIN
   deactivateParticipant(id: ID!, leftAt: Date!): User! # ADMIN
   settleParticipant(id: ID!, amount: Money!, note: String!): User! # ADMIN
@@ -238,8 +238,8 @@ type Mutation {
   askAssistant(question: String!): AssistantMessage!
 }
 
-input MigrationInput {
-  migrationDate: Date!
+input OpeningBalancesInput {
+  startDate: Date!
   fundOpeningBalance: Money!
   openingBalances: [OpeningBalanceInput!]!
 }

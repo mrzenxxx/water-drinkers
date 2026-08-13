@@ -84,12 +84,12 @@ function toInput(world: World): CalcInput {
 }
 
 /**
- * Builds a starting world: a migration (§4.2) whose opening balances add up to
- * the fund's opening balance, or no migration at all.
+ * Builds a starting world: an opening state (§4.2) whose opening balances add up to
+ * the fund's opening balance, or a clean start with no opening state.
  */
 function makeWorld(rng: Rng): World {
-  const migrated = chance(rng, 0.7);
-  const migrationDate: IsoDate | null = migrated ? '2026-06-01' : null;
+  const withOpeningState = chance(rng, 0.7);
+  const startDate: IsoDate | null = withOpeningState ? '2026-06-01' : null;
   const cohortSize = int(rng, 1, 8);
 
   const world: World = {
@@ -98,21 +98,21 @@ function makeWorld(rng: Rng): World {
     orders: [],
     contributions: [],
     transactions: [],
-    fund: { openingBalance: 0, migrationDate, defaultContribution: 500_00 },
-    today: migrated ? '2026-06-01' : '2026-01-15',
+    fund: { openingBalance: 0, startDate, defaultContribution: 500_00 },
+    today: withOpeningState ? '2026-06-01' : '2026-01-15',
     nextId: 0,
   };
 
   const openingBalances: number[] = [];
   for (let i = 0; i < cohortSize; i += 1) {
-    openingBalances.push(migrated ? int(rng, -50_000, 200_000) : 0);
+    openingBalances.push(withOpeningState ? int(rng, -50_000, 200_000) : 0);
   }
   world.fund.openingBalance = openingBalances.reduce((sum, value) => sum + value, 0);
 
   for (let i = 0; i < cohortSize; i += 1) {
     world.participants.push({
       id: id(world, 'u'),
-      joinedAt: migrated ? '2026-01-01' : world.today,
+      joinedAt: withOpeningState ? '2026-01-01' : world.today,
       leftAt: null,
       openingBalance: openingBalances[i],
     });
