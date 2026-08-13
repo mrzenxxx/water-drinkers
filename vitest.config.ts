@@ -10,6 +10,11 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.{test,spec}.ts', 'src/**/*.{test,spec}.tsx'],
+    include: [
+      'src/**/*.{test,spec}.ts',
+      'src/**/*.{test,spec}.tsx',
+      // Ядро расчёта держит тесты отдельно от исходников — см. tests/calc/.
+      'tests/**/*.{test,spec}.ts',
+    ],
   },
 });
