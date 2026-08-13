@@ -1,0 +1,31 @@
+# Локальная база для разработки.
+#
+# Реквизиты совпадают с DATABASE_URL из .env.example — так строку подключения
+# не приходится править после `docker compose up`.
+#
+# Расширения citext и btree_gist (§11) ставит начальная миграция; в официальном
+# образе они уже лежат в поставке, отдельный образ не нужен.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: waterdrinkers-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: waterdrinkers
+      POSTGRES_PASSWORD: waterdrinkers
+      POSTGRES_DB: waterdrinkers
+    ports:
+      - '5432:5432'
+    volumes:
+      - waterdrinkers-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Без этого `migrate deploy` сразу после `up` попадает в момент, когда
+      # порт уже слушают, а база ещё поднимается.
+      test: ['CMD-SHELL', 'pg_isready -U waterdrinkers -d waterdrinkers']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  waterdrinkers-pgdata:
