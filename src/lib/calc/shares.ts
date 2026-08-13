@@ -106,7 +106,7 @@ export function allocateByLargestRemainder(
  * Splits `total` as evenly as possible between `ids`, remainder by largest
  * remainder method — equal weights, so the leftover kopecks go to the smallest
  * ids. Used for the degenerate order case (§4.4), the "split equally" button of
- * the migration form (§4.2) and fund-level adjustments.
+ * the opening-balances form (§4.2) and fund-level adjustments.
  */
 export function allocateEqually(total: Kopecks, ids: readonly string[]): Map<string, Kopecks> {
   return allocateByLargestRemainder(

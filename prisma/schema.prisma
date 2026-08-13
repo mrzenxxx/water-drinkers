@@ -62,7 +62,7 @@ model Identity {
 model FundSettings {
   id                  Int       @id @default(1) @db.SmallInt
   openingBalance      BigInt    @default(0) @map("opening_balance")
-  migrationDate       DateTime? @map("migration_date") @db.Date
+  startDate           DateTime? @map("start_date") @db.Date
   /// 50000 копеек = 500 ₽
   defaultContribution BigInt    @default(50000) @map("default_contribution")
 

@@ -23,7 +23,7 @@ export type AbsenceType = 'VACATION' | 'SICK_LEAVE';
 
 /**
  * A participant with a membership window `[joinedAt, leftAt)` and an opening
- * balance carried over from the Excel migration (§4.2).
+ * balance set by the administrator (§4.2).
  */
 export type Participant = {
   id: string;
@@ -31,7 +31,7 @@ export type Participant = {
   joinedAt: IsoDate;
   /** First day *after* membership; `null` while the participant is still active. */
   leftAt: IsoDate | null;
-  /** Personal balance at `migrationDate` (§4.2). Zero when there was no migration. */
+  /** Personal balance at `startDate` (§4.2). Zero when accounting starts from scratch. */
   openingBalance: Kopecks;
 };
 
@@ -99,14 +99,14 @@ export type FundTransaction = {
 
 /** Singleton fund configuration (§11 `fund_settings`). */
 export type FundSettings = {
-  /** Fund balance recorded at `migrationDate` (§4.2). */
+  /** Fund balance recorded at `startDate` (§4.2). */
   openingBalance: Kopecks;
   /**
-   * Date the Excel state was frozen on. Everything strictly before it is already
-   * folded into the opening balances and is excluded from the calculation (§4.2).
-   * `null` — migration has not been performed, nothing is excluded.
+   * Day accounting starts on. Everything strictly before it is already folded
+   * into the opening balances and is excluded from the calculation (§4.2).
+   * `null` — no starting point has been set, nothing is excluded.
    */
-  migrationDate: IsoDate | null;
+  startDate: IsoDate | null;
   /** Suggested contribution size, presentation only. */
   defaultContribution: Kopecks;
 };

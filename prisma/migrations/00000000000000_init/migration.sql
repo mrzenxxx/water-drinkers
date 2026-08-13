@@ -36,7 +36,7 @@ CREATE TABLE "identities" (
 CREATE TABLE "fund_settings" (
   "id"                   SMALLINT PRIMARY KEY DEFAULT 1 CHECK ("id" = 1),
   "opening_balance"      BIGINT NOT NULL DEFAULT 0,
-  "migration_date"       DATE,
+  "start_date"           DATE,
   "default_contribution" BIGINT NOT NULL DEFAULT 50000   -- 500 ₽
 );
 

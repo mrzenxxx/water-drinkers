@@ -1,6 +1,6 @@
 /**
- * Final balance and fund formulas (SPEC §4.5), on top of the opening balances of
- * the Excel migration (§4.2).
+ * Final balance and fund formulas (SPEC §4.5), on top of the opening balances
+ * set by the administrator (§4.2).
  *
  * ```
  * Баланс(i) = openingBalance(i) + Взносы(i) − Расход(i) + Выплаты(i)
@@ -32,21 +32,21 @@ import type {
   WaterOrder,
 } from './types';
 
-/** `true` when the record is on or after the migration date and not marked historical (§4.2). */
-function isCountable(date: IsoDate, historical: boolean | undefined, migrationDate: IsoDate | null): boolean {
+/** `true` when the record is on or after the start date and not marked historical (§4.2). */
+function isCountable(date: IsoDate, historical: boolean | undefined, startDate: IsoDate | null): boolean {
   if (historical === true) return false;
-  if (migrationDate === null) return true;
-  return compareDates(date, migrationDate) >= 0;
+  if (startDate === null) return true;
+  return compareDates(date, startDate) >= 0;
 }
 
-/** Orders that move money after the migration point (§4.2). */
+/** Orders that move money on or after the start of accounting (§4.2). */
 export function countableOrders(orders: readonly WaterOrder[], fund: FundSettings): WaterOrder[] {
-  return orders.filter((order) => isCountable(order.orderedAt, order.historical, fund.migrationDate));
+  return orders.filter((order) => isCountable(order.orderedAt, order.historical, fund.startDate));
 }
 
 /**
  * Contributions that move money: confirmed by an administrator (rule 6 of
- * CLAUDE.md, §4.5) and after the migration point.
+ * CLAUDE.md, §4.5) and on or after the start of accounting.
  */
 export function countableContributions(
   contributions: readonly Contribution[],
@@ -55,17 +55,17 @@ export function countableContributions(
   return contributions.filter(
     (contribution) =>
       contribution.status === 'CONFIRMED' &&
-      isCountable(contribution.paidAt, contribution.historical, fund.migrationDate),
+      isCountable(contribution.paidAt, contribution.historical, fund.startDate),
   );
 }
 
-/** Settlements and adjustments after the migration point. */
+/** Settlements and adjustments on or after the start of accounting. */
 export function countableTransactions(
   transactions: readonly FundTransaction[],
   fund: FundSettings,
 ): FundTransaction[] {
   return transactions.filter((transaction) =>
-    isCountable(transaction.occurredOn, undefined, fund.migrationDate),
+    isCountable(transaction.occurredOn, undefined, fund.startDate),
   );
 }
 
@@ -158,7 +158,7 @@ export function sumOpeningBalances(participants: readonly Participant[]): Kopeck
 }
 
 /**
- * The "split equally" button of the migration form (§4.2): distributes the fund's
+ * The "split equally" button of the opening-balances form (§4.2): distributes the fund's
  * opening balance across participants by the largest remainder method, so the
  * opening invariant `Σ openingBalance(i) == fundOpeningBalance` holds by
  * construction. A deliberate loss of precision, logged as `equal-split`.

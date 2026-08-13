@@ -627,8 +627,9 @@ type Balance {
 type BalanceBreakdown {
   openingBalance: Money!
   contributionsTotal: Money!
-  expensesTotal: Money!
-  settlementsTotal: Money!
+  expensesTotal: Money!       # положительная величина: сумма долей в заказах
+  settlementsTotal: Money!    # знаковая: выплата отрицательна (§2.3)
+  adjustmentsTotal: Money!    # знаковая: корректировка бывает в обе стороны
   orderShares: [OrderShare!]!
 }
 
@@ -654,7 +655,7 @@ type Fund {
 type MonthlyStat {
   month: String!             # YYYY-MM
   contributions: Money!
-  orders: Money!
+  orders: Money!             # отрицательная: деньги ушли из фонда (§2.3)
   endBalance: Money!
 }
 

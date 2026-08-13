@@ -105,10 +105,12 @@ async function main(): Promise<void> {
 
   console.info(`Начало учёта: ${iso(START)}`);
 
+  // Дата начала учёта задаётся явно: с нулевым начальным сальдо она ничего
+  // не отсекает, но экран «Фонд» должен показывать, с какого дня идёт счёт.
   await prisma.fundSettings.upsert({
     where: { id: 1 },
-    update: { defaultContribution: BigInt(STANDARD_CONTRIBUTION) },
-    create: { id: 1, defaultContribution: BigInt(STANDARD_CONTRIBUTION) },
+    update: { defaultContribution: BigInt(STANDARD_CONTRIBUTION), startDate: START },
+    create: { id: 1, defaultContribution: BigInt(STANDARD_CONTRIBUTION), startDate: START },
   });
 
   // Порядок важен: сначала то, на что ссылаются, потом то, что ссылается.
