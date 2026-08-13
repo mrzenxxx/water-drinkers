@@ -153,6 +153,9 @@ export type MonthlyStat = {
   endBalance: Kopecks;
 };
 
+/** Пятьдесят лет помесячно — больше на графике смысла не имеет. */
+const MAX_MONTHS = 600;
+
 function monthOf(date: IsoDate): string {
   return date.slice(0, 7);
 }
@@ -205,7 +208,9 @@ export function monthlyStats(input: CalcInput, result: CalcResult): MonthlyStat[
   const stats: MonthlyStat[] = [];
   let running = input.fund.openingBalance;
 
-  for (let month = first; month <= last; month = nextMonth(month)) {
+  // Страховка: дату начала учёта задаёт администратор, и опечатка в годе
+  // не должна превращать график в десятки тысяч строк.
+  for (let month = first; month <= last && stats.length < MAX_MONTHS; month = nextMonth(month)) {
     const totals = byMonth.get(month) ?? { contributions: 0, orders: 0, other: 0 };
     running += totals.contributions + totals.orders + totals.other;
     stats.push({
