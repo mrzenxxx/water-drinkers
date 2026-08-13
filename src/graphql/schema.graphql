@@ -1,0 +1,263 @@
+# WaterDrinkers — GraphQL-схема.
+# Дословно повторяет docs/SPEC.md §10.2.
+#
+# Дополнения к §10.2 (в спецификации типы упомянуты, но не расписаны — без них
+# схема не собирается): RequestCodeResult, AuthResult, AuditEntry,
+# AssistantMessage и скаляр JSON для полей before/after журнала аудита.
+
+scalar Date # YYYY-MM-DD
+scalar DateTime # ISO 8601
+scalar Money # копейки, целое число
+scalar JSON # произвольный JSON (before/after в журнале аудита)
+
+enum Role {
+  PARTICIPANT
+  ADMIN
+}
+
+enum ContributionStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+enum Confidence {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum AbsenceType {
+  VACATION
+  SICK_LEAVE
+}
+
+# ─── Участники ───────────────────────────────────────────
+
+type User {
+  id: ID!
+  email: String!
+  firstName: String
+  lastName: String
+  role: Role!
+  joinedAt: Date!
+  leftAt: Date
+  isActive: Boolean!
+  openingBalance: Money!
+  balance: Balance!
+  absences: [Absence!]!
+  contributions(status: ContributionStatus): [Contribution!]!
+}
+
+type Balance {
+  user: User!
+  amount: Money! # < 0 → участник должен
+  owes: Boolean!
+  breakdown: BalanceBreakdown!
+}
+
+"Раскрытие баланса — то, что показывает экран «Фонд» по клику"
+type BalanceBreakdown {
+  openingBalance: Money!
+  contributionsTotal: Money!
+  expensesTotal: Money!
+  settlementsTotal: Money!
+  orderShares: [OrderShare!]!
+}
+
+type OrderShare {
+  order: WaterOrder!
+  daysPresent: Int!
+  totalPersonDays: Int!
+  share: Money!
+}
+
+# ─── Фонд ────────────────────────────────────────────────
+
+type Fund {
+  balance: Money!
+  openingBalance: Money!
+  migrationDate: Date
+  defaultContribution: Money!
+  balancesSum: Money! # для проверки инварианта
+  isConsistent: Boolean! # balance == balancesSum
+  monthlyStats: [MonthlyStat!]!
+}
+
+type MonthlyStat {
+  month: String! # YYYY-MM
+  contributions: Money!
+  orders: Money!
+  endBalance: Money!
+}
+
+# ─── Взносы ──────────────────────────────────────────────
+
+type Contribution {
+  id: ID!
+  user: User!
+  amount: Money!
+  paidAt: Date!
+  status: ContributionStatus!
+  receipt: Receipt
+  submittedAt: DateTime!
+  reviewedBy: User
+  reviewedAt: DateTime
+  reviewComment: String
+  needsAttention: Boolean! # низкая уверенность или расхождение с чеком
+}
+
+type Receipt {
+  id: ID!
+  url: String!
+  extraction: ReceiptExtraction
+}
+
+type ReceiptExtraction {
+  paidAt: Date
+  amount: Money
+  payerHint: String
+  confidence: Confidence!
+  notes: String!
+  provider: String!
+}
+
+# ─── Заказы и отсутствия ─────────────────────────────────
+
+type WaterOrder {
+  id: ID!
+  amount: Money!
+  orderedAt: Date!
+  bottlesCount: Int
+  supplier: String
+  note: String
+  createdBy: User!
+  receipt: Receipt
+  consumptionPeriodEnd: Date # null → период ещё открыт
+  shares: [OrderShare!]!
+}
+
+type Absence {
+  id: ID!
+  user: User!
+  type: AbsenceType!
+  startsOn: Date!
+  endsOn: Date!
+  note: String
+}
+
+# ─── Аудит и помощник ────────────────────────────────────
+
+"Запись журнала аудита (audit_log, §11). В §10.2 тип упомянут, но не расписан."
+type AuditEntry {
+  id: ID!
+  actor: User
+  action: String!
+  entity: String!
+  entityId: ID
+  before: JSON
+  after: JSON
+  createdAt: DateTime!
+}
+
+"Сообщение диалога с помощником (assistant_messages, §11)."
+type AssistantMessage {
+  id: ID!
+  role: String! # user | assistant
+  content: String!
+  createdAt: DateTime!
+}
+
+# ─── Результаты аутентификации ───────────────────────────
+
+"""
+Ответ на запрос кода. По §7 он одинаков для разрешённого и неразрешённого
+адреса, поэтому не содержит ничего, что раскрывало бы состав команды.
+"""
+type RequestCodeResult {
+  ok: Boolean!
+  expiresInSeconds: Int!
+}
+
+"Результат проверки кода. Сессия уходит в httpOnly-cookie, а не в ответ."
+type AuthResult {
+  user: User!
+  needsProfile: Boolean! # первый вход: не заполнены имя и фамилия
+}
+
+# ─── Запросы ─────────────────────────────────────────────
+
+type Query {
+  me: User
+  fund: Fund!
+  participants(includeInactive: Boolean = false): [User!]!
+  balances: [Balance!]!
+  contributions(
+    userId: ID
+    status: ContributionStatus
+    from: Date
+    to: Date
+  ): [Contribution!]!
+  waterOrders(from: Date, to: Date): [WaterOrder!]!
+  absences(from: Date, to: Date, type: AbsenceType): [Absence!]!
+  pendingContributions: [Contribution!]! # только ADMIN
+  auditLog(limit: Int = 50): [AuditEntry!]! # только ADMIN
+  assistantThread: [AssistantMessage!]!
+}
+
+# ─── Мутации ─────────────────────────────────────────────
+
+type Mutation {
+  # Аутентификация
+  requestLoginCode(email: String!): RequestCodeResult!
+  verifyLoginCode(email: String!, code: String!): AuthResult!
+  logout: Boolean!
+  updateProfile(firstName: String!, lastName: String!): User!
+
+  # Взносы
+  extractReceipt(fileId: ID!): ReceiptExtraction!
+  submitContribution(amount: Money!, paidAt: Date!, receiptFileId: ID): Contribution!
+  confirmContribution(id: ID!): Contribution! # ADMIN
+  rejectContribution(id: ID!, comment: String!): Contribution! # ADMIN
+
+  # Заказы
+  createWaterOrder(input: WaterOrderInput!): WaterOrder! # ADMIN
+
+  # Отсутствия
+  addAbsence(type: AbsenceType!, startsOn: Date!, endsOn: Date!, note: String): Absence!
+  deleteAbsence(id: ID!): Boolean!
+
+  # Администрирование
+  runMigration(input: MigrationInput!): Fund! # ADMIN, однократно
+  addParticipant(email: String!, joinedAt: Date!): User! # ADMIN
+  deactivateParticipant(id: ID!, leftAt: Date!): User! # ADMIN
+  settleParticipant(id: ID!, amount: Money!, note: String!): User! # ADMIN
+  createAdjustment(userId: ID, amount: Money!, comment: String!): Fund! # ADMIN
+
+  # Помощник
+  askAssistant(question: String!): AssistantMessage!
+}
+
+input MigrationInput {
+  migrationDate: Date!
+  fundOpeningBalance: Money!
+  openingBalances: [OpeningBalanceInput!]!
+}
+
+input OpeningBalanceInput {
+  userId: ID!
+  amount: Money!
+}
+
+input WaterOrderInput {
+  amount: Money!
+  orderedAt: Date!
+  bottlesCount: Int
+  supplier: String
+  note: String
+  receiptFileId: ID
+}
+
+type Subscription {
+  fundUpdated: Fund! # опционально, этап 1.5
+}
