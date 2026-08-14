@@ -1,79 +1,168 @@
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-import { ThemeToggle } from '@/components/theme-toggle';
+import { ActivityFeed } from '@/components/activity-feed';
+import { Amount, HeroAmount } from '@/components/amount';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { requirePageUser } from '@/lib/auth/current-user';
+import { todayIso } from '@/lib/data';
+import { fundState, listPeople, peopleById, timelineSource } from '@/lib/data/queries';
+import { fullName } from '@/lib/format';
+import { formatKopecks } from '@/lib/money';
+import { buildEvents } from '@/lib/view/events';
 
-const READY: ReadonlyArray<{ title: string; detail: string }> = [
-  { title: 'Next.js + TypeScript', detail: 'App Router, строгий режим' },
-  { title: 'GraphQL Yoga', detail: '/api/graphql, схема §10.2, резолверы-заглушки' },
-  { title: 'Prisma', detail: 'schema.prisma по §11, ручная начальная миграция' },
-  { title: 'Tailwind + shadcn/ui', detail: 'токены темы в CSS-переменных' },
-  { title: 'Codegen', detail: 'схема → типы в src/graphql/generated' },
-  { title: 'Vitest', detail: 'npm test, npm run test:watch' },
-];
+/**
+ * Главная (§6.1).
+ *
+ * Экран обязан читаться без чтения (§12): размер и цвет числа отвечают на
+ * «должен или нет» раньше, чем человек дочитает подпись. Подпись при этом
+ * стоит рядом всегда — цвет не единственный носитель смысла.
+ *
+ * Серверный компонент: данные берутся `await`-ом прямо из слоя данных,
+ * без HTTP к собственному `/api/graphql` (§12а).
+ */
 
-export default function HomePage(): ReactNode {
+/** Сколько событий показывать в ленте. Дальше — дашборд. */
+const FEED_LIMIT = 12;
+
+export default async function HomePage(): Promise<ReactNode> {
+  const user = await requirePageUser();
+
+  const [state, people, byId, source] = await Promise.all([
+    fundState(),
+    listPeople(),
+    peopleById(),
+    timelineSource(),
+  ]);
+
+  const today = todayIso();
+  const myBalance = state.balanceOf(user.id);
+  const amount = myBalance?.amount ?? 0;
+  const owes = amount < 0;
+
+  // Очередь должников видна всем — это обещание брифа, а не утечка (§6.1).
+  const debtors = state.result.balances
+    .filter((balance) => balance.amount < 0)
+    .sort((a, b) => a.amount - b.amount);
+
+  const events = buildEvents(source)
+    .slice()
+    .reverse()
+    .slice(0, FEED_LIMIT);
+
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:py-12">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">WaterDrinkers</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Каркас проекта, этап 0. Данных пока нет — только проверка, что всё поднялось.
-          </p>
-        </div>
-        <ThemeToggle />
-      </header>
+    <div className="flex flex-col gap-6">
+      <title>Главная — WaterDrinkers</title>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Обе темы живы</CardTitle>
-          <CardDescription>
-            Тема определяется по системной настройке, переключатель сохраняет выбор.
-            Цвет никогда не единственный носитель смысла: рядом со знаком стоит подпись.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-lg border border-border p-4">
-            <p className="text-sm text-muted-foreground">Пример: пора скидываться</p>
-            <p className="tabular mt-1 text-3xl font-semibold text-owes">−340,00 ₽</p>
-            <p className="mt-1 text-sm text-owes">Должен фонду</p>
-          </div>
-          <div className="rounded-lg border border-border p-4">
-            <p className="text-sm text-muted-foreground">Пример: всё внесено</p>
-            <p className="tabular mt-1 text-3xl font-semibold text-credit">+1 250,00 ₽</p>
-            <p className="mt-1 text-sm text-credit">Остаток в фонде</p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 md:grid-cols-2">
+        {/*
+          Личный баланс — первый и самый крупный: человек заходит сюда, чтобы
+          узнать, должен он или нет.
+        */}
+        <Card className={owes ? 'border-owes/50' : undefined}>
+          <CardHeader>
+            <CardDescription>Ваш баланс</CardDescription>
+            <CardTitle className="mt-1">
+              <HeroAmount value={amount} tone="auto" signed />
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className={owes ? 'text-owes font-medium' : 'text-credit font-medium'}>
+              {owes
+                ? `Ты должен ${formatKopecks(-amount)}`
+                : 'Пока скидываться не надо'}
+            </p>
+            <p className="text-muted-foreground text-sm">
+              {owes
+                ? 'Внесите взнос и приложите чек — администратор подтвердит его, и баланс обновится.'
+                : 'Взносы покрывают вашу долю в заказах. Как только баланс уйдёт в минус, здесь появится сумма.'}
+            </p>
+            <Button asChild size="sm">
+              <Link href="/contributions">Мои взносы</Link>
+            </Button>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Что уже собрано</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="flex flex-col gap-3">
-            {READY.map((item) => (
-              <li key={item.title} className="flex flex-col gap-0.5 sm:flex-row sm:gap-2">
-                <span className="font-medium">{item.title}</span>
-                <span className="text-sm text-muted-foreground sm:before:mr-2 sm:before:content-['—']">
-                  {item.detail}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Button asChild>
-          <a href="/api/graphql">Открыть GraphQL</a>
-        </Button>
-        <span className="text-sm text-muted-foreground">
-          Спецификация — в <code className="font-mono">docs/SPEC.md</code>
-        </span>
+        <Card>
+          <CardHeader>
+            <CardDescription>Остаток фонда</CardDescription>
+            <CardTitle className="mt-1">
+              <HeroAmount value={state.result.fundBalance} tone="neutral" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-muted-foreground text-sm">
+              Деньги, которые есть у кассы прямо сейчас. Сумма балансов всех участников
+              равна этому числу — сходимость видна в разделе «Фонд».
+            </p>
+            <p className="text-sm">
+              Участников в составе:{' '}
+              <span className="tabular font-medium">
+                {people.filter((person) => person.leftAt === null).length}
+              </span>
+            </p>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/fund">Раскрыть расчёт</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
-    </main>
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Кто в минусе</CardTitle>
+            <CardDescription>
+              Очередь видна всем: приложение прозрачно, участник видит то же, что администратор.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {debtors.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                Никто не должен фонду. Хороший день.
+              </p>
+            ) : (
+              <ul className="flex flex-col">
+                {debtors.map((balance) => {
+                  const person = byId.get(balance.userId);
+                  return (
+                    <li
+                      key={balance.userId}
+                      className="border-border flex items-center justify-between gap-3 border-b py-2 text-sm last:border-b-0"
+                    >
+                      <span className="min-w-0 truncate">
+                        {person === undefined ? balance.userId : fullName(person)}
+                        {balance.userId === user.id && (
+                          <span className="text-muted-foreground"> — это вы</span>
+                        )}
+                      </span>
+                      <Amount value={balance.amount} tone="owes" signed />
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Последние события</CardTitle>
+            <CardDescription>
+              Взносы, заказы, отсутствия и корректировки — в порядке появления.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ActivityFeed events={events} people={byId} today={today} />
+            <div className="mt-4">
+              <Button asChild size="sm" variant="outline">
+                <Link href="/dashboard">Весь таймлайн</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }

@@ -1,0 +1,84 @@
+/**
+ * Дымовая проверка графиков.
+ *
+ * Браузера здесь нет, но самая частая поломка встроенного SVG видна и в строке:
+ * `NaN` в координате — путь не рисуется вовсе, и на экране просто пусто, без
+ * единой ошибки в консоли. Поэтому графики рендерятся в разметку и проверяются
+ * на отсутствие `NaN`, `Infinity` и `undefined` в атрибутах.
+ *
+ * Разметка собирается через `createElement`, а не JSX: файл лежит рядом
+ * с остальными тестами ядра, и добавлять ради него `.tsx` в конфигурацию
+ * vitest не хочется.
+ */
+
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { describe, expect, it } from 'vitest';
+
+import { FundBalanceChart } from '@/components/charts/fund-balance-chart';
+import { FundMonthlyChart } from '@/components/charts/fund-monthly-chart';
+import type { MonthlyStat } from '@/lib/data/fund';
+import type { BalanceSeries } from '@/lib/view/series';
+
+const BROKEN = /NaN|Infinity|undefined/;
+
+const STATS: MonthlyStat[] = [
+  { month: '2026-06', contributions: 400_000, orders: -300_000, endBalance: 100_000 },
+  { month: '2026-07', contributions: 0, orders: -250_000, endBalance: -150_000 },
+  { month: '2026-08', contributions: 500_000, orders: 0, endBalance: 350_000 },
+];
+
+const SERIES: BalanceSeries = {
+  startBalance: 0,
+  points: [
+    { date: '2026-06-01', balance: 0 },
+    { date: '2026-06-08', balance: 200_000 },
+    { date: '2026-06-15', balance: -100_000 },
+    { date: '2026-06-22', balance: 50_000 },
+  ],
+  min: -100_000,
+  max: 200_000,
+  crossesZero: true,
+};
+
+describe('график по месяцам', () => {
+  it('рисует пути без битых координат', () => {
+    const markup = renderToStaticMarkup(createElement(FundMonthlyChart, { stats: STATS }));
+    expect(markup).toContain('<svg');
+    expect(markup).toMatch(/d="M/);
+    expect(BROKEN.test(markup)).toBe(false);
+  });
+
+  it('на пустых данных говорит об этом словами, а не пустым прямоугольником', () => {
+    const markup = renderToStaticMarkup(createElement(FundMonthlyChart, { stats: [] }));
+    expect(markup).not.toContain('<svg');
+    expect(markup).toContain('Пока нечего показывать');
+  });
+});
+
+describe('график остатка фонда', () => {
+  it('рисует ступени и отмечает переход через ноль', () => {
+    const markup = renderToStaticMarkup(
+      createElement(FundBalanceChart, { series: SERIES, granularity: 'week' }),
+    );
+    expect(markup).toContain('<svg');
+    // Ступень — горизонталь и вертикаль, а не наклонная линия.
+    expect(markup).toMatch(/d="M[^"]*H[^"]*V/);
+    expect(markup).toContain('фонд пересёк ноль');
+    expect(BROKEN.test(markup)).toBe(false);
+  });
+
+  it('без точек не рисует пустую картинку', () => {
+    const empty: BalanceSeries = {
+      startBalance: 0,
+      points: [],
+      min: 0,
+      max: 0,
+      crossesZero: false,
+    };
+    const markup = renderToStaticMarkup(
+      createElement(FundBalanceChart, { series: empty, granularity: 'day' }),
+    );
+    expect(markup).not.toContain('<svg');
+  });
+});
