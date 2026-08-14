@@ -1,12 +1,11 @@
 import type { ReactNode } from 'react';
 
 import { Amount } from '@/components/amount';
-import { ContributionForm } from '@/components/contribution-form';
-import { ContributionsList } from '@/components/contributions-list';
+import { MyContributions } from '@/components/my-contributions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requirePageUser } from '@/lib/auth/current-user';
 import { todayIso } from '@/lib/data';
-import { fundState, listContributions, peopleById } from '@/lib/data/queries';
+import { fundState, listContributions, listPeople } from '@/lib/data/queries';
 import { CONTRIBUTIONS, withCount } from '@/lib/format';
 import { toRublesString } from '@/lib/money';
 
@@ -19,9 +18,9 @@ import { toRublesString } from '@/lib/money';
 export default async function MyContributionsPage(): Promise<ReactNode> {
   const user = await requirePageUser();
 
-  const [rows, byId, state] = await Promise.all([
+  const [rows, people, state] = await Promise.all([
     listContributions({ userId: user.id }),
-    peopleById(),
+    listPeople(),
     fundState(),
   ]);
 
@@ -41,58 +40,52 @@ export default async function MyContributionsPage(): Promise<ReactNode> {
         </p>
       </header>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Новый взнос</CardTitle>
-            <CardDescription>
-              После отправки взнос уходит в очередь на подтверждение.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ContributionForm
-              today={todayIso()}
-              suggestedAmount={toRublesString(state.input.fund.defaultContribution)}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Итого</CardTitle>
-            <CardDescription>Что уже засчитано и что ещё ждёт проверки.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <p className="flex items-baseline justify-between gap-3">
-              <span className="text-muted-foreground">Подтверждено</span>
-              <Amount value={total} className="text-lg font-semibold" />
-            </p>
-            <p className="flex items-baseline justify-between gap-3">
-              <span className="text-muted-foreground">
-                Ждёт подтверждения ({withCount(pending.length, CONTRIBUTIONS)})
-              </span>
-              <Amount value={pendingTotal} />
-            </p>
-            <p className="flex items-baseline justify-between gap-3">
-              <span className="text-muted-foreground">Ваш баланс сейчас</span>
-              <Amount value={state.balanceOf(user.id)?.amount ?? 0} tone="auto" signed />
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
       <Card>
         <CardHeader>
-          <CardTitle>История</CardTitle>
+          <CardTitle>Итого</CardTitle>
+          <CardDescription>Что уже засчитано и что ещё ждёт проверки.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 text-sm sm:grid-cols-3">
+          <p className="flex items-baseline justify-between gap-3 sm:flex-col sm:items-start sm:gap-1">
+            <span className="text-muted-foreground">Подтверждено</span>
+            <Amount value={total} className="text-lg font-semibold" />
+          </p>
+          <p className="flex items-baseline justify-between gap-3 sm:flex-col sm:items-start sm:gap-1">
+            <span className="text-muted-foreground">
+              Ждёт подтверждения ({withCount(pending.length, CONTRIBUTIONS)})
+            </span>
+            <Amount value={pendingTotal} className="text-lg font-semibold" />
+          </p>
+          <p className="flex items-baseline justify-between gap-3 sm:flex-col sm:items-start sm:gap-1">
+            <span className="text-muted-foreground">Ваш баланс сейчас</span>
+            <Amount
+              value={state.balanceOf(user.id)?.amount ?? 0}
+              tone="auto"
+              signed
+              className="text-lg font-semibold"
+            />
+          </p>
+        </CardContent>
+      </Card>
+
+      {/*
+        Форма и история живут в одном компоненте: только так поданный взнос
+        появляется в списке сразу, ещё до ответа сервера (`useOptimistic`).
+      */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Новый взнос</CardTitle>
           <CardDescription>
-            У отклонённого взноса видна причина отказа — её оставляет администратор.
+            После отправки взнос уходит в очередь на подтверждение. У отклонённого видна
+            причина отказа — её оставляет администратор.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ContributionsList
+          <MyContributions
             rows={rows}
-            people={byId}
-            emptyText="Вы ещё не подавали взносов."
+            people={people}
+            today={todayIso()}
+            suggestedAmount={toRublesString(state.input.fund.defaultContribution)}
           />
         </CardContent>
       </Card>

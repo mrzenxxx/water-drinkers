@@ -1,13 +1,11 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useActionState } from 'react';
 
 import { SubmitButton } from '@/components/submit-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { IDLE } from '@/lib/actions/state';
-import { submitContributionAction } from '@/lib/actions/contributions';
+import type { ActionState } from '@/lib/actions/state';
 
 /**
  * Подача взноса (§6.2).
@@ -24,13 +22,17 @@ import { submitContributionAction } from '@/lib/actions/contributions';
 export function ContributionForm({
   today,
   suggestedAmount,
+  action,
+  state,
 }: {
   today: string;
   /** Типовой взнос из настроек фонда, строкой в рублях. */
   suggestedAmount: string;
+  /** Действие формы и его состояние держит хозяин экрана: он же показывает
+      мгновенный отклик через `useOptimistic`. */
+  action: (formData: FormData) => void;
+  state: ActionState;
 }): ReactNode {
-  const [state, action] = useActionState(submitContributionAction, IDLE);
-
   return (
     <form action={action} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
