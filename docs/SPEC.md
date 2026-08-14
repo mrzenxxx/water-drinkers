@@ -153,6 +153,12 @@ days(i, a, b) = |{ d ∈ [a, b) :
 администратор, заводя участника с ненулевым балансом (§6.7). Все нули — тоже
 допустимое стартовое состояние, и именно с него начинается чистый запуск.
 
+**Заведение участника с ненулевым сальдо увеличивает и `fundOpeningBalance`** на
+ту же величину, одной транзакцией. Иначе `Σ openingBalance(i)` разойдётся с
+начальным состоянием фонда и инвариант §5 сломается в ту же секунду. Смысл
+операции при этом честный: у человека есть остаток ровно потому, что его деньги
+уже лежат в фонде.
+
 ### 4.3 Период потребления заказа
 
 Заказ `k` (дата `t_k`, сумма `C_k`) потребляется в период
@@ -317,7 +323,7 @@ share_k(i) = C_k × days(i, P_k) / D_k  — доля участника i в з�
 | Добавить | Адрес рабочей почты и дата вступления. Имя и фамилию человек вводит сам при первом входе — приложение не выдумывает персональные данные. Можно сразу задать начальное сальдо (§4.2). |
 | Исключить | Проставляется `leftAt`. Участник **не удаляется**: его взносы и доли в прошлых заказах остаются в истории, иначе поедет инвариант. Он сохраняет доступ и видит свой остаток. |
 | Вернуть | Снятие `leftAt` — человек вернулся в офис. |
-| Выплатить остаток | Операция `SETTLEMENT` на сумму личного баланса. |
+| Выплатить остаток | Операция `SETTLEMENT` на сумму личного баланса. Сумма в журнале отрицательна (§2.3); положительная — ошибка входных данных и отвергается. Выплатить больше текущего остатка нельзя: это не возврат, а новый долг. |
 | Назначить администратором | Смена роли. Последнего администратора разжаловать нельзя. |
 
 **Физического удаления участника нет.** Кнопка «Удалить» соблазнительна, но
@@ -332,9 +338,10 @@ share_k(i) = C_k × days(i, P_k) / D_k  — доля участника i в з�
 - **взнос** — с датой, суммой и, при наличии, чеком;
 - **отсутствие** — отпуск или больничный.
 
-Обе записи помечаются полем «внесено администратором» и попадают в журнал аудита
-с указанием, кто и за кого их создал. Взнос, внесённый администратором, всё равно
-проходит подтверждение — иначе исчезает разделение «внёс» и «проверил».
+Обе записи помечаются полем «внесено администратором» (`entered_by_admin`, §11)
+и попадают в журнал аудита с указанием, кто и за кого их создал. Взнос,
+внесённый администратором, всё равно проходит подтверждение — иначе исчезает
+разделение «внёс» и «проверил».
 
 #### Журнал и корректировки
 
@@ -754,10 +761,17 @@ type Mutation {
 
   # Администрирование
   setOpeningBalances(input: OpeningBalancesInput!): Fund!          # ADMIN
-  addParticipant(email: String!, joinedAt: Date!): User!           # ADMIN
+  addParticipant(email: String!, joinedAt: Date!,
+                 openingBalance: Money = 0): User!                 # ADMIN
   deactivateParticipant(id: ID!, leftAt: Date!): User!             # ADMIN
+  reactivateParticipant(id: ID!): User!                            # ADMIN
+  setParticipantRole(id: ID!, role: Role!): User!                  # ADMIN
   settleParticipant(id: ID!, amount: Money!, note: String!): User! # ADMIN
   createAdjustment(userId: ID, amount: Money!, comment: String!): Fund! # ADMIN
+
+  # Ввод за участника (§6.7)
+  addContributionFor(input: ContributionForInput!): Contribution!  # ADMIN
+  addAbsenceFor(input: AbsenceForInput!): Absence!                 # ADMIN
 
   # Помощник
   askAssistant(question: String!): AssistantMessage!
@@ -767,9 +781,27 @@ input OpeningBalancesInput {
   startDate: Date!
   fundOpeningBalance: Money!
   openingBalances: [OpeningBalanceInput!]!
+  "Кнопка «Распределить поровну» (§4.2): сервер сам делит fundOpeningBalance
+   по методу наибольших остатков, а в журнал аудита идёт пометка equal-split."
+  equalSplit: Boolean = false
 }
 
 input OpeningBalanceInput { userId: ID!, amount: Money! }
+
+input ContributionForInput {
+  userId: ID!
+  amount: Money!
+  paidAt: Date!
+  receiptFileId: ID
+}
+
+input AbsenceForInput {
+  userId: ID!
+  type: AbsenceType!
+  startsOn: Date!
+  endsOn: Date!
+  note: String
+}
 
 input WaterOrderInput {
   amount: Money!
@@ -849,7 +881,8 @@ CREATE TABLE contributions (
   reviewed_by    UUID REFERENCES users(id),
   reviewed_at    TIMESTAMPTZ,
   review_comment TEXT,
-  historical     BOOLEAN NOT NULL DEFAULT false
+  historical     BOOLEAN NOT NULL DEFAULT false,
+  entered_by_admin BOOLEAN NOT NULL DEFAULT false   -- ввод за участника, §6.7
 );
 
 CREATE TABLE water_orders (
@@ -872,6 +905,7 @@ CREATE TABLE absences (
   starts_on  DATE NOT NULL,
   ends_on    DATE NOT NULL,
   note       TEXT,
+  entered_by_admin BOOLEAN NOT NULL DEFAULT false,  -- ввод за участника, §6.7
   CHECK (ends_on >= starts_on),
   EXCLUDE USING gist (
     user_id WITH =,

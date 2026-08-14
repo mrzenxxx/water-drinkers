@@ -59,7 +59,11 @@ CREATE TABLE "contributions" (
   "reviewed_by"    UUID REFERENCES "users"("id"),
   "reviewed_at"    TIMESTAMPTZ,
   "review_comment" TEXT,
-  "historical"     BOOLEAN NOT NULL DEFAULT false
+  "historical"     BOOLEAN NOT NULL DEFAULT false,
+  -- Внесено администратором за участника (§6.7). Отдельно от "historical":
+  -- тот про перенесённую историю, этот про то, чьими руками создана запись.
+  -- Взнос, внесённый администратором, всё равно проходит подтверждение.
+  "entered_by_admin" BOOLEAN NOT NULL DEFAULT false
 );
 
 CREATE TABLE "water_orders" (
@@ -82,6 +86,8 @@ CREATE TABLE "absences" (
   "starts_on" DATE NOT NULL,
   "ends_on"   DATE NOT NULL,
   "note"      TEXT,
+  -- Внесено администратором за участника (§6.7).
+  "entered_by_admin" BOOLEAN NOT NULL DEFAULT false,
   CHECK ("ends_on" >= "starts_on"),
   -- Непересечение отсутствий одного участника. Тип намеренно не учитывается:
   -- одновременный отпуск и больничный вычли бы день дважды и сломали инвариант.

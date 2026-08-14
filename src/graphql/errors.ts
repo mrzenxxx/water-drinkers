@@ -74,6 +74,42 @@ export function requirePositiveMoney(value: number, field: string): number {
   return value;
 }
 
+/**
+ * Сумма со знаком: корректировка бывает в обе стороны (§2.3), выплата всегда
+ * отрицательна. Здесь проверяется только «целое число копеек» — знак разбирают
+ * `requireNonZeroMoney` и `requireNegativeMoney`.
+ */
+export function requireMoney(value: number, field: string): number {
+  if (!isKopecks(value)) {
+    throw badInput(`Поле «${field}» должно быть целым числом копеек.`, { field });
+  }
+  return value;
+}
+
+/** Корректировка на ноль — не исправление ошибки, а пустая строка в журнале. */
+export function requireNonZeroMoney(value: number, field: string): number {
+  if (requireMoney(value, field) === 0) {
+    throw badInput(`Поле «${field}» не может быть нулём.`, { field });
+  }
+  return value;
+}
+
+/**
+ * Выплата уносит деньги из фонда и потому хранится отрицательной (§2.3).
+ * `SETTLEMENT` с положительной суммой — ошибка входных данных и отвергается
+ * (§4.5): иначе выплата пополняла бы кассу, а инвариант §5 держался бы
+ * на честном слове вызывающей стороны.
+ */
+export function requireNegativeMoney(value: number, field: string): number {
+  if (requireMoney(value, field) >= 0) {
+    throw badInput(
+      `Поле «${field}» должно быть отрицательным: выплата уносит деньги из фонда (§2.3).`,
+      { field, amount: value },
+    );
+  }
+  return value;
+}
+
 export function requireText(value: string, field: string): string {
   const trimmed = value.trim();
   if (trimmed.length === 0) {

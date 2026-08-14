@@ -311,6 +311,7 @@ export function createFakeDb(): FakeDb {
         reviewedAt: null,
         reviewComment: null,
         historical: false,
+        enteredByAdmin: false,
       }),
       [positiveAmount('contributions')],
     ),
@@ -327,7 +328,9 @@ export function createFakeDb(): FakeDb {
       }),
       [positiveAmount('water_orders')],
     ),
-    absence: new FakeTable('absences', fakeUuid, () => ({ note: null }), [noOverlappingAbsences]),
+    absence: new FakeTable('absences', fakeUuid, () => ({ note: null, enteredByAdmin: false }), [
+      noOverlappingAbsences,
+    ]),
     fundTransaction: new FakeTable('fund_transactions', fakeUuid, () => ({
       userId: null,
       refId: null,

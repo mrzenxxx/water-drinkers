@@ -29,6 +29,15 @@ export type Absence = {
   user: User;
 };
 
+/** Отсутствие, внесённое администратором за участника (§6.7). */
+export type AbsenceForInput = {
+  endsOn: Scalars['Date']['input'];
+  note?: InputMaybe<Scalars['String']['input']>;
+  startsOn: Scalars['Date']['input'];
+  type: AbsenceType;
+  userId: Scalars['ID']['input'];
+};
+
 export enum AbsenceType {
   SickLeave = 'SICK_LEAVE',
   Vacation = 'VACATION'
@@ -103,6 +112,14 @@ export type Contribution = {
   user: User;
 };
 
+/** Взнос, внесённый администратором за участника (§6.7). Подтверждение всё равно требуется. */
+export type ContributionForInput = {
+  amount: Scalars['Money']['input'];
+  paidAt: Scalars['Date']['input'];
+  receiptFileId?: InputMaybe<Scalars['ID']['input']>;
+  userId: Scalars['ID']['input'];
+};
+
 export enum ContributionStatus {
   Confirmed = 'CONFIRMED',
   Pending = 'PENDING',
@@ -131,6 +148,8 @@ export type MonthlyStat = {
 export type Mutation = {
   __typename?: 'Mutation';
   addAbsence: Absence;
+  addAbsenceFor: Absence;
+  addContributionFor: Contribution;
   addParticipant: User;
   askAssistant: AssistantMessage;
   confirmContribution: Contribution;
@@ -140,9 +159,11 @@ export type Mutation = {
   deleteAbsence: Scalars['Boolean']['output'];
   extractReceipt: ReceiptExtraction;
   logout: Scalars['Boolean']['output'];
+  reactivateParticipant: User;
   rejectContribution: Contribution;
   requestLoginCode: RequestCodeResult;
   setOpeningBalances: Fund;
+  setParticipantRole: User;
   settleParticipant: User;
   submitContribution: Contribution;
   updateProfile: User;
@@ -158,9 +179,20 @@ export type MutationAddAbsenceArgs = {
 };
 
 
+export type MutationAddAbsenceForArgs = {
+  input: AbsenceForInput;
+};
+
+
+export type MutationAddContributionForArgs = {
+  input: ContributionForInput;
+};
+
+
 export type MutationAddParticipantArgs = {
   email: Scalars['String']['input'];
   joinedAt: Scalars['Date']['input'];
+  openingBalance?: InputMaybe<Scalars['Money']['input']>;
 };
 
 
@@ -202,6 +234,11 @@ export type MutationExtractReceiptArgs = {
 };
 
 
+export type MutationReactivateParticipantArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
 export type MutationRejectContributionArgs = {
   comment: Scalars['String']['input'];
   id: Scalars['ID']['input'];
@@ -215,6 +252,12 @@ export type MutationRequestLoginCodeArgs = {
 
 export type MutationSetOpeningBalancesArgs = {
   input: OpeningBalancesInput;
+};
+
+
+export type MutationSetParticipantRoleArgs = {
+  id: Scalars['ID']['input'];
+  role: Role;
 };
 
 
@@ -249,6 +292,12 @@ export type OpeningBalanceInput = {
 };
 
 export type OpeningBalancesInput = {
+  /**
+   * Кнопка «Распределить поровну» (§4.2): доли считает сервер методом наибольших
+   * остатков, а в журнал аудита идёт пометка equal-split. Переданные вручную
+   * значения при этом игнорируются — иначе непонятно, какое из двух правил главнее.
+   */
+  equalSplit?: InputMaybe<Scalars['Boolean']['input']>;
   fundOpeningBalance: Scalars['Money']['input'];
   openingBalances: Array<OpeningBalanceInput>;
   startDate: Scalars['Date']['input'];
@@ -462,6 +511,7 @@ export type DirectiveResolverFn<TResult = Record<PropertyKey, never>, TParent = 
 /** Mapping between all available schema types and the resolvers types */
 export type ResolversTypes = {
   Absence: ResolverTypeWrapper<PrismaAbsence>;
+  AbsenceForInput: AbsenceForInput;
   AbsenceType: AbsenceType;
   AssistantMessage: ResolverTypeWrapper<PrismaAssistantMessage>;
   AuditEntry: ResolverTypeWrapper<PrismaAuditEntry>;
@@ -471,6 +521,7 @@ export type ResolversTypes = {
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   Confidence: Confidence;
   Contribution: ResolverTypeWrapper<PrismaContribution>;
+  ContributionForInput: ContributionForInput;
   ContributionStatus: ContributionStatus;
   Date: ResolverTypeWrapper<Scalars['Date']['output']>;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
@@ -499,6 +550,7 @@ export type ResolversTypes = {
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = {
   Absence: PrismaAbsence;
+  AbsenceForInput: AbsenceForInput;
   AssistantMessage: PrismaAssistantMessage;
   AuditEntry: PrismaAuditEntry;
   AuthResult: Omit<AuthResult, 'user'> & { user: ResolversParentTypes['User'] };
@@ -506,6 +558,7 @@ export type ResolversParentTypes = {
   BalanceBreakdown: CalcBalanceBreakdown;
   Boolean: Scalars['Boolean']['output'];
   Contribution: PrismaContribution;
+  ContributionForInput: ContributionForInput;
   Date: Scalars['Date']['output'];
   DateTime: Scalars['DateTime']['output'];
   Fund: CalcFundSettings;
@@ -626,7 +679,9 @@ export type MonthlyStatResolvers<ContextType = GraphQLContext, ParentType extend
 
 export type MutationResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   addAbsence?: Resolver<ResolversTypes['Absence'], ParentType, ContextType, RequireFields<MutationAddAbsenceArgs, 'endsOn' | 'startsOn' | 'type'>>;
-  addParticipant?: Resolver<ResolversTypes['User'], ParentType, ContextType, RequireFields<MutationAddParticipantArgs, 'email' | 'joinedAt'>>;
+  addAbsenceFor?: Resolver<ResolversTypes['Absence'], ParentType, ContextType, RequireFields<MutationAddAbsenceForArgs, 'input'>>;
+  addContributionFor?: Resolver<ResolversTypes['Contribution'], ParentType, ContextType, RequireFields<MutationAddContributionForArgs, 'input'>>;
+  addParticipant?: Resolver<ResolversTypes['User'], ParentType, ContextType, RequireFields<MutationAddParticipantArgs, 'email' | 'joinedAt' | 'openingBalance'>>;
   askAssistant?: Resolver<ResolversTypes['AssistantMessage'], ParentType, ContextType, RequireFields<MutationAskAssistantArgs, 'question'>>;
   confirmContribution?: Resolver<ResolversTypes['Contribution'], ParentType, ContextType, RequireFields<MutationConfirmContributionArgs, 'id'>>;
   createAdjustment?: Resolver<ResolversTypes['Fund'], ParentType, ContextType, RequireFields<MutationCreateAdjustmentArgs, 'amount' | 'comment'>>;
@@ -635,9 +690,11 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   deleteAbsence?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteAbsenceArgs, 'id'>>;
   extractReceipt?: Resolver<ResolversTypes['ReceiptExtraction'], ParentType, ContextType, RequireFields<MutationExtractReceiptArgs, 'fileId'>>;
   logout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  reactivateParticipant?: Resolver<ResolversTypes['User'], ParentType, ContextType, RequireFields<MutationReactivateParticipantArgs, 'id'>>;
   rejectContribution?: Resolver<ResolversTypes['Contribution'], ParentType, ContextType, RequireFields<MutationRejectContributionArgs, 'comment' | 'id'>>;
   requestLoginCode?: Resolver<ResolversTypes['RequestCodeResult'], ParentType, ContextType, RequireFields<MutationRequestLoginCodeArgs, 'email'>>;
   setOpeningBalances?: Resolver<ResolversTypes['Fund'], ParentType, ContextType, RequireFields<MutationSetOpeningBalancesArgs, 'input'>>;
+  setParticipantRole?: Resolver<ResolversTypes['User'], ParentType, ContextType, RequireFields<MutationSetParticipantRoleArgs, 'id' | 'role'>>;
   settleParticipant?: Resolver<ResolversTypes['User'], ParentType, ContextType, RequireFields<MutationSettleParticipantArgs, 'amount' | 'id' | 'note'>>;
   submitContribution?: Resolver<ResolversTypes['Contribution'], ParentType, ContextType, RequireFields<MutationSubmitContributionArgs, 'amount' | 'paidAt'>>;
   updateProfile?: Resolver<ResolversTypes['User'], ParentType, ContextType, RequireFields<MutationUpdateProfileArgs, 'firstName' | 'lastName'>>;

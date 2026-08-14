@@ -96,6 +96,9 @@ model Contribution {
   reviewedAt    DateTime? @map("reviewed_at") @db.Timestamptz(6)
   reviewComment String?   @map("review_comment")
   historical    Boolean   @default(false)
+  /// Внесено администратором за участника (§6.7). Не путать с `historical`:
+  /// тот про перенесённую историю, этот — про то, чьими руками создана запись.
+  enteredByAdmin Boolean  @default(false) @map("entered_by_admin")
 
   user     User     @relation("ContributionAuthor", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   reviewer User?    @relation("ContributionReviewer", fields: [reviewedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -133,6 +136,8 @@ model Absence {
   startsOn DateTime @map("starts_on") @db.Date
   endsOn   DateTime @map("ends_on") @db.Date
   note     String?
+  /// Внесено администратором за участника (§6.7).
+  enteredByAdmin Boolean @default(false) @map("entered_by_admin")
 
   user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 

@@ -14,14 +14,57 @@ import type { Prisma, PrismaClient } from '@/generated/prisma/client';
 /** Prisma-клиент или клиент внутри `$transaction` — писать можно и туда, и туда. */
 export type DbClient = PrismaClient | Prisma.TransactionClient;
 
-/** Действия, которые пишет этап 3. Этапы 4 и далее дополняют список. */
+/**
+ * Действия, которые пишут этапы 3 и 4. Список закрытый: свободная строка
+ * рано или поздно разъезжается с фильтром журнала (§6.7).
+ *
+ * Ввод за участника — отдельные действия (`*.for`), а не флаг внутри `after`:
+ * §6.7 требует видеть в журнале, кто и за кого создал запись, а фильтр по типу
+ * действия должен уметь показать ровно эти случаи.
+ */
 export type AuditAction =
   | 'contribution.submit'
   | 'contribution.confirm'
   | 'contribution.reject'
+  | 'contribution.submit.for'
   | 'order.create'
   | 'absence.add'
-  | 'absence.delete';
+  | 'absence.delete'
+  | 'absence.add.for'
+  | 'participant.add'
+  | 'participant.deactivate'
+  | 'participant.reactivate'
+  | 'participant.role'
+  | 'participant.settle'
+  | 'fund.adjust'
+  | 'fund.opening';
+
+/** Подписи действий по-русски — журнал §6.7 читают люди, а не машины. */
+export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
+  'contribution.submit': 'Взнос подан',
+  'contribution.confirm': 'Взнос подтверждён',
+  'contribution.reject': 'Взнос отклонён',
+  'contribution.submit.for': 'Взнос внесён за участника',
+  'order.create': 'Заказ воды',
+  'absence.add': 'Отсутствие добавлено',
+  'absence.delete': 'Отсутствие удалено',
+  'absence.add.for': 'Отсутствие внесено за участника',
+  'participant.add': 'Участник добавлен',
+  'participant.deactivate': 'Участник исключён',
+  'participant.reactivate': 'Участник возвращён',
+  'participant.role': 'Смена роли',
+  'participant.settle': 'Выплата остатка',
+  'fund.adjust': 'Корректировка',
+  'fund.opening': 'Стартовое состояние фонда',
+};
+
+/** Все известные действия — для выпадающего фильтра журнала. */
+export const AUDIT_ACTIONS = Object.keys(AUDIT_ACTION_LABELS) as AuditAction[];
+
+/** Подпись действия; неизвестное показываем как есть, а не прячем. */
+export function auditActionLabel(action: string): string {
+  return AUDIT_ACTION_LABELS[action as AuditAction] ?? action;
+}
 
 export type AuditRecord = {
   /** Кто действовал. `null` — системное действие (сидов, миграции). */
