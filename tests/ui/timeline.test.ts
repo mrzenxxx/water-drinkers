@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isSectionActive } from '@/components/app-nav';
+import { isSectionActive } from '@/lib/view/nav';
 import { EVENT_KINDS, buildEvents, type EventSource } from '@/lib/view/events';
 import { buildLanes, packRows, positionOf } from '@/lib/view/timeline';
 

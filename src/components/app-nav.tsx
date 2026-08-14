@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
+import { isSectionActive, type NavItem } from '@/lib/view/nav';
 
 /**
  * Разделы приложения.
@@ -12,41 +13,11 @@ import { cn } from '@/lib/utils';
  * Клиентский компонент — единственно из-за `usePathname`: текущий раздел
  * подсвечивается, и без адреса это не сделать. Данных сюда не приходит,
  * в бандл едет только список ссылок.
- */
-
-export type NavItem = { href: string; label: string };
-
-/** Разделы §6.1–§6.6 и §6.9. «Админ-панель» добавляет оболочка — только роли ADMIN. */
-export const APP_SECTIONS: readonly NavItem[] = [
-  { href: '/', label: 'Главная' },
-  { href: '/contributions', label: 'Мои взносы' },
-  { href: '/contributions/all', label: 'Все взносы' },
-  { href: '/fund', label: 'Фонд' },
-  { href: '/orders', label: 'Заказы' },
-  { href: '/absences', label: 'Отсутствия' },
-  { href: '/dashboard', label: 'Дашборд' },
-];
-
-/**
- * Активен ли раздел.
  *
- * Главная — только точное совпадение, иначе она подсвечивалась бы всегда.
- * «Мои взносы» не должны загораться на «Все взносы», поэтому вложенный
- * адрес считается своим лишь до следующего сегмента.
+ * Сам список разделов лежит в `@/lib/view/nav` и отсюда **не** реэкспортируется:
+ * значение, вывезенное через клиентскую границу, приезжает на сервер ссылкой на
+ * клиентскую сущность, а не массивом (см. комментарий в том файле).
  */
-export function isSectionActive(pathname: string, href: string, siblings: readonly string[]): boolean {
-  if (href === '/') return pathname === '/';
-  if (pathname === href) return true;
-  if (!pathname.startsWith(`${href}/`)) return false;
-
-  // Более длинный подходящий адрес забирает подсветку себе.
-  return !siblings.some(
-    (sibling) =>
-      sibling !== href &&
-      sibling.length > href.length &&
-      (pathname === sibling || pathname.startsWith(`${sibling}/`)),
-  );
-}
 
 export function AppNav({ items }: { items: readonly NavItem[] }): ReactNode {
   const pathname = usePathname();

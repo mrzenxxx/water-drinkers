@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-import { APP_SECTIONS, AppNav, type NavItem } from '@/components/app-nav';
+import { AppNav } from '@/components/app-nav';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { logoutAction } from '@/lib/actions/session';
 import { ROLE_LABEL, fullName, type NamedUser } from '@/lib/format';
+import { APP_SECTIONS, type NavItem } from '@/lib/view/nav';
 
 /**
  * Оболочка приложения: шапка, разделы, текущий участник, тема, выход.
