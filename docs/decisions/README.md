@@ -70,3 +70,4 @@
 | № | Решение | Статус |
 |---|---|---|
 | [0001](./0001-graphql-yoga-as-api-contract.md) | GraphQL (Yoga) как контракт API | Принято |
+| [0002](./0002-server-actions-call-resolvers.md) | Server Actions зовут резолверы в процессе | Принято |
