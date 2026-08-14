@@ -17,6 +17,7 @@
     "codegen": "graphql-codegen --config codegen.ts",
     "db:generate": "prisma generate",
     "postinstall": "prisma generate",
+    "smoke": "tsx scripts/smoke.ts",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:mock": "tsx prisma/seed-mock.ts"
   },
