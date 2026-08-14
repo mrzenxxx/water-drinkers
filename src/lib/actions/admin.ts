@@ -43,15 +43,9 @@ import { contributionMutations } from '@/graphql/resolvers/mutation/contribution
 import { SESSION_COOKIE, authConfigFromEnv, readSession, sessionCookieOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { parseRubles, type Kopecks } from '@/lib/money';
+import { UNATTRIBUTED, type ActionState } from '@/components/admin/action-state';
 
 // ─── Состояние формы ───────────────────────────────────────────────────────
-
-export type ActionState = {
-  status: 'idle' | 'success' | 'error';
-  message: string;
-};
-
-export const IDLE: ActionState = { status: 'idle', message: '' };
 
 function ok(message: string): ActionState {
   return { status: 'success', message };
@@ -332,9 +326,11 @@ export async function createAdjustmentAction(
   form: FormData,
 ): Promise<ActionState> {
   try {
-    // Пустое значение — это «не знаю, чьи деньги» (§2.4). Выбор осознанный:
-    // в форме поле участника заполнено по умолчанию.
-    const userId = optionalText(form, 'userId');
+    // «Не знаю, чьи деньги» — отдельное значение, а не пустое поле (§2.4).
+    // Пустым список участника быть не может: форма требует выбора, и незаполненная
+    // строка означала бы, что администратор проскочил вопрос, а не ответил на него.
+    const chosen = requiredField(form, 'userId', 'участник');
+    const userId = chosen === UNATTRIBUTED ? null : chosen;
     const ctx = await actionContext();
 
     await call.createAdjustment(
