@@ -8,8 +8,11 @@ import { hasProfile, requirePageUser } from '@/lib/auth/current-user';
  * Закрытая часть приложения.
  *
  * Два рубежа в одном месте: гость уходит на вход, а вошедший без имени
- * и фамилии — на заполнение профиля (§7). Проверять это на каждой странице
+ * и фамилии — на знакомство (§7). Проверять это на каждой странице
  * значило бы однажды забыть.
+ *
+ * Знакомство живёт на `/welcome`, а не на `/profile`: страница профиля лежит
+ * внутри этой же группы, и переход на неё отсюда закольцевал бы редирект.
  */
 /**
  * Ни одна страница приложения не может быть заранее собранной: всё, что она
@@ -25,7 +28,7 @@ export default async function AppLayout({
   children: ReactNode;
 }): Promise<ReactNode> {
   const user = await requirePageUser();
-  if (!hasProfile(user)) redirect('/profile');
+  if (!hasProfile(user)) redirect('/welcome');
 
   return <AppShell user={user}>{children}</AppShell>;
 }

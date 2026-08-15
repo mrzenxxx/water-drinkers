@@ -1,3 +1,4 @@
+import { LogOut, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
@@ -12,8 +13,14 @@ import { APP_SECTIONS, type NavItem } from '@/lib/view/nav';
  * Оболочка приложения: шапка, разделы, текущий участник, тема, выход.
  *
  * Серверный компонент: ничего интерактивного здесь нет — подсветка раздела
- * живёт в `AppNav`, переключатель темы в `ThemeToggle`, а выход это форма
- * с серверным действием. Оболочка в бандл не едет.
+ * и бургер-меню живут в `AppNav`, переключатель темы в `ThemeToggle`, а выход
+ * это форма с серверным действием. Оболочка в бандл не едет.
+ *
+ * Шапка — один flex-контейнер с переносом, а не два ряда вложенных блоков.
+ * Порядок элементов задан классами `order-*`, поэтому `AppNav` умеет занять
+ * сразу два места: бургер слева от логотипа, список разделов — строкой ниже.
+ * На узком экране подписи уступают место значкам: имя, слово «Выйти» и
+ * разделы прячутся, значки и бургер остаются.
  */
 
 type AppShellProps = {
@@ -32,34 +39,47 @@ export function AppShell({ user, children }: AppShellProps): ReactNode {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="bg-card/80 border-border sticky top-0 z-20 border-b backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-3">
-          <div className="flex items-center justify-between gap-3">
-            <Link href="/" className="flex items-baseline gap-2">
-              <span className="text-lg font-semibold tracking-tight">WaterDrinkers</span>
-              <span className="text-muted-foreground hidden text-xs sm:inline">
-                касса на воду
-              </span>
-            </Link>
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-2 gap-y-2 px-4 py-3">
+          <AppNav items={sections} />
 
-            <div className="flex items-center gap-2">
+          <Link href="/" className="order-2 mr-auto flex items-baseline gap-2">
+            <span className="text-lg font-semibold tracking-tight">WaterDrinkers</span>
+            <span className="text-muted-foreground hidden text-xs sm:inline">касса на воду</span>
+          </Link>
+
+          <div className="order-3 flex items-center gap-1">
+            {/*
+              Имя и значок — одна ссылка на профиль: на узком экране подпись
+              уходит, но нажимать всё равно есть куда. Подпись для чтения с
+              экрана появляется ровно там, где исчезает видимая.
+            */}
+            <Link
+              href="/profile"
+              title="Профиль"
+              className="hover:bg-secondary focus-visible:ring-ring flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+            >
               <span className="hidden text-right text-sm sm:block">
                 <span className="block leading-tight font-medium">{fullName(user)}</span>
                 <span className="text-muted-foreground block text-xs leading-tight">
                   {ROLE_LABEL[user.role] ?? 'Участник'}
                 </span>
               </span>
+              <span className="bg-secondary text-secondary-foreground flex size-8 shrink-0 items-center justify-center rounded-full">
+                <UserRound aria-hidden className="size-4" />
+              </span>
+              <span className="sr-only sm:hidden">Профиль</span>
+            </Link>
 
-              <ThemeToggle />
+            <ThemeToggle />
 
-              <form action={logoutAction}>
-                <Button type="submit" variant="ghost" size="sm">
-                  Выйти
-                </Button>
-              </form>
-            </div>
+            <form action={logoutAction}>
+              <Button type="submit" variant="ghost" size="sm" title="Выйти">
+                <LogOut aria-hidden className="size-4" />
+                <span className="hidden sm:inline">Выйти</span>
+                <span className="sr-only sm:hidden">Выйти</span>
+              </Button>
+            </form>
           </div>
-
-          <AppNav items={sections} />
         </div>
       </header>
 

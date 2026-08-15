@@ -25,6 +25,11 @@
  * становится нечего.
  */
 
+// Скрипт запускается вне Next.js, а `.env` читает только он — как и сид-скрипты,
+// проверка подтягивает переменные сама. Без этой строки она падает на
+// `SESSION_SECRET не задан`, хотя в файле он есть.
+import 'dotenv/config';
+
 import { SESSION_COOKIE, issueSession } from '@/lib/auth/session';
 import { loadFundState } from '@/lib/data/fund';
 import { prisma } from '@/lib/db';
@@ -47,6 +52,7 @@ const PAGES: readonly Page[] = [
   { path: '/orders', as: 'member' },
   { path: '/absences', as: 'member' },
   { path: '/dashboard', as: 'member', expect: ['<svg'] },
+  { path: '/profile', as: 'member', expect: ['Учётная запись'] },
   { path: '/dashboard?period=quarter&granularity=week', as: 'member', expect: ['<svg'] },
   { path: '/admin/queue', as: 'admin' },
   { path: '/admin/participants', as: 'admin' },
