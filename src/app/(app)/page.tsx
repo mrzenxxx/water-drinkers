@@ -1,8 +1,10 @@
+import { Droplets, TrendingDown, Users, Waves } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { ActivityFeed } from '@/components/activity-feed';
 import { Amount, HeroAmount } from '@/components/amount';
+import { IconChip } from '@/components/icon-chip';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requirePageUser } from '@/lib/auth/current-user';
@@ -62,10 +64,15 @@ export default async function HomePage(): Promise<ReactNode> {
         */}
         <Card className={owes ? 'border-owes/50' : undefined}>
           <CardHeader>
-            <CardDescription>Ваш баланс</CardDescription>
-            <CardTitle className="mt-1">
-              <HeroAmount value={amount} tone="auto" signed />
-            </CardTitle>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardDescription>Ваш баланс</CardDescription>
+                <CardTitle className="mt-1">
+                  <HeroAmount value={amount} tone="auto" signed />
+                </CardTitle>
+              </div>
+              <IconChip icon={owes ? TrendingDown : Waves} tone={owes ? 'owes' : 'water'} />
+            </div>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className={owes ? 'text-owes font-medium' : 'text-credit font-medium'}>
@@ -86,10 +93,15 @@ export default async function HomePage(): Promise<ReactNode> {
 
         <Card>
           <CardHeader>
-            <CardDescription>Остаток фонда</CardDescription>
-            <CardTitle className="mt-1">
-              <HeroAmount value={state.result.fundBalance} tone="neutral" />
-            </CardTitle>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardDescription>Остаток фонда</CardDescription>
+                <CardTitle className="mt-1">
+                  <HeroAmount value={state.result.fundBalance} tone="neutral" />
+                </CardTitle>
+              </div>
+              <IconChip icon={Droplets} />
+            </div>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-muted-foreground text-sm">
@@ -109,10 +121,18 @@ export default async function HomePage(): Promise<ReactNode> {
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+      {/*
+        `items-start`: карточки тянутся по своему содержимому, а не по соседке.
+        Очередь должников почти всегда короче ленты событий, и без этого рядом
+        с одной фамилией повисало полэкрана пустого стекла.
+      */}
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <Card>
           <CardHeader>
-            <CardTitle>Кто в минусе</CardTitle>
+            <div className="flex items-center gap-3">
+              <IconChip icon={Users} size="sm" tone={debtors.length === 0 ? 'water' : 'owes'} />
+              <CardTitle>Кто в минусе</CardTitle>
+            </div>
             <CardDescription>
               Очередь видна всем: приложение прозрачно, участник видит то же, что администратор.
             </CardDescription>
@@ -148,7 +168,10 @@ export default async function HomePage(): Promise<ReactNode> {
 
         <Card>
           <CardHeader>
-            <CardTitle>Последние события</CardTitle>
+            <div className="flex items-center gap-3">
+              <IconChip icon={Waves} size="sm" />
+              <CardTitle>Последние события</CardTitle>
+            </div>
             <CardDescription>
               Взносы, заказы, отсутствия и корректировки — в порядке появления.
             </CardDescription>

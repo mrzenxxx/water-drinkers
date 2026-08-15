@@ -98,7 +98,7 @@ export function BalanceBreakdown({
             {breakdown.orderShares.map((share) => {
               const order = orders.get(share.orderId);
               return (
-                <li key={share.orderId} className="border-border rounded-md border p-2">
+                <li key={share.orderId} className="glass-soft rounded-md p-2">
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="tabular">
                       {order === undefined ? 'Заказ' : formatDate(order.orderedAt)}

@@ -72,6 +72,55 @@
   --chart-surface: oklch(1 0 0);
 
   --radius: 0.75rem;
+
+  /*
+    ── Вода ───────────────────────────────────────────────────────────────
+    Фон приложения — не плоская заливка, а толща воды: три размытых пятна
+    света на базовом цвете. Пятна намеренно бледные и низкой цветности.
+    Причина не вкусовая: карточки стоят на этом фоне полупрозрачными, и всё,
+    что окажется под ними, входит в итоговый цвет текстовой подложки.
+    Яркое пятно увело бы контраст текста ниже AA в тех местах, где оно
+    попадает под карточку, — а это уже баг, а не оформление (§12).
+  */
+  --depth-1: oklch(0.86 0.085 215 / 0.85); /* верхний свет, голубой */
+  --depth-2: oklch(0.89 0.07 190 / 0.75); /* бирюзовый отблеск справа */
+  --depth-3: oklch(0.85 0.08 255 / 0.7); /* глубина снизу, синий */
+
+  /*
+    ── Стекло ─────────────────────────────────────────────────────────────
+    Поверхность = цвет карточки с прозрачностью + размытие подложки.
+    Доля карточки высокая (78%) именно ради текста: стекло 15–30%, как
+    советуют галереи глассморфизма, пускает фон в буквы и рушит AA.
+    Здесь фон виден как оттенок и глубина, но подложка под текстом
+    остаётся почти карточной — проверено scripts/check-contrast.ts.
+  */
+  --glass-bg: color-mix(in oklab, var(--card) 78%, transparent);
+  --glass-bg-strong: color-mix(in oklab, var(--card) 88%, transparent);
+  --glass-bg-soft: color-mix(in oklab, var(--card) 55%, transparent);
+  --glass-border: color-mix(in oklab, white 75%, var(--border));
+  --glass-border-soft: color-mix(in oklab, white 55%, var(--border));
+  /* Блик источника света: плёнка по верхней кромке, как на мокром стекле. */
+  --glass-sheen: linear-gradient(
+    155deg,
+    oklch(1 0 0 / 0.6) 0%,
+    oklch(1 0 0 / 0.15) 38%,
+    oklch(1 0 0 / 0) 62%
+  );
+  --glass-shadow:
+    0 1px 2px oklch(0.45 0.07 245 / 0.06), 0 14px 34px -14px oklch(0.45 0.09 245 / 0.25);
+  --glass-shadow-lifted:
+    0 2px 4px oklch(0.45 0.07 245 / 0.08), 0 26px 56px -20px oklch(0.45 0.09 245 / 0.32);
+  --glass-blur: 18px;
+
+  /*
+    Градиенты. Оба конца каждого градиента, на котором стоит текст, проверены
+    на контраст по отдельности: градиент — это не один цвет, и «в среднем
+    проходит» здесь не считается.
+  */
+  --gradient-water: linear-gradient(135deg, oklch(0.55 0.14 250), oklch(0.6 0.12 200));
+  --gradient-primary: linear-gradient(135deg, oklch(0.5 0.14 250), oklch(0.44 0.13 235));
+  --gradient-wordmark: linear-gradient(100deg, oklch(0.45 0.14 250), oklch(0.5 0.12 200));
+  --gradient-rail: linear-gradient(180deg, oklch(0.65 0.13 230), oklch(0.7 0.12 195));
 }
 
 [data-theme='dark'] {
@@ -115,6 +164,34 @@
 
   --chart-grid: oklch(0.33 0.035 245);
   --chart-surface: oklch(0.23 0.035 250);
+
+  /*
+    Ночная вода: те же три пятна, но светятся, а не осветляют. В тёмной теме
+    у прозрачности запас меньше — фон темнее карточки, и каждый процент
+    прозрачности утягивает подложку вниз, к фону. Поэтому пятна ещё бледнее.
+  */
+  --depth-1: oklch(0.4 0.1 225 / 0.22);
+  --depth-2: oklch(0.38 0.09 190 / 0.18);
+  --depth-3: oklch(0.32 0.1 270 / 0.24);
+
+  --glass-bg: color-mix(in oklab, var(--card) 86%, transparent);
+  --glass-bg-strong: color-mix(in oklab, var(--card) 92%, transparent);
+  --glass-bg-soft: color-mix(in oklab, var(--card) 74%, transparent);
+  --glass-border: color-mix(in oklab, white 16%, var(--border));
+  --glass-border-soft: color-mix(in oklab, white 8%, var(--border));
+  --glass-sheen: linear-gradient(
+    155deg,
+    oklch(1 0 0 / 0.07) 0%,
+    oklch(1 0 0 / 0.025) 38%,
+    oklch(1 0 0 / 0) 62%
+  );
+  --glass-shadow: 0 1px 2px oklch(0 0 0 / 0.35), 0 16px 38px -16px oklch(0 0 0 / 0.6);
+  --glass-shadow-lifted: 0 2px 6px oklch(0 0 0 / 0.4), 0 28px 60px -22px oklch(0 0 0 / 0.7);
+
+  --gradient-water: linear-gradient(135deg, oklch(0.7 0.13 240), oklch(0.76 0.11 195));
+  --gradient-primary: linear-gradient(135deg, oklch(0.74 0.12 235), oklch(0.68 0.12 210));
+  --gradient-wordmark: linear-gradient(100deg, oklch(0.85 0.09 225), oklch(0.87 0.1 190));
+  --gradient-rail: linear-gradient(180deg, oklch(0.66 0.13 235), oklch(0.7 0.12 195));
 }
 
 @theme inline {
@@ -158,8 +235,27 @@
     @apply border-border outline-ring/50;
   }
 
+  /*
+    Толща воды. Фон живёт на <html>, а не на <body>: фон корневого элемента
+    распространяется на холст, поэтому он покрывает весь экран и не едет при
+    прокрутке — без `position: fixed` и без лишнего слоя в разметке.
+    Плата: <body> обязан остаться прозрачным, иначе он закрасит воду собой.
+  */
+  html {
+    background-color: var(--background);
+    background-image:
+      radial-gradient(58rem 42rem at 8% -12%, var(--depth-1), transparent 70%),
+      radial-gradient(46rem 34rem at 98% 2%, var(--depth-2), transparent 68%),
+      radial-gradient(52rem 46rem at 45% 108%, var(--depth-3), transparent 72%);
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    /* Служебная обвязка браузера подхватывает водный цвет: полосы прокрутки, галочки. */
+    accent-color: var(--primary);
+    scrollbar-color: color-mix(in oklab, var(--primary) 45%, transparent) transparent;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-transparent text-foreground;
     /* Системный шрифт: без внешних загрузок и без скачка вёрстки. */
     font-family:
       ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
@@ -168,8 +264,272 @@
     text-rendering: optimizeLegibility;
   }
 
+  ::selection {
+    background-color: color-mix(in oklab, var(--primary) 28%, transparent);
+    color: var(--foreground);
+  }
+
   /* Числа в таблицах и балансах должны стоять колонкой. */
   .tabular {
     font-variant-numeric: tabular-nums;
+  }
+
+  /*
+    Заголовки не должны оставлять одно слово на последней строке: висячая
+    строка читается как обрыв. `text-wrap: balance` дороже, чем кажется, —
+    поэтому только на коротком тексте заголовков.
+  */
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  /* На пальцевом вводе управляющие элементы дорастают до 44px. */
+  @media (pointer: coarse) {
+    button,
+    [role='button'],
+    a[href] {
+      min-block-size: 2.75rem;
+    }
+  }
+}
+
+@layer components {
+  /*
+    ── Стеклянная поверхность ─────────────────────────────────────────────
+    Три градации одной идеи, а не три разных приёма:
+      .glass        — карточки и панели, основная поверхность;
+      .glass-strong — шапка и диалоги: стоят над содержимым, пропускают меньше;
+      .glass-soft   — плитки внутри карточек: стекло на стекле, почти без веса.
+
+    Размытие включается только там, где браузер его умеет: `backdrop-filter`
+    без поддержки не деградирует сам — поверхность просто осталась бы
+    полупрозрачной поверх пёстрого фона, а это как раз тот случай, когда
+    текст теряет контраст. Поэтому непрозрачная подложка — значение по
+    умолчанию, а стекло надстраивается сверху через @supports.
+  */
+  .glass,
+  .glass-strong,
+  .glass-soft {
+    position: relative;
+    isolation: isolate;
+    background-color: var(--card);
+    border: 1px solid var(--glass-border);
+  }
+
+  .glass {
+    box-shadow: var(--glass-shadow);
+  }
+
+  .glass-strong {
+    box-shadow: var(--glass-shadow-lifted);
+  }
+
+  .glass-soft {
+    border-color: var(--glass-border-soft);
+    background-color: color-mix(in oklab, var(--card) 92%, var(--foreground));
+  }
+
+  /* Блик: светлая плёнка по верхней кромке, под содержимым и без перехвата мыши. */
+  .glass::before,
+  .glass-strong::before,
+  .glass-soft::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background-image: var(--glass-sheen);
+    pointer-events: none;
+  }
+
+  /*
+    Поле ввода. Стекло здесь тише, чем на карточке, а граница остаётся
+    цветом `--input` (не менее 3:1 к фону): именно граница говорит, что сюда
+    можно писать, и растворять её в блике нельзя.
+  */
+  .field-surface {
+    background-color: var(--card);
+    border-color: var(--input);
+  }
+
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .field-surface {
+      background-color: color-mix(in oklab, var(--card) 68%, transparent);
+      backdrop-filter: blur(8px) saturate(1.2);
+      -webkit-backdrop-filter: blur(8px) saturate(1.2);
+    }
+
+    .glass {
+      background-color: var(--glass-bg);
+      backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+    }
+
+    .glass-strong {
+      background-color: var(--glass-bg-strong);
+      backdrop-filter: blur(calc(var(--glass-blur) * 1.4)) saturate(1.5);
+      -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 1.4)) saturate(1.5);
+    }
+
+    .glass-soft {
+      background-color: var(--glass-bg-soft);
+      backdrop-filter: blur(calc(var(--glass-blur) * 0.6)) saturate(1.2);
+      -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.6)) saturate(1.2);
+    }
+  }
+
+  /*
+    Кому прозрачность мешает — тому её не показывают. Системная настройка
+    существует ровно для этого; отдельного переключателя в приложении не надо.
+  */
+  @media (prefers-reduced-transparency: reduce) {
+    .glass,
+    .glass-strong,
+    .glass-soft,
+    .field-surface {
+      background-color: var(--card);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    .glass::before,
+    .glass-strong::before,
+    .glass-soft::before {
+      background-image: none;
+    }
+  }
+
+  /*
+    Режим высокой контрастности стирает тени и фоновые картинки. Границу
+    поверхности здесь держит системный цвет, а не наш блик.
+  */
+  @media (forced-colors: active) {
+    .glass,
+    .glass-strong,
+    .glass-soft,
+    .field-surface {
+      background-color: Canvas;
+      border-color: CanvasText;
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    .glass::before,
+    .glass-strong::before,
+    .glass-soft::before {
+      background-image: none;
+    }
+  }
+
+  /*
+    Поверхность графика — непрозрачная, и это не оплошность. Палитра §12
+    проверена скриптом навыка dataviz против цвета карточки; на просвечивающей
+    подложке проверка перестаёт что-либо гарантировать, а зазоры между
+    соприкасающимися заливками рисуются цветом `--chart-surface` и на стекле
+    выглядели бы швом.
+  */
+  .plot-surface {
+    background-color: var(--chart-surface);
+    border: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+    border-radius: var(--radius-md);
+  }
+
+  /*
+    Водный градиент в заголовке. Применяется только к крупному тексту, и оба
+    конца градиента проверены на контраст по отдельности.
+  */
+  .text-gradient-water {
+    background-image: var(--gradient-wordmark);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+
+  /* В высокой контрастности градиент по тексту невидим — возвращаем системный цвет. */
+  @media (forced-colors: active) {
+    .text-gradient-water {
+      background-image: none;
+      color: CanvasText;
+      -webkit-text-fill-color: CanvasText;
+    }
+  }
+
+  /*
+    Капля: значок приложения. Градиент + блик, светлый значок сверху.
+    Контраст значка к обоим концам градиента — не ниже 4.5:1.
+  */
+  .droplet-mark {
+    /*
+      Цвет значка — тот же, что на кнопке основного действия. В светлой теме
+      градиент тёмный и значок светлый, в тёмной наоборот; одно свойство
+      разворачивает пару целиком, и ни один из двух случаев не забыт.
+    */
+    color: var(--primary-foreground);
+    background-image: var(--gradient-water);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.45),
+      0 6px 16px -6px color-mix(in oklab, var(--primary) 70%, transparent);
+  }
+
+  /*
+    Отклик на нажатие — масштабом, а не смещением: соседи не съезжают, и
+    ничего не прыгает под пальцем. Просьбу системы убрать движение уважаем
+    здесь же: цвет и тень остаются, двигаться перестаёт только сама кнопка.
+    Правило живёт классом, а не утилитой `active:scale-*`, потому что утилиты
+    Tailwind стоят слоем выше и медиазапрос их бы не перекрыл.
+  */
+  .press {
+    transition-property: transform;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0.2, 1);
+  }
+
+  .press:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .press,
+    .press:active:not(:disabled) {
+      transition-duration: 0.01ms;
+      transform: none;
+    }
+
+    /* Всплытие диалога — тоже движение. */
+    [data-slot='dialog-content'],
+    [data-slot='dialog-overlay'] {
+      animation-duration: 0.01ms;
+    }
+  }
+
+  /*
+    Цветной рант слева у плитки. Он повторяет то, что уже сказано знаком числа
+    и подписью, — украшение, а не сообщение: цвет здесь ничего не несёт в
+    одиночку (§12), поэтому рант скрыт от чтения с экрана самой своей природой
+    (псевдоэлемент) и не оставляет ничего непрочитанным.
+  */
+  .stat-rail {
+    --rail: var(--gradient-rail);
+  }
+
+  .stat-rail::after {
+    content: '';
+    position: absolute;
+    inset-block: 0.75rem;
+    inset-inline-start: 0;
+    width: 3px;
+    border-radius: 999px;
+    background-image: var(--rail);
+  }
+
+  .stat-rail-owes {
+    --rail: linear-gradient(180deg, var(--owes), color-mix(in oklab, var(--owes) 55%, var(--chart-5)));
+  }
+
+  .stat-rail-credit {
+    --rail: linear-gradient(180deg, var(--credit), var(--accent));
   }
 }

@@ -1,7 +1,9 @@
+import { ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { AdminNav } from '@/components/admin/admin-nav';
+import { IconChip } from '@/components/icon-chip';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { requirePageAdmin } from '@/lib/auth/current-user';
 import { loadFundOverview } from '@/lib/data/admin';
@@ -35,13 +37,16 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:py-10">
       <title>Админ-панель — WaterDrinkers</title>
 
-      <header className="flex flex-wrap items-baseline justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Админ-панель</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            В фонде <span className="tabular font-medium">{formatKopecks(fund.balance)}</span>
-            {fund.startDate === null ? '' : `, учёт с ${fund.startDate}`}
-          </p>
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <IconChip icon={ShieldCheck} />
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Админ-панель</h1>
+            <p className="text-muted-foreground mt-1 text-sm">
+              В фонде <span className="tabular font-medium">{formatKopecks(fund.balance)}</span>
+              {fund.startDate === null ? '' : `, учёт с ${fund.startDate}`}
+            </p>
+          </div>
         </div>
         <Link href="/" className="text-primary text-sm underline underline-offset-4">
           К общим экранам

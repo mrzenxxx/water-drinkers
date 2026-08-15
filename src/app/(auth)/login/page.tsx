@@ -1,5 +1,6 @@
 'use client';
 
+import { Droplets } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useActionState, useState } from 'react';
 
@@ -100,15 +101,27 @@ export default function LoginPage() {
   const error = step === 'email' ? emailState.error : codeState.error;
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-8 px-6 py-12">
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-6 py-12">
       <title>Вход — WaterDrinkers</title>
 
-      <header className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">WaterDrinkers</h1>
-        <p className="text-muted-foreground text-sm">
-          Вход по рабочей почте. Пароля нет — приходит одноразовый код.
-        </p>
-      </header>
+      {/*
+        Вход — первое, что человек видит. Карточка стоит стеклом на воде, и это
+        единственное место, где знак приложения показан крупно.
+      */}
+      <div className="glass rounded-2xl p-6 sm:p-8">
+        <header className="flex flex-col items-center gap-3 text-center">
+          <span className="droplet-mark flex size-14 items-center justify-center rounded-2xl">
+            <Droplets aria-hidden className="size-7" />
+          </span>
+          <h1 className="text-gradient-water text-3xl font-semibold tracking-tight">
+            WaterDrinkers
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            Вход по рабочей почте. Пароля нет — приходит одноразовый код.
+          </p>
+        </header>
+
+        <div className="mt-8">
 
       {step === 'email' ? (
         <form action={requestCode} className="space-y-4">
@@ -122,7 +135,7 @@ export default function LoginPage() {
               autoComplete="email"
               defaultValue={email}
               placeholder="i.ivanov@sspk.spb.ru"
-              className="border-input bg-background focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
+              className="field-surface focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-sm transition-[color,box-shadow,border-color] focus-visible:ring-2 focus-visible:outline-none"
             />
           </label>
 
@@ -148,7 +161,7 @@ export default function LoginPage() {
               autoFocus
               maxLength={6}
               placeholder="000000"
-              className="border-input bg-background focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-center font-mono text-2xl tracking-[0.4em] focus-visible:ring-2 focus-visible:outline-none"
+              className="field-surface focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-center font-mono text-2xl tracking-[0.4em] transition-[color,box-shadow,border-color] focus-visible:ring-2 focus-visible:outline-none"
             />
           </label>
 
@@ -167,11 +180,13 @@ export default function LoginPage() {
         </form>
       )}
 
-      {error !== null && (
-        <p role="alert" className="text-destructive text-sm">
-          {error}
-        </p>
-      )}
+          {error !== null && (
+            <p role="alert" className="text-destructive mt-4 text-sm">
+              {error}
+            </p>
+          )}
+        </div>
+      </div>
     </main>
   );
 }

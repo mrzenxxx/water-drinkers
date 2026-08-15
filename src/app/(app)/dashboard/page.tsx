@@ -1,3 +1,14 @@
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  CalendarDays,
+  ChartLine,
+  Clock,
+  Coins,
+  Package,
+  Scale,
+  Users,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { ActivityFeed } from '@/components/activity-feed';
@@ -5,6 +16,7 @@ import { Amount } from '@/components/amount';
 import { DashboardFilters } from '@/components/dashboard-filters';
 import { FundBalanceChart } from '@/components/charts/fund-balance-chart';
 import { TimelineLanes } from '@/components/charts/timeline-lanes';
+import { IconChip } from '@/components/icon-chip';
 import { StatTile } from '@/components/stat-tile';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requirePageUser } from '@/lib/auth/current-user';
@@ -121,12 +133,15 @@ export default async function DashboardPage({
     <div className="flex flex-col gap-6">
       <title>Дашборд — WaterDrinkers</title>
 
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Дашборд</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Как фонд жил во времени. Экран только показывает: источник истины — таблицы
-          взносов, заказов и балансов.
-        </p>
+      <header className="flex items-start gap-3">
+        <IconChip icon={ChartLine} />
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Дашборд</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Как фонд жил во времени. Экран только показывает: источник истины — таблицы
+            взносов, заказов и балансов.
+          </p>
+        </div>
       </header>
 
       <DashboardFilters filters={filters} people={people} />
@@ -142,34 +157,40 @@ export default async function DashboardPage({
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatTile
               label="Поступило"
+              icon={ArrowDownToLine}
               value={formatKopecks(summary.received)}
               tone="credit"
               hint="Подтверждённые взносы и положительные корректировки"
             />
             <StatTile
               label="Потрачено"
+              icon={ArrowUpFromLine}
               value={formatKopecks(summary.spent)}
               tone="owes"
               hint="Заказы, выплаты и отрицательные корректировки"
             />
             <StatTile
               label="Изменение остатка"
+              icon={Scale}
               value={<Amount value={summary.netChange} tone="auto" signed />}
               hint="Поступило минус потрачено"
             />
             <StatTile
               label="Средний расход в день"
+              icon={CalendarDays}
               value={formatKopecks(summary.averageDailySpend)}
               hint="Справочная величина: потрачено, делённое на длину периода"
             />
-            <StatTile label="Заказов" value={String(summary.orderCount)} />
+            <StatTile label="Заказов" icon={Package} value={String(summary.orderCount)} />
             <StatTile
               label="Человеко-дней"
+              icon={Users}
               value={String(summary.personDays)}
               hint="Дни присутствия всех участников за период"
             />
             <StatTile
               label="Самый дорогой заказ"
+              icon={Coins}
               value={
                 summary.largestOrder === null ? '—' : formatKopecks(summary.largestOrder.amount)
               }
@@ -181,6 +202,7 @@ export default async function DashboardPage({
             />
             <StatTile
               label="Дольше всего без закупок"
+              icon={Clock}
               value={
                 summary.longestGap === null ? '—' : withCount(summary.longestGap.days, DAYS)
               }

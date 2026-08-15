@@ -1,9 +1,11 @@
 import Link from 'next/link';
+import { CalendarOff } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { AbsenceCalendar } from '@/components/absence-calendar';
 import { AbsenceForm } from '@/components/absence-form';
 import { DeleteAbsenceButton } from '@/components/delete-absence-button';
+import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -61,12 +63,9 @@ export default async function AbsencesPage({
     <div className="flex flex-col gap-6">
       <title>Отсутствия — WaterDrinkers</title>
 
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Отсутствия</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Дни, когда человека нет в офисе, не входят в его долю за воду.
-        </p>
-      </header>
+      <PageHeader icon={CalendarOff} title="Отсутствия">
+        Дни, когда человека нет в офисе, не входят в его долю за воду.
+      </PageHeader>
 
       <Card>
         <CardHeader className="flex flex-wrap items-center justify-between gap-3">

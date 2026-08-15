@@ -1,4 +1,4 @@
-import { LogOut, UserRound } from 'lucide-react';
+import { Droplets, LogOut, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
@@ -21,6 +21,10 @@ import { APP_SECTIONS, type NavItem } from '@/lib/view/nav';
  * сразу два места: бургер слева от логотипа, список разделов — строкой ниже.
  * На узком экране подписи уступают место значкам: имя, слово «Выйти» и
  * разделы прячутся, значки и бургер остаются.
+ *
+ * Шапка стеклянная и плотнее карточек (`glass-strong`): она висит над
+ * содержимым, и сквозь неё не должен читаться уезжающий под неё текст.
+ * Рамка остаётся только снизу — стекло здесь край экрана, а не карточка.
  */
 
 type AppShellProps = {
@@ -33,18 +37,31 @@ export function AppShell({ user, children }: AppShellProps): ReactNode {
   // удобство, а не защита: сами страницы закрыты `requirePageAdmin`.
   const sections: NavItem[] =
     user.role === 'ADMIN'
-      ? [...APP_SECTIONS, { href: '/admin', label: 'Админ-панель' }]
+      ? [...APP_SECTIONS, { href: '/admin', label: 'Админ-панель', icon: 'admin' }]
       : [...APP_SECTIONS];
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="bg-card/80 border-border sticky top-0 z-20 border-b backdrop-blur">
+      <header className="glass-strong sticky top-0 z-20 rounded-none border-x-0 border-t-0">
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-2 gap-y-2 px-4 py-3">
           <AppNav items={sections} />
 
-          <Link href="/" className="order-2 mr-auto flex items-baseline gap-2">
-            <span className="text-lg font-semibold tracking-tight">WaterDrinkers</span>
-            <span className="text-muted-foreground hidden text-xs sm:inline">касса на воду</span>
+          <Link
+            href="/"
+            className="focus-visible:ring-ring order-2 mr-auto flex items-center gap-2.5 rounded-lg focus-visible:ring-2 focus-visible:outline-none"
+          >
+            {/* Капля — знак приложения. Подпись рядом, поэтому значок декоративен. */}
+            <span className="droplet-mark flex size-9 shrink-0 items-center justify-center rounded-xl">
+              <Droplets aria-hidden className="size-5" />
+            </span>
+            <span className="flex flex-col leading-none">
+              <span className="text-gradient-water text-lg font-semibold tracking-tight">
+                WaterDrinkers
+              </span>
+              <span className="text-muted-foreground mt-0.5 hidden text-xs sm:inline">
+                касса на воду
+              </span>
+            </span>
           </Link>
 
           <div className="order-3 flex items-center gap-1">
@@ -56,7 +73,7 @@ export function AppShell({ user, children }: AppShellProps): ReactNode {
             <Link
               href="/profile"
               title="Профиль"
-              className="hover:bg-secondary focus-visible:ring-ring flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+              className="hover:bg-secondary/70 focus-visible:ring-ring flex items-center gap-2 rounded-full px-1.5 py-1 transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none"
             >
               <span className="hidden text-right text-sm sm:block">
                 <span className="block leading-tight font-medium">{fullName(user)}</span>
@@ -64,7 +81,7 @@ export function AppShell({ user, children }: AppShellProps): ReactNode {
                   {ROLE_LABEL[user.role] ?? 'Участник'}
                 </span>
               </span>
-              <span className="bg-secondary text-secondary-foreground flex size-8 shrink-0 items-center justify-center rounded-full">
+              <span className="droplet-mark flex size-8 shrink-0 items-center justify-center rounded-full">
                 <UserRound aria-hidden className="size-4" />
               </span>
               <span className="sr-only sm:hidden">Профиль</span>
@@ -85,13 +102,16 @@ export function AppShell({ user, children }: AppShellProps): ReactNode {
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:py-8">{children}</main>
 
-      <footer className="text-muted-foreground border-border mx-auto w-full max-w-6xl border-t px-4 py-6 text-xs">
-        Σ балансов всех участников всегда равна остатку фонда. Расхождение видно
-        в разделе{' '}
-        <Link href="/fund" className="underline underline-offset-2">
-          «Фонд»
-        </Link>
-        .
+      <footer className="text-muted-foreground border-border mx-auto mt-4 flex w-full max-w-6xl items-start gap-2 border-t px-4 py-6 text-xs">
+        <Droplets aria-hidden className="text-primary mt-0.5 size-4 shrink-0 opacity-70" />
+        <p>
+          Σ балансов всех участников всегда равна остатку фонда. Расхождение видно
+          в разделе{' '}
+          <Link href="/fund" className="underline underline-offset-2">
+            «Фонд»
+          </Link>
+          .
+        </p>
       </footer>
     </div>
   );

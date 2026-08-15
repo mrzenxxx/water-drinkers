@@ -10,17 +10,35 @@
  * только там, где действительно нужен браузер.
  */
 
-export type NavItem = { href: string; label: string };
+/**
+ * Значок раздела — строка, а не компонент.
+ *
+ * Компонент отсюда пришлось бы провезти через клиентскую границу в `AppNav`,
+ * а через неё серверные значения не ездят: на той стороне оказалась бы ссылка
+ * на клиентскую сущность. Строку же можно сериализовать всегда, и разбор
+ * «ключ → значок» живёт там, где значок рисуется.
+ */
+export type NavIcon =
+  | 'home'
+  | 'wallet'
+  | 'people'
+  | 'fund'
+  | 'orders'
+  | 'absences'
+  | 'dashboard'
+  | 'admin';
+
+export type NavItem = { href: string; label: string; icon: NavIcon };
 
 /** Разделы §6.1–§6.6 и §6.9. «Админ-панель» добавляет оболочка — только роли ADMIN. */
 export const APP_SECTIONS: readonly NavItem[] = [
-  { href: '/', label: 'Главная' },
-  { href: '/contributions', label: 'Мои взносы' },
-  { href: '/contributions/all', label: 'Все взносы' },
-  { href: '/fund', label: 'Фонд' },
-  { href: '/orders', label: 'Заказы' },
-  { href: '/absences', label: 'Отсутствия' },
-  { href: '/dashboard', label: 'Дашборд' },
+  { href: '/', label: 'Главная', icon: 'home' },
+  { href: '/contributions', label: 'Мои взносы', icon: 'wallet' },
+  { href: '/contributions/all', label: 'Все взносы', icon: 'people' },
+  { href: '/fund', label: 'Фонд', icon: 'fund' },
+  { href: '/orders', label: 'Заказы', icon: 'orders' },
+  { href: '/absences', label: 'Отсутствия', icon: 'absences' },
+  { href: '/dashboard', label: 'Дашборд', icon: 'dashboard' },
 ];
 
 /**

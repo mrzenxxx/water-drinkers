@@ -44,7 +44,7 @@ export function DashboardFilters({
     );
 
   return (
-    <div className="border-border flex flex-col gap-4 rounded-lg border p-4">
+    <div className="glass flex flex-col gap-4 rounded-lg p-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-muted-foreground w-full text-xs sm:w-auto">Период</span>
         {(['month', 'quarter', 'year', 'all'] as const).map((preset) => (
@@ -122,7 +122,7 @@ export function DashboardFilters({
             multiple
             size={4}
             defaultValue={filters.userIds}
-            className="border-input bg-background focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
+            className="field-surface focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-sm transition-[color,box-shadow,border-color] focus-visible:ring-2 focus-visible:outline-none"
           >
             {people.map((person) => (
               <option key={person.id} value={person.id}>

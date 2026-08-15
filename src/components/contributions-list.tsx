@@ -76,7 +76,7 @@ export function ContributionsList({
       {/* Узкий экран: карточки. */}
       <ul className="flex flex-col gap-3 sm:hidden">
         {rows.map((row) => (
-          <li key={row.id} className="border-border rounded-lg border p-3">
+          <li key={row.id} className="glass-soft rounded-lg p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 {showPerson && <p className="truncate font-medium">{nameOf(row.userId)}</p>}

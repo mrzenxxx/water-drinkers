@@ -1,7 +1,9 @@
+import { Wallet } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { Amount } from '@/components/amount';
 import { MyContributions } from '@/components/my-contributions';
+import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requirePageUser } from '@/lib/auth/current-user';
 import { todayIso } from '@/lib/data';
@@ -33,12 +35,9 @@ export default async function MyContributionsPage(): Promise<ReactNode> {
     <div className="flex flex-col gap-6">
       <title>Мои взносы — WaterDrinkers</title>
 
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Мои взносы</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Взнос влияет на баланс только после подтверждения администратором.
-        </p>
-      </header>
+      <PageHeader icon={Wallet} title="Мои взносы">
+        Взнос влияет на баланс только после подтверждения администратором.
+      </PageHeader>
 
       <Card>
         <CardHeader>

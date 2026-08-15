@@ -1,7 +1,9 @@
+import { AtSign, IdCard, Scale } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { Amount } from '@/components/amount';
+import { IconChip } from '@/components/icon-chip';
 import { ProfileForm } from '@/components/profile-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requirePageUser } from '@/lib/auth/current-user';
@@ -44,7 +46,10 @@ export default async function ProfilePage(): Promise<ReactNode> {
 
       <Card>
         <CardHeader>
-          <CardTitle>Имя и фамилия</CardTitle>
+          <div className="flex items-center gap-3">
+            <IconChip icon={IdCard} size="sm" />
+            <CardTitle>Имя и фамилия</CardTitle>
+          </div>
           <CardDescription>
             Так вас видят в списках взносов, заказов и отсутствий.
           </CardDescription>
@@ -56,7 +61,10 @@ export default async function ProfilePage(): Promise<ReactNode> {
 
       <Card>
         <CardHeader>
-          <CardTitle>Учётная запись</CardTitle>
+          <div className="flex items-center gap-3">
+            <IconChip icon={AtSign} size="sm" />
+            <CardTitle>Учётная запись</CardTitle>
+          </div>
           <CardDescription>
             Почту и роль меняет администратор — обратитесь к нему.
           </CardDescription>
@@ -84,7 +92,10 @@ export default async function ProfilePage(): Promise<ReactNode> {
 
       <Card>
         <CardHeader>
-          <CardTitle>Мой баланс</CardTitle>
+          <div className="flex items-center gap-3">
+            <IconChip icon={Scale} size="sm" tone={owes ? 'owes' : 'water'} />
+            <CardTitle>Мой баланс</CardTitle>
+          </div>
           <CardDescription>
             {/* Знак печатается всегда, цвет только подхватывает смысл (§12). */}
             {owes ? 'Пора скидываться.' : 'Внесено больше, чем потрачено на вас.'}

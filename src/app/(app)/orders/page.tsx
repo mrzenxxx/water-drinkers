@@ -1,6 +1,8 @@
+import { Package } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { Amount } from '@/components/amount';
+import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { addDays } from '@/lib/calc';
@@ -38,13 +40,10 @@ export default async function OrdersPage(): Promise<ReactNode> {
     <div className="flex flex-col gap-6">
       <title>Заказы воды — WaterDrinkers</title>
 
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Заказы воды</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Вода, купленная в день заказа, выпивается до следующей закупки — по этому
-          периоду и раскладывается её стоимость.
-        </p>
-      </header>
+      <PageHeader icon={Package} title="Заказы воды">
+        Вода, купленная в день заказа, выпивается до следующей закупки — по этому
+        периоду и раскладывается её стоимость.
+      </PageHeader>
 
       <Card>
         <CardHeader>

@@ -136,7 +136,8 @@ export function AuditTable({ rows }: { rows: readonly AuditRow[] }): ReactNode {
         ))}
       </ul>
 
-      <div className="hidden md:block">
+      {/* Таблица стоит на стекле: иначе строки висели бы прямо на фоне. */}
+      <div className="glass hidden rounded-xl px-4 py-2 md:block">
         <Table>
           <TableHeader>
             <TableRow>

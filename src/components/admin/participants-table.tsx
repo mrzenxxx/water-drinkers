@@ -203,8 +203,8 @@ export function ParticipantsTable({
         ))}
       </ul>
 
-      {/* Широкие экраны: таблица. */}
-      <div className="hidden md:block">
+      {/* Широкие экраны: таблица на стеклянной поверхности — как карточки рядом. */}
+      <div className="glass hidden rounded-xl px-4 py-2 md:block">
         <Table>
           <TableHeader>
             <TableRow>

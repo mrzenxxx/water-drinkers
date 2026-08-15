@@ -1,8 +1,10 @@
 import Link from 'next/link';
+import { Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { Amount } from '@/components/amount';
 import { ContributionsList } from '@/components/contributions-list';
+import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -48,18 +50,15 @@ export default async function AllContributionsPage({
     .reduce((sum, row) => sum + row.amount, 0);
 
   const fieldClass =
-    'border-input bg-background focus-visible:ring-ring h-9 w-full rounded-md border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none';
+    'field-surface focus-visible:ring-ring h-9 w-full rounded-md border px-3 text-sm transition-[color,box-shadow,border-color] focus-visible:ring-2 focus-visible:outline-none';
 
   return (
     <div className="flex flex-col gap-6">
       <title>Все взносы — WaterDrinkers</title>
 
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Все взносы</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Приложение прозрачно: участник видит то же, что администратор.
-        </p>
-      </header>
+      <PageHeader icon={Users} title="Все взносы">
+        Приложение прозрачно: участник видит то же, что администратор.
+      </PageHeader>
 
       <Card>
         <CardHeader>

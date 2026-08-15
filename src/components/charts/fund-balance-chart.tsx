@@ -69,7 +69,7 @@ export function FundBalanceChart({
     granularity === 'month' ? formatMonthShort(key.slice(0, 7)) : formatDate(key).slice(0, 5);
 
   return (
-    <figure className="m-0">
+    <figure className="plot-surface m-0 p-2">
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         width="100%"

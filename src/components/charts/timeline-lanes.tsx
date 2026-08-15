@@ -41,7 +41,7 @@ export function TimelineLanes({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="plot-surface flex flex-col gap-3 p-3">
       {lanes.map((lane) => (
         <div key={lane.kind} className="sm:grid sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-3">
           <div className="text-muted-foreground flex items-center gap-2 pb-1 text-xs sm:pb-0">

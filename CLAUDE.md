@@ -77,6 +77,7 @@ npm run lint             # линтер
 npx prisma migrate dev   # миграция БД
 npx prisma studio        # просмотр данных
 npm run codegen          # генерация типов из GraphQL-схемы
+npm run check:contrast   # контраст текста на стеклянных поверхностях (§12.1)
 ```
 
 *(скрипты появляются на этапе 0; до него команд нет)*

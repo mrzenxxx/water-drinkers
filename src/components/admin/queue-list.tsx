@@ -90,7 +90,7 @@ export function QueueList({ items }: { items: readonly QueueItem[] }): ReactNode
             </CardHeader>
 
             <CardContent className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
+              <div className="glass-soft flex flex-col gap-2 rounded-lg p-3">
                 <div className="text-muted-foreground hidden text-xs sm:grid sm:grid-cols-[7rem_1fr_1fr] sm:gap-x-3">
                   <span />
                   <span>введено</span>

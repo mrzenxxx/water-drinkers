@@ -1,3 +1,4 @@
+import { Droplets } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 
@@ -23,24 +24,32 @@ export default async function WelcomePage(): Promise<ReactNode> {
   if (hasProfile(user)) redirect('/profile');
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-8 px-6 py-12">
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-6 py-12">
       <title>Знакомство — WaterDrinkers</title>
 
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Как вас зовут?</h1>
-        <p className="text-muted-foreground text-sm">
-          Имя и фамилия нужны, чтобы в списках взносов и заказов было видно, кто есть кто.
-          Больше приложение о вас ничего не хранит — только рабочую почту{' '}
-          <span className="text-foreground font-medium">{user.email}</span>.
-        </p>
-      </header>
+      {/* Тот же стеклянный вход, что и на форме входа: экран знакомства — его продолжение. */}
+      <div className="glass rounded-2xl p-6 sm:p-8">
+        <header className="space-y-3">
+          <span className="droplet-mark flex size-12 items-center justify-center rounded-2xl">
+            <Droplets aria-hidden className="size-6" />
+          </span>
+          <h1 className="text-2xl font-semibold tracking-tight">Как вас зовут?</h1>
+          <p className="text-muted-foreground text-sm">
+            Имя и фамилия нужны, чтобы в списках взносов и заказов было видно, кто есть кто.
+            Больше приложение о вас ничего не хранит — только рабочую почту{' '}
+            <span className="text-foreground font-medium">{user.email}</span>.
+          </p>
+        </header>
 
-      <ProfileForm
-        firstName={user.firstName ?? ''}
-        lastName={user.lastName ?? ''}
-        redirectTo="/"
-        submitLabel="Продолжить"
-      />
+        <div className="mt-6">
+          <ProfileForm
+            firstName={user.firstName ?? ''}
+            lastName={user.lastName ?? ''}
+            redirectTo="/"
+            submitLabel="Продолжить"
+          />
+        </div>
+      </div>
     </main>
   );
 }

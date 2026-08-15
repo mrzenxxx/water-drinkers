@@ -1,8 +1,10 @@
+import { Droplets } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { Amount, HeroAmount } from '@/components/amount';
 import { BalanceBreakdown } from '@/components/balance-breakdown';
 import { FundMonthlyChart } from '@/components/charts/fund-monthly-chart';
+import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requirePageUser } from '@/lib/auth/current-user';
 import { monthlyStats } from '@/lib/data';
@@ -44,12 +46,9 @@ export default async function FundPage(): Promise<ReactNode> {
     <div className="flex flex-col gap-6">
       <title>Фонд — WaterDrinkers</title>
 
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Фонд</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Сколько денег в кассе, откуда они взялись и на кого разложены.
-        </p>
-      </header>
+      <PageHeader icon={Droplets} title="Фонд">
+        Сколько денег в кассе, откуда они взялись и на кого разложены.
+      </PageHeader>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

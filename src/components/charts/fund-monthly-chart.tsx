@@ -84,7 +84,7 @@ export function FundMonthlyChart({ stats }: { stats: readonly MonthlyStat[] }): 
   const crossesZero = shown.some((stat) => stat.endBalance < 0);
 
   return (
-    <figure className="m-0">
+    <figure className="plot-surface m-0 p-2">
       <svg
         viewBox={`0 0 ${WIDTH} ${height}`}
         width="100%"
