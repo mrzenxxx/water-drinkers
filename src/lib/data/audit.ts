@@ -37,7 +37,11 @@ export type AuditAction =
   | 'participant.role'
   | 'participant.settle'
   | 'fund.adjust'
-  | 'fund.opening';
+  | 'fund.opening'
+  | 'announcement.create'
+  | 'announcement.update'
+  | 'announcement.archive'
+  | 'announcement.restore';
 
 /** Подписи действий по-русски — журнал §6.7 читают люди, а не машины. */
 export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
@@ -56,6 +60,10 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'participant.settle': 'Выплата остатка',
   'fund.adjust': 'Корректировка',
   'fund.opening': 'Стартовое состояние фонда',
+  'announcement.create': 'Объявление создано',
+  'announcement.update': 'Объявление изменено',
+  'announcement.archive': 'Объявление убрано в архив',
+  'announcement.restore': 'Объявление возвращено из архива',
 };
 
 /** Все известные действия — для выпадающего фильтра журнала. */

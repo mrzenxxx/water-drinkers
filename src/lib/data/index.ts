@@ -16,6 +16,8 @@
 export type { DbClient, AuditAction, AuditRecord } from './audit';
 export { writeAudit } from './audit';
 
+export { markAnnouncementsSeen } from './announcements';
+
 export {
   fromIsoDate,
   instantToIsoDate,

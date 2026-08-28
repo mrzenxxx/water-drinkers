@@ -5,6 +5,7 @@ import {
   ChartLine,
   Droplets,
   House,
+  Megaphone,
   Menu,
   Package,
   ShieldCheck,
@@ -50,6 +51,7 @@ const ICONS: Record<NavIcon, LucideIcon> = {
   orders: Package,
   absences: CalendarOff,
   dashboard: ChartLine,
+  notices: Megaphone,
   admin: ShieldCheck,
 };
 
@@ -84,6 +86,7 @@ export function AppNav({ items }: { items: readonly NavItem[] }): ReactNode {
   function sectionLink(item: NavItem, block: boolean): ReactNode {
     const active = isSectionActive(pathname, item.href, hrefs);
     const Icon = ICONS[item.icon];
+    const badge = item.badge ?? 0;
 
     return (
       <Link
@@ -94,6 +97,22 @@ export function AppNav({ items }: { items: readonly NavItem[] }): ReactNode {
       >
         <Icon aria-hidden className="size-4 shrink-0 opacity-80" />
         {item.label}
+        {badge > 0 && (
+          <>
+            {/*
+              Счётчик непрочитанного. Само число видно глазами, а читалке
+              нужно слово: «Объявления 3» звучит как порядковый номер раздела,
+              поэтому смысл сказан текстом рядом, а цифра от неё скрыта.
+            */}
+            <span
+              aria-hidden
+              className="bg-primary text-primary-foreground ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold tabular-nums"
+            >
+              {badge}
+            </span>
+            <span className="sr-only">, непрочитанных: {badge}</span>
+          </>
+        )}
       </Link>
     );
   }

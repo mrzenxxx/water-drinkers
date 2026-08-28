@@ -147,6 +147,39 @@ type Absence {
   note: String
 }
 
+# ─── Объявления ──────────────────────────────────────────
+
+"""
+Сообщение администратора всем участникам (§6.12): инструкция по пользованию
+системой или новость про кассу.
+
+Событием фонда объявление не является: денег не несёт, в расчёт балансов
+не входит и в ленту §6.9 не попадает. Отдельный тип именно поэтому.
+"""
+type Announcement {
+  id: ID!
+  title: String!
+  body: String!
+  "Закреплённое не тонет в списке — так живут инструкции."
+  pinned: Boolean!
+  "null — черновик: виден только администратору."
+  publishedAt: DateTime
+  "Снято с глаз, но не удалено."
+  archivedAt: DateTime
+  updatedAt: DateTime!
+  author: User!
+  "Опубликовано после последнего захода текущего участника в раздел."
+  isNew: Boolean!
+}
+
+input AnnouncementInput {
+  title: String!
+  body: String!
+  pinned: Boolean = false
+  "false — сохранить черновиком; повторное false снимает с публикации."
+  published: Boolean = true
+}
+
 # ─── Аудит и помощник ────────────────────────────────────
 
 "Запись журнала аудита (audit_log, §11). В §10.2 тип упомянут, но не расписан."
@@ -204,6 +237,11 @@ type Query {
   pendingContributions: [Contribution!]! # только ADMIN
   auditLog(limit: Int = 50): [AuditEntry!]! # только ADMIN
   assistantThread: [AssistantMessage!]!
+
+  # Объявления (§6.12). Черновики и архив приходят только администратору:
+  # includeHidden от участника — ошибка доступа, а не молча пустой список.
+  announcements(includeHidden: Boolean = false): [Announcement!]!
+  unreadAnnouncements: Int!
 }
 
 # ─── Мутации ─────────────────────────────────────────────
@@ -240,6 +278,16 @@ type Mutation {
   # Ввод за участника (§6.7)
   addContributionFor(input: ContributionForInput!): Contribution! # ADMIN
   addAbsenceFor(input: AbsenceForInput!): Absence! # ADMIN
+
+  # Объявления (§6.12)
+  createAnnouncement(input: AnnouncementInput!): Announcement! # ADMIN
+  updateAnnouncement(id: ID!, input: AnnouncementInput!): Announcement! # ADMIN
+  setAnnouncementArchived(id: ID!, archived: Boolean!): Announcement! # ADMIN
+  """
+  Отметить раздел просмотренным. Возвращает новый момент отсчёта; null —
+  объявлений нет вовсе, и отмечать нечего.
+  """
+  markAnnouncementsSeen: DateTime
 
   # Помощник
   askAssistant(question: String!): AssistantMessage!

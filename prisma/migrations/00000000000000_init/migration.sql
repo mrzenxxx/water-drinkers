@@ -22,7 +22,11 @@ CREATE TABLE "users" (
   "joined_at"       DATE NOT NULL,
   "left_at"         DATE,
   "opening_balance" BIGINT NOT NULL DEFAULT 0,
-  "created_at"      TIMESTAMPTZ NOT NULL DEFAULT now()
+  "created_at"      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- Момент последнего захода в раздел «Объявления» (§6.12). Непрочитанное
+  -- выводится сравнением с published_at: отдельная таблица «кто что прочитал»
+  -- для полутора десятков человек стоила бы дороже пользы.
+  "announcements_seen_at" TIMESTAMPTZ
 );
 
 CREATE TABLE "identities" (
@@ -144,3 +148,25 @@ CREATE TABLE "assistant_messages" (
   "content"    TEXT NOT NULL,
   "created_at" TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Объявления администратора (§6.12): инструкции и сообщения всем участникам.
+-- Денег не касаются: ни строки в fund_transactions, ни участия в расчёте,
+-- поэтому правка разрешена — но каждая ложится в audit_log с before/after.
+-- published_at IS NULL — черновик, archived_at IS NOT NULL — снято с глаз.
+-- Пустой заголовок или пустое тело — это не объявление, а промах по кнопке.
+CREATE TABLE "announcements" (
+  "id"           UUID PRIMARY KEY,
+  "title"        TEXT NOT NULL,
+  "body"         TEXT NOT NULL,
+  "pinned"       BOOLEAN NOT NULL DEFAULT false,
+  "published_at" TIMESTAMPTZ,
+  "archived_at"  TIMESTAMPTZ,
+  "created_by"   UUID NOT NULL REFERENCES "users"("id"),
+  "created_at"   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  "updated_at"   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (btrim("title") <> ''),
+  CHECK (btrim("body") <> '')
+);
+
+-- Список участника — это выборка опубликованных в порядке публикации.
+CREATE INDEX "announcements_published_at_idx" ON "announcements" ("published_at");

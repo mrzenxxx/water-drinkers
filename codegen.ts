@@ -29,6 +29,7 @@ const config: CodegenConfig = {
           Receipt: '@/generated/prisma/client#Receipt as PrismaReceipt',
           AuditEntry: '@/generated/prisma/client#AuditEntry as PrismaAuditEntry',
           AssistantMessage: '@/generated/prisma/client#AssistantMessage as PrismaAssistantMessage',
+          Announcement: '@/generated/prisma/client#Announcement as PrismaAnnouncement',
           Fund: '@/lib/calc/types#FundSettings as CalcFundSettings',
           Balance: '@/lib/calc/types#Balance as CalcBalance',
           BalanceBreakdown: '@/lib/calc/types#BalanceBreakdown as CalcBalanceBreakdown',

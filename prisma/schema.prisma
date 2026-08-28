@@ -31,6 +31,10 @@ model User {
   leftAt         DateTime? @map("left_at") @db.Date
   openingBalance BigInt    @default(0) @map("opening_balance")
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// Момент последнего захода в раздел «Объявления» (§6.12). Из него выводится
+  /// число непрочитанного: отдельная таблица «кто что прочитал» для полутора
+  /// десятков человек и десятка объявлений была бы дороже пользы.
+  announcementsSeenAt DateTime? @map("announcements_seen_at") @db.Timestamptz(6)
 
   identities             Identity[]
   contributions          Contribution[]    @relation("ContributionAuthor")
@@ -41,6 +45,7 @@ model User {
   createdFundTransactions FundTransaction[] @relation("FundTransactionCreator")
   auditEntries           AuditEntry[]
   assistantMessages      AssistantMessage[]
+  announcements          Announcement[]
 
   @@map("users")
 }
@@ -162,6 +167,32 @@ model FundTransaction {
   creator User? @relation("FundTransactionCreator", fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("fund_transactions")
+}
+
+/// Объявления администратора (§6.12): инструкции и сообщения всем участникам.
+///
+/// Денег не касается вовсе: ни строки в `fund_transactions`, ни участия
+/// в расчёте. Правило 4 CLAUDE.md о неизменяемости журнала сюда не
+/// распространяется — опечатку в инструкции нужно уметь исправить, — но
+/// каждая правка ложится в `audit_log` с before/after.
+model Announcement {
+  id String @id @default(uuid()) @db.Uuid
+  title String
+  body  String
+  /// Закреплённое не тонет в ленте: так живут инструкции по пользованию.
+  pinned Boolean @default(false)
+  /// `null` — черновик, виден только администратору.
+  publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
+  /// Убрано с глаз, но не удалено: история сообщений остаётся.
+  archivedAt  DateTime? @map("archived_at") @db.Timestamptz(6)
+  createdBy   String    @map("created_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  author User @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([publishedAt])
+  @@map("announcements")
 }
 
 model AuditEntry {

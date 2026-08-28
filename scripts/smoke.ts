@@ -51,6 +51,7 @@ const PAGES: readonly Page[] = [
   { path: '/fund', as: 'member', expect: ['Σ балансов'] },
   { path: '/orders', as: 'member' },
   { path: '/absences', as: 'member' },
+  { path: '/notices', as: 'member', expect: ['Объявления'] },
   { path: '/dashboard', as: 'member', expect: ['<svg'] },
   { path: '/profile', as: 'member', expect: ['Учётная запись'] },
   { path: '/dashboard?period=quarter&granularity=week', as: 'member', expect: ['<svg'] },
@@ -58,6 +59,7 @@ const PAGES: readonly Page[] = [
   { path: '/admin/participants', as: 'admin' },
   { path: '/admin/entry', as: 'admin' },
   { path: '/admin/journal', as: 'admin' },
+  { path: '/admin/notices', as: 'admin', expect: ['Новое объявление'] },
 ];
 
 /** Признаки того, что страница отрисовалась в ошибку, а не в содержимое. */

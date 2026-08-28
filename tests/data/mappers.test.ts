@@ -59,6 +59,7 @@ describe('строки таблиц → типы ядра', () => {
         leftAt: dateColumn('2026-10-01'),
         openingBalance: 12_500n,
         createdAt: new Date('2026-06-01T09:00:00.000Z'),
+        announcementsSeenAt: null,
       }),
     ).toEqual({ id: 'u1', joinedAt: '2026-06-01', leftAt: '2026-10-01', openingBalance: 12_500 });
   });

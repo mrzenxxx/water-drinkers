@@ -1,5 +1,5 @@
 import type { GraphQLResolveInfo, GraphQLScalarType, GraphQLScalarTypeConfig } from 'graphql';
-import type { User as PrismaUser, Contribution as PrismaContribution, WaterOrder as PrismaWaterOrder, Absence as PrismaAbsence, Receipt as PrismaReceipt, AuditEntry as PrismaAuditEntry, AssistantMessage as PrismaAssistantMessage } from '@/generated/prisma/client';
+import type { User as PrismaUser, Contribution as PrismaContribution, WaterOrder as PrismaWaterOrder, Absence as PrismaAbsence, Receipt as PrismaReceipt, AuditEntry as PrismaAuditEntry, AssistantMessage as PrismaAssistantMessage, Announcement as PrismaAnnouncement } from '@/generated/prisma/client';
 import type { FundSettings as CalcFundSettings, Balance as CalcBalance, BalanceBreakdown as CalcBalanceBreakdown, OrderShare as CalcOrderShare } from '@/lib/calc/types';
 import type { GraphQLContext } from '../context';
 export type Maybe<T> = T | null;
@@ -42,6 +42,38 @@ export enum AbsenceType {
   SickLeave = 'SICK_LEAVE',
   Vacation = 'VACATION'
 }
+
+/**
+ * Сообщение администратора всем участникам (§6.12): инструкция по пользованию
+ * системой или новость про кассу.
+ *
+ * Событием фонда объявление не является: денег не несёт, в расчёт балансов
+ * не входит и в ленту §6.9 не попадает. Отдельный тип именно поэтому.
+ */
+export type Announcement = {
+  __typename?: 'Announcement';
+  /** Снято с глаз, но не удалено. */
+  archivedAt?: Maybe<Scalars['DateTime']['output']>;
+  author: User;
+  body: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  /** Опубликовано после последнего захода текущего участника в раздел. */
+  isNew: Scalars['Boolean']['output'];
+  /** Закреплённое не тонет в списке — так живут инструкции. */
+  pinned: Scalars['Boolean']['output'];
+  /** null — черновик: виден только администратору. */
+  publishedAt?: Maybe<Scalars['DateTime']['output']>;
+  title: Scalars['String']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+export type AnnouncementInput = {
+  body: Scalars['String']['input'];
+  pinned?: InputMaybe<Scalars['Boolean']['input']>;
+  /** false — сохранить черновиком; повторное false снимает с публикации. */
+  published?: InputMaybe<Scalars['Boolean']['input']>;
+  title: Scalars['String']['input'];
+};
 
 /** Сообщение диалога с помощником (assistant_messages, §11). */
 export type AssistantMessage = {
@@ -154,18 +186,26 @@ export type Mutation = {
   askAssistant: AssistantMessage;
   confirmContribution: Contribution;
   createAdjustment: Fund;
+  createAnnouncement: Announcement;
   createWaterOrder: WaterOrder;
   deactivateParticipant: User;
   deleteAbsence: Scalars['Boolean']['output'];
   extractReceipt: ReceiptExtraction;
   logout: Scalars['Boolean']['output'];
+  /**
+   * Отметить раздел просмотренным. Возвращает новый момент отсчёта; null —
+   * объявлений нет вовсе, и отмечать нечего.
+   */
+  markAnnouncementsSeen?: Maybe<Scalars['DateTime']['output']>;
   reactivateParticipant: User;
   rejectContribution: Contribution;
   requestLoginCode: RequestCodeResult;
+  setAnnouncementArchived: Announcement;
   setOpeningBalances: Fund;
   setParticipantRole: User;
   settleParticipant: User;
   submitContribution: Contribution;
+  updateAnnouncement: Announcement;
   updateProfile: User;
   verifyLoginCode: AuthResult;
 };
@@ -213,6 +253,11 @@ export type MutationCreateAdjustmentArgs = {
 };
 
 
+export type MutationCreateAnnouncementArgs = {
+  input: AnnouncementInput;
+};
+
+
 export type MutationCreateWaterOrderArgs = {
   input: WaterOrderInput;
 };
@@ -250,6 +295,12 @@ export type MutationRequestLoginCodeArgs = {
 };
 
 
+export type MutationSetAnnouncementArchivedArgs = {
+  archived: Scalars['Boolean']['input'];
+  id: Scalars['ID']['input'];
+};
+
+
 export type MutationSetOpeningBalancesArgs = {
   input: OpeningBalancesInput;
 };
@@ -272,6 +323,12 @@ export type MutationSubmitContributionArgs = {
   amount: Scalars['Money']['input'];
   paidAt: Scalars['Date']['input'];
   receiptFileId?: InputMaybe<Scalars['ID']['input']>;
+};
+
+
+export type MutationUpdateAnnouncementArgs = {
+  id: Scalars['ID']['input'];
+  input: AnnouncementInput;
 };
 
 
@@ -314,6 +371,7 @@ export type OrderShare = {
 export type Query = {
   __typename?: 'Query';
   absences: Array<Absence>;
+  announcements: Array<Announcement>;
   assistantThread: Array<AssistantMessage>;
   auditLog: Array<AuditEntry>;
   balances: Array<Balance>;
@@ -322,6 +380,7 @@ export type Query = {
   me?: Maybe<User>;
   participants: Array<User>;
   pendingContributions: Array<Contribution>;
+  unreadAnnouncements: Scalars['Int']['output'];
   waterOrders: Array<WaterOrder>;
 };
 
@@ -330,6 +389,11 @@ export type QueryAbsencesArgs = {
   from?: InputMaybe<Scalars['Date']['input']>;
   to?: InputMaybe<Scalars['Date']['input']>;
   type?: InputMaybe<AbsenceType>;
+};
+
+
+export type QueryAnnouncementsArgs = {
+  includeHidden?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 
@@ -513,6 +577,8 @@ export type ResolversTypes = {
   Absence: ResolverTypeWrapper<PrismaAbsence>;
   AbsenceForInput: AbsenceForInput;
   AbsenceType: AbsenceType;
+  Announcement: ResolverTypeWrapper<PrismaAnnouncement>;
+  AnnouncementInput: AnnouncementInput;
   AssistantMessage: ResolverTypeWrapper<PrismaAssistantMessage>;
   AuditEntry: ResolverTypeWrapper<PrismaAuditEntry>;
   AuthResult: ResolverTypeWrapper<Omit<AuthResult, 'user'> & { user: ResolversTypes['User'] }>;
@@ -551,6 +617,8 @@ export type ResolversTypes = {
 export type ResolversParentTypes = {
   Absence: PrismaAbsence;
   AbsenceForInput: AbsenceForInput;
+  Announcement: PrismaAnnouncement;
+  AnnouncementInput: AnnouncementInput;
   AssistantMessage: PrismaAssistantMessage;
   AuditEntry: PrismaAuditEntry;
   AuthResult: Omit<AuthResult, 'user'> & { user: ResolversParentTypes['User'] };
@@ -589,6 +657,18 @@ export type AbsenceResolvers<ContextType = GraphQLContext, ParentType extends Re
   startsOn?: Resolver<ResolversTypes['Date'], ParentType, ContextType>;
   type?: Resolver<ResolversTypes['AbsenceType'], ParentType, ContextType>;
   user?: Resolver<ResolversTypes['User'], ParentType, ContextType>;
+};
+
+export type AnnouncementResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Announcement'] = ResolversParentTypes['Announcement']> = {
+  archivedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  author?: Resolver<ResolversTypes['User'], ParentType, ContextType>;
+  body?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  isNew?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  pinned?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  publishedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  title?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
 };
 
 export type AssistantMessageResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AssistantMessage'] = ResolversParentTypes['AssistantMessage']> = {
@@ -685,18 +765,22 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   askAssistant?: Resolver<ResolversTypes['AssistantMessage'], ParentType, ContextType, RequireFields<MutationAskAssistantArgs, 'question'>>;
   confirmContribution?: Resolver<ResolversTypes['Contribution'], ParentType, ContextType, RequireFields<MutationConfirmContributionArgs, 'id'>>;
   createAdjustment?: Resolver<ResolversTypes['Fund'], ParentType, ContextType, RequireFields<MutationCreateAdjustmentArgs, 'amount' | 'comment'>>;
+  createAnnouncement?: Resolver<ResolversTypes['Announcement'], ParentType, ContextType, RequireFields<MutationCreateAnnouncementArgs, 'input'>>;
   createWaterOrder?: Resolver<ResolversTypes['WaterOrder'], ParentType, ContextType, RequireFields<MutationCreateWaterOrderArgs, 'input'>>;
   deactivateParticipant?: Resolver<ResolversTypes['User'], ParentType, ContextType, RequireFields<MutationDeactivateParticipantArgs, 'id' | 'leftAt'>>;
   deleteAbsence?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteAbsenceArgs, 'id'>>;
   extractReceipt?: Resolver<ResolversTypes['ReceiptExtraction'], ParentType, ContextType, RequireFields<MutationExtractReceiptArgs, 'fileId'>>;
   logout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  markAnnouncementsSeen?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
   reactivateParticipant?: Resolver<ResolversTypes['User'], ParentType, ContextType, RequireFields<MutationReactivateParticipantArgs, 'id'>>;
   rejectContribution?: Resolver<ResolversTypes['Contribution'], ParentType, ContextType, RequireFields<MutationRejectContributionArgs, 'comment' | 'id'>>;
   requestLoginCode?: Resolver<ResolversTypes['RequestCodeResult'], ParentType, ContextType, RequireFields<MutationRequestLoginCodeArgs, 'email'>>;
+  setAnnouncementArchived?: Resolver<ResolversTypes['Announcement'], ParentType, ContextType, RequireFields<MutationSetAnnouncementArchivedArgs, 'archived' | 'id'>>;
   setOpeningBalances?: Resolver<ResolversTypes['Fund'], ParentType, ContextType, RequireFields<MutationSetOpeningBalancesArgs, 'input'>>;
   setParticipantRole?: Resolver<ResolversTypes['User'], ParentType, ContextType, RequireFields<MutationSetParticipantRoleArgs, 'id' | 'role'>>;
   settleParticipant?: Resolver<ResolversTypes['User'], ParentType, ContextType, RequireFields<MutationSettleParticipantArgs, 'amount' | 'id' | 'note'>>;
   submitContribution?: Resolver<ResolversTypes['Contribution'], ParentType, ContextType, RequireFields<MutationSubmitContributionArgs, 'amount' | 'paidAt'>>;
+  updateAnnouncement?: Resolver<ResolversTypes['Announcement'], ParentType, ContextType, RequireFields<MutationUpdateAnnouncementArgs, 'id' | 'input'>>;
   updateProfile?: Resolver<ResolversTypes['User'], ParentType, ContextType, RequireFields<MutationUpdateProfileArgs, 'firstName' | 'lastName'>>;
   verifyLoginCode?: Resolver<ResolversTypes['AuthResult'], ParentType, ContextType, RequireFields<MutationVerifyLoginCodeArgs, 'code' | 'email'>>;
 };
@@ -710,6 +794,7 @@ export type OrderShareResolvers<ContextType = GraphQLContext, ParentType extends
 
 export type QueryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   absences?: Resolver<Array<ResolversTypes['Absence']>, ParentType, ContextType, Partial<QueryAbsencesArgs>>;
+  announcements?: Resolver<Array<ResolversTypes['Announcement']>, ParentType, ContextType, RequireFields<QueryAnnouncementsArgs, 'includeHidden'>>;
   assistantThread?: Resolver<Array<ResolversTypes['AssistantMessage']>, ParentType, ContextType>;
   auditLog?: Resolver<Array<ResolversTypes['AuditEntry']>, ParentType, ContextType, RequireFields<QueryAuditLogArgs, 'limit'>>;
   balances?: Resolver<Array<ResolversTypes['Balance']>, ParentType, ContextType>;
@@ -718,6 +803,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   me?: Resolver<Maybe<ResolversTypes['User']>, ParentType, ContextType>;
   participants?: Resolver<Array<ResolversTypes['User']>, ParentType, ContextType, RequireFields<QueryParticipantsArgs, 'includeInactive'>>;
   pendingContributions?: Resolver<Array<ResolversTypes['Contribution']>, ParentType, ContextType>;
+  unreadAnnouncements?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   waterOrders?: Resolver<Array<ResolversTypes['WaterOrder']>, ParentType, ContextType, Partial<QueryWaterOrdersArgs>>;
 };
 
@@ -775,6 +861,7 @@ export type WaterOrderResolvers<ContextType = GraphQLContext, ParentType extends
 
 export type Resolvers<ContextType = GraphQLContext> = {
   Absence?: AbsenceResolvers<ContextType>;
+  Announcement?: AnnouncementResolvers<ContextType>;
   AssistantMessage?: AssistantMessageResolvers<ContextType>;
   AuditEntry?: AuditEntryResolvers<ContextType>;
   AuthResult?: AuthResultResolvers<ContextType>;

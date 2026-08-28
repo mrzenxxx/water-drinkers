@@ -1,5 +1,6 @@
 import type { Resolvers } from '@/graphql/generated/graphql';
 import { Absence } from '@/graphql/resolvers/absence';
+import { Announcement } from '@/graphql/resolvers/announcement';
 import { AuditEntry } from '@/graphql/resolvers/audit';
 import { Balance, OrderShare } from '@/graphql/resolvers/balance';
 import { Contribution } from '@/graphql/resolvers/contribution';
@@ -34,4 +35,5 @@ export const resolvers: Resolvers = {
   WaterOrder,
   Absence,
   AuditEntry,
+  Announcement,
 };

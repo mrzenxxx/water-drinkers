@@ -100,6 +100,8 @@
 | Внести заказ воды | ❌ | ✅ |
 | Добавить / деактивировать участника | ❌ | ✅ |
 | Задать начальные сальдо, корректировку, выплату | ❌ | ✅ |
+| Читать объявления | ✅ | ✅ |
+| Публиковать и править объявления | ❌ | ✅ |
 | Задать вопрос Помощнику | ✅ | ✅ |
 
 Приложение полностью прозрачно: участник видит всё, что видит администратор. Разница только в праве изменять.
@@ -424,6 +426,37 @@ share_k(i) = C_k × days(i, P_k) / D_k  — доля участника i в з�
 Меню закрывается переходом в раздел, повторным нажатием на бургер и клавишей
 Escape. Ни одна ссылка при этом не исчезает: узкий экран меняет форму навигации,
 а не её состав.
+
+### 6.12 Объявления
+
+Сообщения администратора всем участникам: инструкции по пользованию системой и новости про кассу («сменили поставщика», «касса переехала на новый счёт»).
+
+**Объявление — не событие фонда.** Оно не несёт суммы, не участвует в расчёте балансов и не попадает ни в журнал операций, ни в ленту §6.9. Причина не только в чистоте модели: типы событий ленты закреплены за слотами палитры графиков (§12), пятью цветами, и шестой тип потребовал бы шестого цвета там, где различимость уже на пределе.
+
+Одна сущность на оба жанра. Инструкция и новость отличаются только сроком жизни, и разводить их в две таблицы незачем: закреплённое объявление (`pinned`) висит наверху и не тонет — это и есть инструкция; обычное уходит вниз по дате публикации.
+
+Состояния:
+
+| | |
+|---|---|
+| Черновик | `published_at IS NULL` — виден только администратору |
+| Опубликовано | видно всем участникам |
+| В архиве | `archived_at IS NOT NULL` — снято с глаз, но не удалено: на запись ссылается журнал аудита |
+
+**Непрочитанное** считается от `users.announcements_seen_at` — момента последнего захода участника в раздел. Отдельной таблицы «кто что прочитал» нет: для полутора десятков человек она стоила бы дороже пользы. Отметка ставится по самой свежей публикации, а не по «сейчас», иначе объявление, вышедшее между открытием списка и записью, погасло бы непрочитанным.
+
+Где видно:
+
+- **раздел «Объявления»** — весь список: закреплённые сверху, дальше по дате;
+- **главная (§6.1)** — непрочитанные отдельным блоком **над** лентой событий, не более двух; отметку «прочитано» главная не ставит, иначе человек увидел бы заголовок и никогда не прочёл текст;
+- **шапка (§6.11)** — счётчик непрочитанного на значке раздела;
+- **админ-панель (§6.7)** — пятая вкладка: создание, правка, закрепление, архив.
+
+Правка объявления разрешена: опечатку в инструкции нужно уметь исправить, и правило неизменяемости журнала (§2.3) сюда не относится — оно про `fund_transactions`. Взамен каждая правка ложится в `audit_log` со снимком «до» и «после», а дата публикации при правке **не сдвигается**: иначе исправленная опечатка вспыхнула бы у всей команды как свежая новость.
+
+Разметки в тексте нет. Распознаются ровно три вещи: абзац (пустая строка), маркированный список (`- `) и нумерованный (`1. `). Ни Markdown-библиотеки, ни `dangerouslySetInnerHTML`: администратор пишет текст в поле ввода, и его содержимое — ввод, а не доверенная разметка.
+
+Адресных сообщений одному участнику здесь нет: напоминание «пора скидываться» — это уведомление, и его место в §14, этап 8 (Telegram).
 
 ---
 
@@ -771,6 +804,8 @@ type Query {
   pendingContributions: [Contribution!]!          # только ADMIN
   auditLog(limit: Int = 50): [AuditEntry!]!       # только ADMIN
   assistantThread: [AssistantMessage!]!
+  announcements(includeHidden: Boolean = false): [Announcement!]!  # includeHidden — ADMIN
+  unreadAnnouncements: Int!
 }
 
 # ─── Мутации ─────────────────────────────────────────────
@@ -809,8 +844,34 @@ type Mutation {
   addContributionFor(input: ContributionForInput!): Contribution!  # ADMIN
   addAbsenceFor(input: AbsenceForInput!): Absence!                 # ADMIN
 
+  # Объявления (§6.12)
+  createAnnouncement(input: AnnouncementInput!): Announcement!     # ADMIN
+  updateAnnouncement(id: ID!, input: AnnouncementInput!): Announcement!  # ADMIN
+  setAnnouncementArchived(id: ID!, archived: Boolean!): Announcement!    # ADMIN
+  markAnnouncementsSeen: DateTime
+
   # Помощник
   askAssistant(question: String!): AssistantMessage!
+}
+
+"Сообщение администратора всем участникам (§6.12). Событием фонда не является."
+type Announcement {
+  id: ID!
+  title: String!
+  body: String!
+  pinned: Boolean!          # закреплённое не тонет — так живут инструкции
+  publishedAt: DateTime     # null — черновик, виден только администратору
+  archivedAt: DateTime      # снято с глаз, но не удалено
+  updatedAt: DateTime!
+  author: User!
+  isNew: Boolean!           # опубликовано после последнего захода спрашивающего
+}
+
+input AnnouncementInput {
+  title: String!
+  body: String!
+  pinned: Boolean = false
+  published: Boolean = true
 }
 
 input OpeningBalancesInput {
@@ -880,7 +941,10 @@ CREATE TABLE users (
   joined_at         DATE NOT NULL,
   left_at           DATE,
   opening_balance   BIGINT NOT NULL DEFAULT 0,
-  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- §6.12: момент последнего захода в раздел объявлений. Из него выводится
+  -- число непрочитанного; отдельной таблицы «кто что прочитал» нет.
+  announcements_seen_at TIMESTAMPTZ
 );
 
 CREATE TABLE identities (
@@ -978,6 +1042,21 @@ CREATE TABLE login_codes (
   attempts    SMALLINT NOT NULL DEFAULT 0
 );
 
+-- §6.12. Денег не касается: ни строки в fund_transactions, ни участия в расчёте.
+CREATE TABLE announcements (
+  id           UUID PRIMARY KEY,
+  title        TEXT NOT NULL,
+  body         TEXT NOT NULL,
+  pinned       BOOLEAN NOT NULL DEFAULT false,
+  published_at TIMESTAMPTZ,           -- NULL — черновик
+  archived_at  TIMESTAMPTZ,           -- снято с глаз, но не удалено
+  created_by   UUID NOT NULL REFERENCES users(id),
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (btrim(title) <> ''),
+  CHECK (btrim(body) <> '')
+);
+
 CREATE TABLE assistant_messages (
   id         UUID PRIMARY KEY,
   user_id    UUID NOT NULL REFERENCES users(id),
@@ -1059,8 +1138,9 @@ WaterDrinkers/
 └── src/
     ├── app/
     │   ├── (auth)/login/
-    │   ├── (app)/            главная, взносы, фонд, заказы, отпуска, помощник
-    │   ├── (admin)/          очередь, участники, сальдо, аудит
+    │   ├── (app)/            главная, взносы, фонд, заказы, отпуска,
+    │   │                     объявления, помощник
+    │   ├── (admin)/          очередь, участники, сальдо, аудит, объявления
     │   └── api/
     │       ├── graphql/route.ts
     │       └── upload/route.ts

@@ -66,6 +66,54 @@ const ORDERS: { day: number; rubles: number; bottles: number }[] = [
   { day: 170, rubles: 2400, bottles: 8 },
 ];
 
+/**
+ * Объявления администратора (§6.12): закреплённая инструкция и пара новостей.
+ *
+ * Одно закреплено, остальные — по дате. Так на экране видно ровно то, ради
+ * чего раздел затевался: инструкция не тонет, а свежее сообщение стоит первым
+ * среди обычных.
+ */
+const ANNOUNCEMENTS: { title: string; body: string; dayOffset: number; pinned?: boolean }[] = [
+  {
+    title: 'Как пользоваться кассой',
+    pinned: true,
+    dayOffset: 1,
+    body: [
+      'Касса собирает деньги на бутилированную воду. Всё, что в неё внесено и из неё',
+      'потрачено, видно всем.',
+      '',
+      'Как внести взнос:',
+      '1. Откройте раздел «Мои взносы».',
+      '2. Укажите сумму и дату платежа, приложите фото чека.',
+      '3. Отправьте — взнос уйдёт на подтверждение администратору.',
+      '',
+      'На баланс взнос влияет только после подтверждения.',
+      '',
+      '- Отпуск и больничный отмечайте в разделе «Отсутствия»: за эти дни вода',
+      '  на вас не раскладывается.',
+      '- Любое число можно раскрыть: в разделе «Фонд» видно, из чего сложился баланс.',
+    ].join('\n'),
+  },
+  {
+    title: 'Сменили поставщика',
+    dayOffset: 120,
+    body: [
+      'С этого месяца возим воду у «Аквалайн»: бутыль дешевле на 30 ₽, привозят по вторникам.',
+      'На долях это скажется со следующего заказа.',
+    ].join('\n'),
+  },
+  {
+    title: 'Проверьте свой баланс перед отпуском',
+    dayOffset: 168,
+    body: [
+      'Перед длинным отпуском стоит закрыть долг: пока вас нет, заказы всё равно проходят,',
+      'а доля за дни отсутствия не начисляется только при отмеченном отпуске.',
+      '',
+      'Отметить отпуск: раздел «Отсутствия» → «Добавить».',
+    ].join('\n'),
+  },
+];
+
 /** Отсутствия: индекс участника, тип, начало и конец в днях от старта. */
 const ABSENCES: { person: number; type: 'VACATION' | 'SICK_LEAVE'; from: number; to: number }[] = [
   { person: 1, type: 'VACATION', from: 40, to: 54 },
@@ -128,6 +176,7 @@ async function main(): Promise<void> {
   await prisma.contribution.deleteMany();
   await prisma.waterOrder.deleteMany();
   await prisma.absence.deleteMany();
+  await prisma.announcement.deleteMany();
 
   const users = [];
   for (const person of PEOPLE) {
@@ -153,6 +202,25 @@ async function main(): Promise<void> {
   }
 
   const admin = users[0]!;
+
+  /**
+   * Объявления (§6.12): закреплённая инструкция и пара свежих сообщений.
+   *
+   * Пустой раздел на демонстрационных данных ничего не показывает, а весь
+   * смысл раздела — в том, как выглядит закреплённое рядом с обычным.
+   * Даты публикации разведены: непрочитанное считается по ним.
+   */
+  for (const notice of ANNOUNCEMENTS) {
+    await prisma.announcement.create({
+      data: {
+        title: notice.title,
+        body: notice.body,
+        pinned: notice.pinned ?? false,
+        publishedAt: dayFromStart(notice.dayOffset),
+        createdBy: admin.id,
+      },
+    });
+  }
 
   for (const absence of ABSENCES) {
     await prisma.absence.create({

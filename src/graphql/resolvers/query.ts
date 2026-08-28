@@ -1,7 +1,7 @@
 import type { Prisma } from '@/generated/prisma/client';
 import type { GraphQLContext } from '@/graphql/context';
 import { requireAdmin, requireUser } from '@/graphql/context';
-import { notImplemented, requireDate } from '@/graphql/errors';
+import { forbidden, notImplemented, requireDate } from '@/graphql/errors';
 import type { QueryResolvers } from '@/graphql/generated/graphql';
 import { fromIsoDate } from '@/lib/data';
 
@@ -110,6 +110,50 @@ export const Query: QueryResolvers<GraphQLContext> = {
     return ctx.db.auditEntry.findMany({
       orderBy: { id: 'desc' },
       take: Math.min(Math.max(limit, 1), MAX_AUDIT_LIMIT),
+    });
+  },
+
+  /**
+   * Объявления (§6.12).
+   *
+   * Участнику видно опубликованное и не убранное в архив. `includeHidden`
+   * от участника — не «молча пустой список», а отказ: молчание пряталось бы
+   * от того, кто пытается подсмотреть черновики, и от того, кто просто
+   * ошибся аргументом, одинаково.
+   *
+   * Порядок «закреплённые сверху, дальше свежие» задаётся здесь же, а не
+   * оставлен базе: `ORDER BY` на двух колонках повторял бы правило экрана
+   * вторым способом, и они разъехались бы на первой правке.
+   */
+  announcements: async (_parent, { includeHidden }, ctx) => {
+    const user = await requireUser(ctx);
+    if (includeHidden === true && user.role !== 'ADMIN') {
+      throw forbidden('Черновики и архив объявлений видны только администратору.');
+    }
+
+    const rows = await ctx.db.announcement.findMany({
+      where: includeHidden === true ? undefined : { publishedAt: { not: null }, archivedAt: null },
+      orderBy: [{ pinned: 'desc' }, { publishedAt: 'desc' }, { updatedAt: 'desc' }, { id: 'asc' }],
+    });
+
+    return rows;
+  },
+
+  /**
+   * Сколько объявлений участник ещё не видел — число для значка в шапке.
+   *
+   * Считается запросом, а не выборкой всего списка: значок рисуется на каждой
+   * странице приложения, и тащить ради него тексты всех объявлений незачем.
+   */
+  unreadAnnouncements: async (_parent, _args, ctx) => {
+    const user = await requireUser(ctx);
+
+    return ctx.db.announcement.count({
+      where: {
+        archivedAt: null,
+        publishedAt:
+          user.announcementsSeenAt === null ? { not: null } : { gt: user.announcementsSeenAt },
+      },
     });
   },
 

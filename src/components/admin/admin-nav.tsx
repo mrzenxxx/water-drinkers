@@ -1,6 +1,6 @@
 'use client';
 
-import { Inbox, PenLine, ScrollText, Users, type LucideIcon } from 'lucide-react';
+import { Inbox, Megaphone, PenLine, ScrollText, Users, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -8,7 +8,7 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * Четыре вкладки админ-панели (§6.7).
+ * Вкладки админ-панели (§6.7) и объявлений (§6.12).
  *
  * Клиентский компонент здесь оправдан: подсветка текущей вкладки выводится из
  * адреса страницы (`usePathname`). Вкладки — настоящие маршруты, а не состояние:
@@ -19,6 +19,7 @@ const TABS: ReadonlyArray<{ href: string; label: string; hint: string; icon: Luc
   { href: '/admin/participants', label: 'Участники', hint: 'Состав и балансы', icon: Users },
   { href: '/admin/entry', label: 'Ввод за участника', hint: 'Взнос и отсутствие', icon: PenLine },
   { href: '/admin/journal', label: 'Журнал', hint: 'Аудит и корректировки', icon: ScrollText },
+  { href: '/admin/notices', label: 'Объявления', hint: 'Сообщения участникам', icon: Megaphone },
 ];
 
 export function AdminNav(): ReactNode {

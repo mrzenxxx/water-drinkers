@@ -1,4 +1,4 @@
-import { Droplets, TrendingDown, Users, Waves } from 'lucide-react';
+import { Droplets, Megaphone, TrendingDown, Users, Waves } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
@@ -9,9 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requirePageUser } from '@/lib/auth/current-user';
 import { todayIso } from '@/lib/data';
-import { fundState, listPeople, peopleById, timelineSource } from '@/lib/data/queries';
+import { fundState, listAnnouncements, listPeople, peopleById, timelineSource } from '@/lib/data/queries';
 import { fullName } from '@/lib/format';
 import { formatKopecks } from '@/lib/money';
+import { isUnread, summarize } from '@/lib/view/announcements';
 import { buildEvents } from '@/lib/view/events';
 
 /**
@@ -28,14 +29,21 @@ import { buildEvents } from '@/lib/view/events';
 /** Сколько событий показывать в ленте. Дальше — дашборд. */
 const FEED_LIMIT = 12;
 
+/**
+ * Сколько непрочитанных объявлений показывать на главной. Дальше — раздел.
+ * Больше двух карточек отжали бы вниз то, ради чего сюда заходят: баланс.
+ */
+const NOTICE_LIMIT = 2;
+
 export default async function HomePage(): Promise<ReactNode> {
   const user = await requirePageUser();
 
-  const [state, people, byId, source] = await Promise.all([
+  const [state, people, byId, source, announcements] = await Promise.all([
     fundState(),
     listPeople(),
     peopleById(),
     timelineSource(),
+    listAnnouncements(),
   ]);
 
   const today = todayIso();
@@ -52,6 +60,20 @@ export default async function HomePage(): Promise<ReactNode> {
     .slice()
     .reverse()
     .slice(0, FEED_LIMIT);
+
+  /**
+   * Непрочитанные объявления (§6.12) — отдельным блоком **над** лентой, а не
+   * внутри неё. В ленте живут события фонда, у каждого из которых есть сумма
+   * и место в расчёте; у объявления нет ни того, ни другого, и шестой тип
+   * события потребовал бы шестого цвета в палитре, где пять уже на пределе
+   * различимости. Здесь оно рядом с лентой, но само по себе.
+   *
+   * Отметку «прочитано» ставит только раздел: погаси её главная — человек
+   * увидел бы заголовок и никогда не прочёл бы текст.
+   */
+  const seenAt = user.announcementsSeenAt?.toISOString() ?? null;
+  const unreadAll = announcements.filter((item) => isUnread(item, seenAt));
+  const unread = unreadAll.slice(0, NOTICE_LIMIT);
 
   return (
     <div className="flex flex-col gap-6">
@@ -120,6 +142,42 @@ export default async function HomePage(): Promise<ReactNode> {
           </CardContent>
         </Card>
       </div>
+
+      {unread.length > 0 && (
+        <Card className="border-primary/60">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <IconChip icon={Megaphone} size="sm" />
+              <CardTitle>Новое от администратора</CardTitle>
+            </div>
+            <CardDescription>
+              Непрочитанных объявлений: {unreadAll.length}. Полный текст — в разделе «Объявления».
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="flex flex-col">
+              {unread.map((item) => (
+                <li key={item.id} className="border-border border-b py-2 last:border-b-0">
+                  <Link
+                    href="/notices"
+                    className="focus-visible:ring-ring block rounded-md focus-visible:ring-2 focus-visible:outline-none"
+                  >
+                    <span className="block text-sm font-medium">{item.title}</span>
+                    <span className="text-muted-foreground mt-0.5 block text-xs">
+                      {summarize(item.body, 120)}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4">
+              <Button asChild size="sm" variant="outline">
+                <Link href="/notices">Читать объявления</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/*
         `items-start`: карточки тянутся по своему содержимому, а не по соседке.

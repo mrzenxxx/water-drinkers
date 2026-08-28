@@ -29,16 +29,22 @@ import { APP_SECTIONS, type NavItem } from '@/lib/view/nav';
 
 type AppShellProps = {
   user: NamedUser & { role: string };
+  /** Непрочитанные объявления (§6.12) — число на значке раздела. */
+  unreadNotices?: number;
   children: ReactNode;
 };
 
-export function AppShell({ user, children }: AppShellProps): ReactNode {
+export function AppShell({ user, unreadNotices = 0, children }: AppShellProps): ReactNode {
   // Пункт «Админ-панель» видит только администратор (§3, §6.7). Скрытие —
   // удобство, а не защита: сами страницы закрыты `requirePageAdmin`.
-  const sections: NavItem[] =
+  const withAdmin: NavItem[] =
     user.role === 'ADMIN'
       ? [...APP_SECTIONS, { href: '/admin', label: 'Админ-панель', icon: 'admin' }]
       : [...APP_SECTIONS];
+
+  const sections: NavItem[] = withAdmin.map((item) =>
+    item.href === '/notices' && unreadNotices > 0 ? { ...item, badge: unreadNotices } : item,
+  );
 
   return (
     <div className="flex min-h-dvh flex-col">

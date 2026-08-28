@@ -21,6 +21,7 @@ import { compareDates } from '@/lib/calc';
 import type { ContributionStatus, IsoDate } from '@/lib/calc/types';
 import { prisma } from '@/lib/db';
 import type { EventSource } from '@/lib/view/events';
+import { isVisible, sortAnnouncements, type AnnouncementView } from '@/lib/view/announcements';
 
 import { fromIsoDate, instantToIsoDate, toIsoDate, todayIso } from './dates';
 import { getFundState, type FundState } from './fund';
@@ -253,4 +254,51 @@ export const earliestKnownDate = cache(async (): Promise<IsoDate> => {
 
   const earliest = candidates.sort(compareDates)[0];
   return earliest ?? todayIso();
+});
+
+/**
+ * Объявления администратора (§6.12).
+ *
+ * `includeHidden` — булев параметр, а не объект с настройками: `cache()`
+ * из React сравнивает аргументы по ссылке, и объект, собранный на месте
+ * вызова, промахивался бы мимо кеша при каждом обращении.
+ *
+ * Порядок задаёт чистая функция `sortAnnouncements`, а не `ORDER BY`:
+ * «закреплённые сверху, дальше свежие» — правило экрана, и проверяется
+ * оно тестом без базы.
+ */
+export const listAnnouncements = cache(
+  async (includeHidden = false): Promise<AnnouncementView[]> => {
+    const rows = await prisma.announcement.findMany();
+
+    const items: AnnouncementView[] = rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      body: row.body,
+      pinned: row.pinned,
+      publishedAt: row.publishedAt === null ? null : row.publishedAt.toISOString(),
+      archivedAt: row.archivedAt === null ? null : row.archivedAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+      createdBy: row.createdBy,
+    }));
+
+    return sortAnnouncements(includeHidden ? items : items.filter(isVisible));
+  },
+);
+
+/**
+ * Сколько объявлений участник ещё не видел — число для значка в шапке (§6.12).
+ *
+ * Считается запросом, а не выборкой всего списка: значок рисуется на **каждой**
+ * странице приложения, и тащить ради одного числа тексты всех объявлений
+ * незачем. Аргумент — строка, а не объект участника: `cache()` сравнивает
+ * аргументы по ссылке, и объект промахивался бы мимо кеша каждый раз.
+ */
+export const countUnreadAnnouncements = cache(async (seenAt: string | null): Promise<number> => {
+  return prisma.announcement.count({
+    where: {
+      archivedAt: null,
+      publishedAt: seenAt === null ? { not: null } : { gt: new Date(seenAt) },
+    },
+  });
 });

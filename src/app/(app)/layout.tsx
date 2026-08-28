@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 
 import { AppShell } from '@/components/app-shell';
 import { hasProfile, requirePageUser } from '@/lib/auth/current-user';
+import { countUnreadAnnouncements } from '@/lib/data/queries';
 
 /**
  * Закрытая часть приложения.
@@ -30,5 +31,15 @@ export default async function AppLayout({
   const user = await requirePageUser();
   if (!hasProfile(user)) redirect('/welcome');
 
-  return <AppShell user={user}>{children}</AppShell>;
+  // Счётчик считается здесь, а не в оболочке: `AppShell` получает готовые
+  // значения и остаётся тонким, а к базе за одно и то же ходят из одного места.
+  const unreadNotices = await countUnreadAnnouncements(
+    user.announcementsSeenAt?.toISOString() ?? null,
+  );
+
+  return (
+    <AppShell user={user} unreadNotices={unreadNotices}>
+      {children}
+    </AppShell>
+  );
 }

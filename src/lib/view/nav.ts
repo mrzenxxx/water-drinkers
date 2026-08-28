@@ -26,13 +26,20 @@ export type NavIcon =
   | 'orders'
   | 'absences'
   | 'dashboard'
+  | 'notices'
   | 'admin';
 
-export type NavItem = { href: string; label: string; icon: NavIcon };
+/**
+ * `badge` — число непрочитанного у раздела. Обычное сериализуемое поле:
+ * список разделов пересекает границу «сервер → клиент», и всё в нём обязано
+ * быть значением, а не ссылкой на клиентскую сущность.
+ */
+export type NavItem = { href: string; label: string; icon: NavIcon; badge?: number };
 
-/** Разделы §6.1–§6.6 и §6.9. «Админ-панель» добавляет оболочка — только роли ADMIN. */
+/** Разделы §6.1–§6.6, §6.9 и §6.12. «Админ-панель» добавляет оболочка — только роли ADMIN. */
 export const APP_SECTIONS: readonly NavItem[] = [
   { href: '/', label: 'Главная', icon: 'home' },
+  { href: '/notices', label: 'Объявления', icon: 'notices' },
   { href: '/contributions', label: 'Мои взносы', icon: 'wallet' },
   { href: '/contributions/all', label: 'Все взносы', icon: 'people' },
   { href: '/fund', label: 'Фонд', icon: 'fund' },

@@ -288,6 +288,7 @@ export function createFakeDb(): FakeDb {
       leftAt: null,
       openingBalance: 0n,
       createdAt: now(),
+      announcementsSeenAt: null,
     })),
     fundSettings: new FakeTable('fund_settings', () => 1, () => ({
       id: 1,
@@ -337,6 +338,13 @@ export function createFakeDb(): FakeDb {
       comment: null,
       createdBy: null,
       createdAt: now(),
+    })),
+    announcement: new FakeTable('announcements', fakeUuid, () => ({
+      pinned: false,
+      publishedAt: null,
+      archivedAt: null,
+      createdAt: now(),
+      updatedAt: now(),
     })),
     auditEntry: new FakeTable(
       'audit_log',

@@ -3,6 +3,7 @@ import type { MutationResolvers } from '@/graphql/generated/graphql';
 
 import { absenceMutations } from './absence';
 import { adminMutations } from './admin';
+import { announcementMutations } from './announcement';
 import { assistantMutations } from './assistant';
 import { authMutations } from './auth';
 import { contributionMutations } from './contribution';
@@ -22,5 +23,6 @@ export const Mutation: MutationResolvers<GraphQLContext> = {
   ...orderMutations,
   ...absenceMutations,
   ...adminMutations,
+  ...announcementMutations,
   ...assistantMutations,
 };
