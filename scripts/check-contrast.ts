@@ -141,12 +141,18 @@ function sheenPeak(value: string): Rgba {
 
 type Check = { name: string; text: Rgba; min: number };
 
-function surfaceOf(tokens: Map<string, string>, glassToken: string): Rgba {
+/**
+ * Подложка под текстом. `glassToken === null` — сам фон приложения, без
+ * стекла: на нём стоят подписи пристыкованной боковой панели, и проверять
+ * их надо ровно так же, как текст на карточке.
+ */
+function surfaceOf(tokens: Map<string, string>, glassToken: string | null): Rgba {
   // Фон страницы: базовый цвет и три пятна света, наложенные друг на друга.
   let base = parseOklch(tokens.get('--background')!);
   for (const depth of ['--depth-1', '--depth-2', '--depth-3']) {
     base = over(parseOklch(tokens.get(depth)!), base);
   }
+  if (glassToken === null) return base;
 
   // Карточка с прозрачностью поверх фона, затем блик поверх карточки.
   const card = parseOklch(tokens.get('--card')!);
@@ -174,15 +180,25 @@ function run(): boolean {
       { name: 'кольцо фокуса', text: parseOklch(tokens.get('--ring')!), min: 3 },
     ];
 
-    for (const [layerName, token] of [
-      ['карточка', '--glass-bg'],
-      ['шапка и диалог', '--glass-bg-strong'],
-      ['плитка', '--glass-bg-soft'],
+    /*
+      Слой и то, что на нём стоит. У стеклянных поверхностей проверяются все
+      цвета текста — на карточку может лечь что угодно. У фона приложения
+      список короче, и это не поблажка: на голом фоне стоят ровно заголовки,
+      пояснения и подписи боковой панели. Появится там сумма или поле ввода —
+      строку надо расширить, а не радоваться зелёной проверке.
+    */
+    const PAGE_TEXTS = ['основной текст', 'приглушённый текст', 'кольцо фокуса'];
+
+    for (const [layerName, token, only] of [
+      ['карточка', '--glass-bg', null],
+      ['шапка и диалог', '--glass-bg-strong', null],
+      ['плитка', '--glass-bg-soft', null],
+      ['фон приложения (боковая панель, заголовки)', null, PAGE_TEXTS],
     ] as const) {
       const surface = surfaceOf(tokens, token);
       console.log(`\n${themeName} тема · ${layerName} — подложка ${hex(surface)}`);
 
-      for (const check of checks) {
+      for (const check of checks.filter((item) => only === null || only.includes(item.name))) {
         const ratio = contrast(check.text, surface);
         const passed = ratio >= check.min;
         if (!passed) ok = false;
@@ -213,17 +229,26 @@ function run(): boolean {
       }
     }
 
-    // Название приложения набрано градиентом поверх шапки — та же проверка.
-    const header = surfaceOf(tokens, '--glass-bg-strong');
-    for (const [index, stop] of [
-      ...tokens.get('--gradient-wordmark')!.matchAll(OKLCH_ALL),
-    ].entries()) {
-      const ratio = contrast(parseOklch(stop[0]), header);
-      const passed = ratio >= 4.5;
-      if (!passed) ok = false;
-      console.log(
-        `  ${passed ? '✓' : '✗'} ${`логотип, конец ${index + 1}`.padEnd(22)} ${ratio.toFixed(2)}:1 (нужно 4.5:1)`,
-      );
+    /*
+      Название приложения набрано градиентом и стоит в двух местах: в шапке
+      поверх стекла и в боковой панели прямо на фоне. Подложки разные, значит
+      и проверок две — пройденной на стекле за фон не поручиться.
+    */
+    for (const [place, token] of [
+      ['логотип в шапке', '--glass-bg-strong'],
+      ['логотип на фоне', null],
+    ] as const) {
+      const surface = surfaceOf(tokens, token);
+      for (const [index, stop] of [
+        ...tokens.get('--gradient-wordmark')!.matchAll(OKLCH_ALL),
+      ].entries()) {
+        const ratio = contrast(parseOklch(stop[0]), surface);
+        const passed = ratio >= 4.5;
+        if (!passed) ok = false;
+        console.log(
+          `  ${passed ? '✓' : '✗'} ${`${place}, конец ${index + 1}`.padEnd(22)} ${ratio.toFixed(2)}:1 (нужно 4.5:1)`,
+        );
+      }
     }
   }
 

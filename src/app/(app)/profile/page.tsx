@@ -1,11 +1,13 @@
-import { AtSign, IdCard, Scale } from 'lucide-react';
+import { AtSign, IdCard, LogOut, Scale } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { Amount } from '@/components/amount';
 import { IconChip } from '@/components/icon-chip';
 import { ProfileForm } from '@/components/profile-form';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { logoutAction } from '@/lib/actions/session';
 import { requirePageUser } from '@/lib/auth/current-user';
 import { toIsoDate } from '@/lib/data';
 import { fundState } from '@/lib/data/queries';
@@ -15,10 +17,14 @@ import { ROLE_LABEL, formatLongDate } from '@/lib/format';
  * Профиль участника.
  *
  * Сюда ведёт имя в шапке — и на узком экране, где имени не видно, значок
- * рядом с ним. Экран отвечает на два вопроса: «что приложение обо мне знает»
- * и «как поправить имя». Личных данных ровно три — почта, имя, фамилия
- * (правило 7 CLAUDE.md); всё остальное здесь — не о человеке, а о его
- * положении в фонде.
+ * рядом с ним. Экран отвечает на три вопроса: «что приложение обо мне знает»,
+ * «как поправить имя» и «как отсюда выйти». Личных данных ровно три — почта,
+ * имя, фамилия (правило 7 CLAUDE.md); всё остальное здесь — не о человеке,
+ * а о его положении в фонде.
+ *
+ * Выход стоит здесь, а не в шапке: он редкий и необратимый, а место рядом с
+ * ежедневной навигацией делало его случайно нажимаемым. Ищут его там же, где
+ * всё остальное про свою учётную запись.
  *
  * Серверный компонент: данные читаются `await`-ом из слоя данных, без HTTP
  * к собственному `/api/graphql` (§12а). Клиентская часть — только форма.
@@ -109,6 +115,28 @@ export default async function ProfilePage(): Promise<ReactNode> {
           >
             Мои взносы
           </Link>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <IconChip icon={LogOut} size="sm" />
+            <CardTitle>Выход</CardTitle>
+          </div>
+          <CardDescription>
+            Сессия закроется на этом устройстве. Чтобы вернуться, понадобится
+            новый код на рабочую почту.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* Форма с серверным действием: выход меняет состояние, а не читает его. */}
+          <form action={logoutAction}>
+            <Button type="submit" variant="outline">
+              <LogOut aria-hidden className="size-4" />
+              Выйти из аккаунта
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </div>

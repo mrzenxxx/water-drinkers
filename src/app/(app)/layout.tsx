@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 
 import { AppShell } from '@/components/app-shell';
 import { hasProfile, requirePageUser } from '@/lib/auth/current-user';
-import { countUnreadAnnouncements } from '@/lib/data/queries';
+import { countUnreadAnnouncements, fundState } from '@/lib/data/queries';
 
 /**
  * Закрытая часть приложения.
@@ -31,14 +31,22 @@ export default async function AppLayout({
   const user = await requirePageUser();
   if (!hasProfile(user)) redirect('/welcome');
 
-  // Счётчик считается здесь, а не в оболочке: `AppShell` получает готовые
-  // значения и остаётся тонким, а к базе за одно и то же ходят из одного места.
-  const unreadNotices = await countUnreadAnnouncements(
-    user.announcementsSeenAt?.toISOString() ?? null,
-  );
+  // Счётчик и цифры шапки считаются здесь, а не в оболочке: `AppShell`
+  // получает готовые значения и остаётся тонким, а к базе за одно и то же
+  // ходят из одного места. Пересчёт фонда мемоизирован `cache()`, поэтому
+  // страница, которой он нужен тоже, второго запроса не делает.
+  const [unreadNotices, state] = await Promise.all([
+    countUnreadAnnouncements(user.announcementsSeenAt?.toISOString() ?? null),
+    fundState(),
+  ]);
 
   return (
-    <AppShell user={user} unreadNotices={unreadNotices}>
+    <AppShell
+      user={user}
+      unreadNotices={unreadNotices}
+      balance={state.balanceOf(user.id)?.amount ?? 0}
+      fundBalance={state.result.fundBalance}
+    >
       {children}
     </AppShell>
   );
