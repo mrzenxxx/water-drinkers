@@ -1,4 +1,4 @@
-import { Droplets, Megaphone, TrendingDown, Users, Waves } from 'lucide-react';
+import { Droplets, TrendingDown, Users, Waves } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
@@ -12,8 +12,8 @@ import { todayIso } from '@/lib/data';
 import { fundState, listAnnouncements, listPeople, peopleById, timelineSource } from '@/lib/data/queries';
 import { fullName } from '@/lib/format';
 import { formatKopecks } from '@/lib/money';
-import { isUnread, summarize } from '@/lib/view/announcements';
 import { buildEvents } from '@/lib/view/events';
+import { buildFeed } from '@/lib/view/feed';
 import { cn } from '@/lib/utils';
 
 /**
@@ -27,14 +27,8 @@ import { cn } from '@/lib/utils';
  * без HTTP к собственному `/api/graphql` (§12а).
  */
 
-/** Сколько событий показывать в ленте. Дальше — дашборд. */
+/** Сколько элементов показывать в ленте. Дальше — дашборд и раздел объявлений. */
 const FEED_LIMIT = 12;
-
-/**
- * Сколько непрочитанных объявлений показывать на главной. Дальше — раздел.
- * Больше двух карточек отжали бы вниз то, ради чего сюда заходят: баланс.
- */
-const NOTICE_LIMIT = 2;
 
 /*
   ── Плотность карточек ────────────────────────────────────────────────────
@@ -72,64 +66,27 @@ export default async function HomePage(): Promise<ReactNode> {
     .filter((balance) => balance.amount < 0)
     .sort((a, b) => a.amount - b.amount);
 
-  const events = buildEvents(source)
-    .slice()
-    .reverse()
-    .slice(0, FEED_LIMIT);
-
   /**
-   * Непрочитанные объявления (§6.12) — отдельным блоком **над** лентой, а не
-   * внутри неё. В ленте живут события фонда, у каждого из которых есть сумма
-   * и место в расчёте; у объявления нет ни того, ни другого, и шестой тип
-   * события потребовал бы шестого цвета в палитре, где пять уже на пределе
-   * различимости. Здесь оно рядом с лентой, но само по себе.
+   * Лента: события фонда и объявления администратора (§6.12) одним потоком,
+   * свежее сверху. Объявление событием фонда не стало — суммы у него нет,
+   * в расчёт балансов оно не входит и на таймлайне дашборда (§6.9) не
+   * появляется; сводятся они на уровне экрана, чистой функцией `buildFeed`.
    *
    * Отметку «прочитано» ставит только раздел: погаси её главная — человек
-   * увидел бы заголовок и никогда не прочёл бы текст.
+   * увидел бы заголовок и никогда не прочёл бы текст. Поэтому непрочитанное
+   * здесь помечено значком «Новое», но непрочитанным и остаётся.
    */
   const seenAt = user.announcementsSeenAt?.toISOString() ?? null;
-  const unreadAll = announcements.filter((item) => isUnread(item, seenAt));
-  const unread = unreadAll.slice(0, NOTICE_LIMIT);
+  const feed = buildFeed({
+    events: buildEvents(source),
+    announcements,
+    seenAt,
+    limit: FEED_LIMIT,
+  });
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6">
       <title>Главная — WaterDrinkers</title>
-
-      {unread.length > 0 && (
-        <Card className="border-primary/60">
-          <CardHeader className={HEAD}>
-            <div className="flex items-center gap-3">
-              <IconChip icon={Megaphone} size="sm" />
-              <CardTitle>Новое от администратора</CardTitle>
-            </div>
-            <CardDescription>
-              Непрочитанных объявлений: {unreadAll.length}. Полный текст — в разделе «Объявления».
-            </CardDescription>
-          </CardHeader>
-          <CardContent className={BODY}>
-            <ul className="flex flex-col">
-              {unread.map((item) => (
-                <li key={item.id} className="border-border border-b py-2 last:border-b-0">
-                  <Link
-                    href="/notices"
-                    className="focus-visible:ring-ring block rounded-md focus-visible:ring-2 focus-visible:outline-none"
-                  >
-                    <span className="block text-sm font-medium">{item.title}</span>
-                    <span className="text-muted-foreground mt-0.5 block text-xs">
-                      {summarize(item.body, 120)}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-4">
-              <Button asChild size="sm" variant="outline">
-                <Link href="/notices">Читать объявления</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/*
         Две колонки, а не сетка плиток. Слева — состояние кассы сверху вниз в
@@ -270,14 +227,14 @@ export default async function HomePage(): Promise<ReactNode> {
           <CardHeader className={HEAD}>
             <div className="flex items-center gap-3">
               <IconChip icon={Waves} size="sm" />
-              <CardTitle>Последние события</CardTitle>
+              <CardTitle>Лента событий</CardTitle>
             </div>
             <CardDescription className="hidden sm:block">
-              Взносы, заказы, отсутствия и корректировки — в порядке появления.
+              Взносы, заказы, отсутствия, корректировки и объявления — свежее сверху.
             </CardDescription>
           </CardHeader>
           <CardContent className={BODY}>
-            <ActivityFeed events={events} people={byId} today={today} />
+            <ActivityFeed items={feed} people={byId} today={today} />
             <div className="mt-4">
               <Button asChild size="sm" variant="outline">
                 <Link href="/dashboard">Весь таймлайн</Link>

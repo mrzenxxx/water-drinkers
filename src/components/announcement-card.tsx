@@ -6,7 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDateTime } from '@/lib/format';
 import type { NamedUser } from '@/lib/format';
 import { fullName } from '@/lib/format';
-import { parseAnnouncementBody, type AnnouncementView } from '@/lib/view/announcements';
+import { cn } from '@/lib/utils';
+import {
+  parseAnnouncementBody,
+  type AnnouncementImageView,
+  type AnnouncementView,
+} from '@/lib/view/announcements';
 
 /**
  * Объявление администратора (§6.12).
@@ -48,6 +53,36 @@ export function AnnouncementBody({ body }: { body: string }): ReactNode {
         );
       })}
     </div>
+  );
+}
+
+/**
+ * Картинка объявления.
+ *
+ * Обычный `<img>`, а не `next/image`: оптимизатор ходит за картинкой отдельным
+ * запросом без cookie сессии, а выдача закрыта входом
+ * (`/api/notices/[id]/image`) — и получал бы 401 вместо картинки. Размеры
+ * проставлены, поэтому место под неё резервируется заранее и текст не
+ * подпрыгивает, когда она догрузится.
+ */
+export function AnnouncementImage({
+  image,
+  className,
+}: {
+  image: AnnouncementImageView;
+  className?: string;
+}): ReactNode {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={image.url}
+      alt={image.alt}
+      width={image.width}
+      height={image.height}
+      loading="lazy"
+      decoding="async"
+      className={cn('border-border h-auto w-full max-w-lg rounded-lg border', className)}
+    />
   );
 }
 
@@ -100,25 +135,7 @@ export function AnnouncementCard({
       <CardContent className="flex flex-col gap-4">
         <AnnouncementBody body={item.body} />
 
-        {item.image !== null && (
-          /*
-            Обычный `<img>`, а не `next/image`: оптимизатор ходит за картинкой
-            отдельным запросом без cookie сессии, а выдача закрыта входом
-            (`/api/notices/[id]/image`) — и получал бы 401 вместо картинки.
-            Размеры проставлены, поэтому место под неё резервируется заранее
-            и текст не подпрыгивает, когда она догрузится.
-          */
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={item.image.url}
-            alt={item.image.alt}
-            width={item.image.width}
-            height={item.image.height}
-            loading="lazy"
-            decoding="async"
-            className="border-border h-auto w-full max-w-lg rounded-lg border"
-          />
-        )}
+        {item.image !== null && <AnnouncementImage image={item.image} />}
       </CardContent>
     </Card>
   );

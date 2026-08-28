@@ -38,6 +38,7 @@ import {
 } from '@/lib/format';
 import { formatKopecks } from '@/lib/money';
 import { buildEvents, filterEvents, groupEvents } from '@/lib/view/events';
+import { toFeedItems } from '@/lib/view/feed';
 import {
   bucketKeyOf,
   parseDashboardFilters,
@@ -265,7 +266,7 @@ export default async function DashboardPage({
                   <h3 className="text-muted-foreground mb-1 text-xs font-medium">
                     {bucketTitle(group.key)} · {withCount(group.events.length, EVENTS)}
                   </h3>
-                  <ActivityFeed events={group.events} people={byId} today={today} />
+                  <ActivityFeed items={toFeedItems(group.events)} people={byId} today={today} />
                 </section>
               ))}
             </div>
