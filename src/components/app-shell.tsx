@@ -6,6 +6,7 @@ import { Amount, type AmountTone } from '@/components/amount';
 import { AppSidebar } from '@/components/app-sidebar';
 import { NavLayoutToggle } from '@/components/nav-layout-toggle';
 import { NavTabs, SectionTabs } from '@/components/nav-tabs';
+import { SidebarToggle } from '@/components/sidebar-toggle';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ROLE_LABEL, fullName, type NamedUser } from '@/lib/format';
 import type { Kopecks } from '@/lib/money';
@@ -26,10 +27,16 @@ import { APP_SECTIONS, ADMIN_SECTION, type NavSection } from '@/lib/view/nav';
  * Строка вкладок при этом никуда не делась: она осталась как выбор (кнопка
  * рядом с темой), а не как единственный вариант.
  *
- * Верхняя полоса — один ряд: знак приложения (когда его нет в панели), две
- * цифры, ради которых сюда заходят, и три кнопки справа. Выхода среди них
- * больше нет: выйти — редкое и необратимое действие, ему место в профиле,
- * а не в одном ряду с ежедневной навигацией (§6.10).
+ * Верхняя полоса тянется во всю ширину и проходит **над** боковой панелью,
+ * а не рядом с ней. Знак приложения стоит в ней, в той же колонке, что и
+ * значки разделов: панель начинается под полосой, поэтому шва между ними нет
+ * ни в одном состоянии, и знак не уезжает вместе со сворачиванием. Там же
+ * кнопки формы навигации — они про панель и стоят рядом с ней.
+ *
+ * В полосе, кроме того, две цифры, ради которых сюда заходят, и справа тема
+ * с участником. Выхода среди них больше нет: выйти — редкое и необратимое
+ * действие, ему место в профиле, а не в одном ряду с ежедневной навигацией
+ * (§6.10).
  *
  * Полоса стеклянная и плотнее карточек (`glass-strong`): она висит над
  * содержимым, и сквозь неё не должен читаться уезжающий под неё текст.
@@ -101,21 +108,23 @@ export function AppShell({
   );
 
   return (
-    <div className="sidebar-gutter flex min-h-dvh flex-col">
-      <header className="glass-strong sticky top-0 z-30 rounded-none border-x-0 border-t-0">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-2 px-4">
+    <div className="flex min-h-dvh flex-col">
+      {/*
+        Полоса лежит выше панели (`z-40` против `z-30`) и во всю ширину:
+        раскрытая панель уезжает под неё, а не наползает сверху. Иначе на
+        стыке знака приложения и полосы читался бы шов, а сквозь стекло
+        панели просвечивало бы содержимое полосы.
+      */}
+      <header className="glass-strong sticky top-0 z-40 rounded-none border-x-0 border-t-0">
+        <div className="flex h-16 w-full items-center gap-2 px-4">
           {/* Бургер и сама панель делят одно состояние, поэтому живут в одном компоненте. */}
           <AppSidebar items={sections} />
 
-          {/*
-            Знак приложения показывается там, где его нет в боковой панели:
-            на узком экране и в режиме вкладок. Правило — в `globals.css`,
-            чтобы режим переключался без перерисовки разметки.
-          */}
           <Link
             href="/"
-            className="shell-brand focus-visible:ring-ring items-center gap-2.5 rounded-lg focus-visible:ring-2 focus-visible:outline-none"
+            className="focus-visible:ring-ring flex items-center gap-2.5 rounded-lg focus-visible:ring-2 focus-visible:outline-none"
           >
+            {/* Капля — знак приложения. Подпись рядом, поэтому значок декоративен. */}
             <span className="droplet-mark flex size-9 shrink-0 items-center justify-center rounded-xl">
               <Droplets aria-hidden className="size-5" />
             </span>
@@ -124,12 +133,15 @@ export function AppShell({
             </span>
           </Link>
 
+          <SidebarToggle />
+          <NavLayoutToggle />
+
           <Stat
             icon={Wallet}
             label="Ваш баланс"
             value={balance}
             tone="auto"
-            className="hidden sm:flex"
+            className="ml-1 hidden sm:flex"
           />
           <Stat
             icon={Droplets}
@@ -140,7 +152,6 @@ export function AppShell({
           />
 
           <div className="ml-auto flex items-center gap-1">
-            <NavLayoutToggle />
             <ThemeToggle />
 
             {/*
@@ -168,27 +179,34 @@ export function AppShell({
         </div>
 
         {/* Разделы строкой — только в режиме вкладок; показом заведует CSS. */}
-        <div className="mx-auto w-full max-w-6xl px-4">
+        <div className="w-full px-4">
           <NavTabs items={sections} />
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:py-8">
-        <SectionTabs items={sections} />
-        {children}
-      </main>
+      {/*
+        Место под панель держит отступ, а не колонка сетки: панель отрисована
+        `position: fixed` и в потоке не участвует. Обе величины берутся из
+        одной переменной, поэтому вёрстка подстраивается сама.
+      */}
+      <div className="sidebar-gutter flex flex-1 flex-col">
+        <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:py-8">
+          <SectionTabs items={sections} />
+          {children}
+        </main>
 
-      <footer className="text-muted-foreground border-border mx-auto mt-4 flex w-full max-w-6xl items-start gap-2 border-t px-4 py-6 text-xs">
-        <Droplets aria-hidden className="text-primary mt-0.5 size-4 shrink-0 opacity-70" />
-        <p>
-          Σ балансов всех участников всегда равна остатку фонда. Расхождение видно
-          в разделе{' '}
-          <Link href="/fund" className="underline underline-offset-2">
-            «Фонд»
-          </Link>
-          .
-        </p>
-      </footer>
+        <footer className="text-muted-foreground border-border mx-auto mt-4 flex w-full max-w-6xl items-start gap-2 border-t px-4 py-6 text-xs">
+          <Droplets aria-hidden className="text-primary mt-0.5 size-4 shrink-0 opacity-70" />
+          <p>
+            Σ балансов всех участников всегда равна остатку фонда. Расхождение видно
+            в разделе{' '}
+            <Link href="/fund" className="underline underline-offset-2">
+              «Фонд»
+            </Link>
+            .
+          </p>
+        </footer>
+      </div>
     </div>
   );
 }

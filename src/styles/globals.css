@@ -642,12 +642,14 @@
     background-image: var(--gradient-rail);
   }
 
-  /* Знак приложения в шапке — только там, где его нет в боковой панели. */
-  .shell-brand {
-    display: flex;
-  }
-
-  /* Разделы строкой — только в режиме вкладок и только на широком экране. */
+  /*
+    Кнопка сворачивания и подсказка про Ctrl + B — только на широком экране
+    и только там, где панель вообще есть. Показ задан здесь, а не утилитами
+    Tailwind: правило зависит от `data-nav` на `<html>`, а утилиты лежат слоем
+    выше компонентов и перекрыли бы его.
+  */
+  .sidebar-toggle,
+  .sidebar-hint,
   .nav-tabs-row {
     display: none;
   }
@@ -707,17 +709,18 @@
       opacity: 1;
     }
 
-    /* Вкладки: панели нет вовсе, знак приложения и разделы уходят в шапку. */
-    [data-nav='tabs'] .sidebar-panel {
-      display: none;
+    .sidebar-toggle {
+      display: inline-flex;
     }
 
-    .shell-brand {
-      display: none;
+    .sidebar-hint {
+      display: block;
     }
 
-    [data-nav='tabs'] .shell-brand {
-      display: flex;
+    /* Вкладки: панели нет вовсе, разделы уходят строкой под верхнюю полосу. */
+    [data-nav='tabs'] .sidebar-panel,
+    [data-nav='tabs'] .sidebar-toggle {
+      display: none;
     }
 
     [data-nav='tabs'] .nav-tabs-row {
