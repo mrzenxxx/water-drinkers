@@ -24,6 +24,7 @@ function announcement(overrides: Partial<AnnouncementView> & { id: string }): An
     archivedAt: null,
     updatedAt: '2026-08-01T09:00:00.000Z',
     createdBy: 'u-admin',
+    image: null,
     ...overrides,
   };
 }

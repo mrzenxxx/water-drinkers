@@ -189,10 +189,36 @@ model Announcement {
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  author User @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  /// Приложенная картинка. Здесь только её описание — сами байты лежат
+  /// в отдельной таблице, иначе каждая выборка списка тащила бы их в память.
+  /// `null` во всех четырёх полях означает «картинки нет».
+  imageMediaType String? @map("image_media_type")
+  /// Описание для тех, кто картинку не видит. При картинке обязательно (§12).
+  imageAlt       String? @map("image_alt")
+  imageWidth     Int?    @map("image_width")
+  imageHeight    Int?    @map("image_height")
+
+  author User               @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  image  AnnouncementImage?
 
   @@index([publishedAt])
   @@map("announcements")
+}
+
+/// Байты картинки объявления — отдельной таблицей, а не колонкой в `announcements`.
+///
+/// Prisma выбирает все колонки, если не попросить иначе, и `BYTEA` в самой
+/// таблице означал бы, что список объявлений на каждом экране вычитывает из
+/// базы мегабайты, которые ему не нужны. Здесь их читает ровно один обработчик
+/// — `/api/notices/[id]/image`.
+model AnnouncementImage {
+  announcementId String   @id @map("announcement_id") @db.Uuid
+  bytes          Bytes
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("announcement_images")
 }
 
 model AuditEntry {

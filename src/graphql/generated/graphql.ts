@@ -1,5 +1,6 @@
 import type { GraphQLResolveInfo, GraphQLScalarType, GraphQLScalarTypeConfig } from 'graphql';
 import type { User as PrismaUser, Contribution as PrismaContribution, WaterOrder as PrismaWaterOrder, Absence as PrismaAbsence, Receipt as PrismaReceipt, AuditEntry as PrismaAuditEntry, AssistantMessage as PrismaAssistantMessage, Announcement as PrismaAnnouncement } from '@/generated/prisma/client';
+import type { AnnouncementImageView } from '@/lib/view/announcements';
 import type { FundSettings as CalcFundSettings, Balance as CalcBalance, BalanceBreakdown as CalcBalanceBreakdown, OrderShare as CalcOrderShare } from '@/lib/calc/types';
 import type { GraphQLContext } from '../context';
 export type Maybe<T> = T | null;
@@ -57,6 +58,8 @@ export type Announcement = {
   author: User;
   body: Scalars['String']['output'];
   id: Scalars['ID']['output'];
+  /** Приложенная картинка; null — её нет. */
+  image?: Maybe<AnnouncementImage>;
   /** Опубликовано после последнего захода текущего участника в раздел. */
   isNew: Scalars['Boolean']['output'];
   /** Закреплённое не тонет в списке — так живут инструкции. */
@@ -65,6 +68,36 @@ export type Announcement = {
   publishedAt?: Maybe<Scalars['DateTime']['output']>;
   title: Scalars['String']['output'];
   updatedAt: Scalars['DateTime']['output'];
+};
+
+/**
+ * Картинка объявления.
+ *
+ * Отдаётся ссылкой на приложение, а не на хранилище: байты лежат в базе, и
+ * менять это решение не должно означать правку схемы и клиента. Размеры — чтобы
+ * страница резервировала место и не дёргалась, когда картинка догрузится.
+ */
+export type AnnouncementImage = {
+  __typename?: 'AnnouncementImage';
+  /** Описание для тех, кто картинку не видит. Обязательно (§12). */
+  alt: Scalars['String']['output'];
+  height: Scalars['Int']['output'];
+  mediaType: Scalars['String']['output'];
+  url: Scalars['String']['output'];
+  width: Scalars['Int']['output'];
+};
+
+/**
+ * Картинка на загрузку.
+ *
+ * Байты приходят в base64: у GraphQL нет своего способа передать файл, а заводить
+ * второй путь записи ради одного поля значило бы развести проверки прав и формата
+ * по двум местам. Тип определяется по сигнатуре файла — `mediaType` лишь сверяется.
+ */
+export type AnnouncementImageInput = {
+  alt: Scalars['String']['input'];
+  base64: Scalars['String']['input'];
+  mediaType?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type AnnouncementInput = {
@@ -201,6 +234,8 @@ export type Mutation = {
   rejectContribution: Contribution;
   requestLoginCode: RequestCodeResult;
   setAnnouncementArchived: Announcement;
+  /** Приложить картинку или убрать её (null). Только ADMIN. */
+  setAnnouncementImage: Announcement;
   setOpeningBalances: Fund;
   setParticipantRole: User;
   settleParticipant: User;
@@ -298,6 +333,12 @@ export type MutationRequestLoginCodeArgs = {
 export type MutationSetAnnouncementArchivedArgs = {
   archived: Scalars['Boolean']['input'];
   id: Scalars['ID']['input'];
+};
+
+
+export type MutationSetAnnouncementImageArgs = {
+  id: Scalars['ID']['input'];
+  image?: InputMaybe<AnnouncementImageInput>;
 };
 
 
@@ -578,6 +619,8 @@ export type ResolversTypes = {
   AbsenceForInput: AbsenceForInput;
   AbsenceType: AbsenceType;
   Announcement: ResolverTypeWrapper<PrismaAnnouncement>;
+  AnnouncementImage: ResolverTypeWrapper<AnnouncementImageView>;
+  AnnouncementImageInput: AnnouncementImageInput;
   AnnouncementInput: AnnouncementInput;
   AssistantMessage: ResolverTypeWrapper<PrismaAssistantMessage>;
   AuditEntry: ResolverTypeWrapper<PrismaAuditEntry>;
@@ -618,6 +661,8 @@ export type ResolversParentTypes = {
   Absence: PrismaAbsence;
   AbsenceForInput: AbsenceForInput;
   Announcement: PrismaAnnouncement;
+  AnnouncementImage: AnnouncementImageView;
+  AnnouncementImageInput: AnnouncementImageInput;
   AnnouncementInput: AnnouncementInput;
   AssistantMessage: PrismaAssistantMessage;
   AuditEntry: PrismaAuditEntry;
@@ -664,11 +709,20 @@ export type AnnouncementResolvers<ContextType = GraphQLContext, ParentType exten
   author?: Resolver<ResolversTypes['User'], ParentType, ContextType>;
   body?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  image?: Resolver<Maybe<ResolversTypes['AnnouncementImage']>, ParentType, ContextType>;
   isNew?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   pinned?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   publishedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
   title?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
+export type AnnouncementImageResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AnnouncementImage'] = ResolversParentTypes['AnnouncementImage']> = {
+  alt?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  height?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  mediaType?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  url?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  width?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };
 
 export type AssistantMessageResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AssistantMessage'] = ResolversParentTypes['AssistantMessage']> = {
@@ -776,6 +830,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   rejectContribution?: Resolver<ResolversTypes['Contribution'], ParentType, ContextType, RequireFields<MutationRejectContributionArgs, 'comment' | 'id'>>;
   requestLoginCode?: Resolver<ResolversTypes['RequestCodeResult'], ParentType, ContextType, RequireFields<MutationRequestLoginCodeArgs, 'email'>>;
   setAnnouncementArchived?: Resolver<ResolversTypes['Announcement'], ParentType, ContextType, RequireFields<MutationSetAnnouncementArchivedArgs, 'archived' | 'id'>>;
+  setAnnouncementImage?: Resolver<ResolversTypes['Announcement'], ParentType, ContextType, RequireFields<MutationSetAnnouncementImageArgs, 'id'>>;
   setOpeningBalances?: Resolver<ResolversTypes['Fund'], ParentType, ContextType, RequireFields<MutationSetOpeningBalancesArgs, 'input'>>;
   setParticipantRole?: Resolver<ResolversTypes['User'], ParentType, ContextType, RequireFields<MutationSetParticipantRoleArgs, 'id' | 'role'>>;
   settleParticipant?: Resolver<ResolversTypes['User'], ParentType, ContextType, RequireFields<MutationSettleParticipantArgs, 'amount' | 'id' | 'note'>>;
@@ -862,6 +917,7 @@ export type WaterOrderResolvers<ContextType = GraphQLContext, ParentType extends
 export type Resolvers<ContextType = GraphQLContext> = {
   Absence?: AbsenceResolvers<ContextType>;
   Announcement?: AnnouncementResolvers<ContextType>;
+  AnnouncementImage?: AnnouncementImageResolvers<ContextType>;
   AssistantMessage?: AssistantMessageResolvers<ContextType>;
   AuditEntry?: AuditEntryResolvers<ContextType>;
   AuthResult?: AuthResultResolvers<ContextType>;

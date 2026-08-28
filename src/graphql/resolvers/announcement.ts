@@ -3,6 +3,7 @@ import { requireUser } from '@/graphql/context';
 import { notFound } from '@/graphql/errors';
 import type { AnnouncementResolvers } from '@/graphql/generated/graphql';
 import { toIsoDateTime, toIsoDateTimeOrNull } from '@/lib/data';
+import { toImageView } from '@/lib/view/announcements';
 
 /**
  * Поля `Announcement`, которых нет в строке таблицы (§6.12).
@@ -24,6 +25,12 @@ export const Announcement: AnnouncementResolvers<GraphQLContext> = {
     }
     return author;
   },
+
+  /**
+   * Описание картинки собирается из колонок объявления — байты сюда не едут
+   * вовсе: они лежат отдельной таблицей и отдаются одним обработчиком по ссылке.
+   */
+  image: (parent) => toImageView(parent),
 
   /**
    * Новизна считается от момента последнего захода **спрашивающего**, а не

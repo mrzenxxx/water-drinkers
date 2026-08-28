@@ -4,6 +4,7 @@ import { requireAdmin, requireUser } from '@/graphql/context';
 import { badInput, notFound, requireText } from '@/graphql/errors';
 import type { MutationResolvers } from '@/graphql/generated/graphql';
 import { markAnnouncementsSeen, writeAudit } from '@/lib/data';
+import { ImageError, inspectImage } from '@/lib/images';
 
 /**
  * Объявления администратора (§6.12): инструкции и сообщения всем участникам.
@@ -47,6 +48,8 @@ function snapshot(row: {
   pinned: boolean;
   publishedAt: Date | null;
   archivedAt: Date | null;
+  imageMediaType: string | null;
+  imageAlt: string | null;
 }): Prisma.InputJsonObject {
   return {
     title: row.title,
@@ -54,12 +57,22 @@ function snapshot(row: {
     pinned: row.pinned,
     publishedAt: row.publishedAt?.toISOString() ?? null,
     archivedAt: row.archivedAt?.toISOString() ?? null,
+    // Байтов в журнале нет — только факт картинки и её подпись: журнал §6.7
+    // читают люди, и мегабайт в JSONB им ничего не скажет.
+    image: row.imageMediaType === null ? null : { mediaType: row.imageMediaType, alt: row.imageAlt },
   };
 }
 
+/** Верхняя граница подписи к картинке: это описание, а не второй текст. */
+const MAX_ALT = 300;
+
 export const announcementMutations: Pick<
   MutationResolvers<GraphQLContext>,
-  'createAnnouncement' | 'updateAnnouncement' | 'setAnnouncementArchived' | 'markAnnouncementsSeen'
+  | 'createAnnouncement'
+  | 'updateAnnouncement'
+  | 'setAnnouncementArchived'
+  | 'setAnnouncementImage'
+  | 'markAnnouncementsSeen'
 > = {
   createAnnouncement: async (_parent, { input }, ctx) => {
     const admin = await requireAdmin(ctx);
@@ -151,6 +164,111 @@ export const announcementMutations: Pick<
       await writeAudit(tx, {
         actorId: admin.id,
         action: archived ? 'announcement.archive' : 'announcement.restore',
+        entity: 'announcement',
+        entityId: id,
+        before: snapshot(existing),
+        after: snapshot(row),
+      });
+
+      return row;
+    });
+  },
+
+  /**
+   * Приложить картинку к объявлению или убрать её (`image: null`).
+   *
+   * Отдельной мутацией, а не полем в `AnnouncementInput`: там «поля нет»
+   * и «поле пустое» пришлось бы различать, чтобы правка текста не сносила
+   * картинку молча. Здесь намерение сказано вслух самим вызовом.
+   *
+   * Байты приходят в base64. Своего способа передать файл у GraphQL нет,
+   * а заводить ради картинки второй путь записи значило бы развести проверку
+   * прав и разбор формата по двум местам. Внутри процесса — а серверное
+   * действие зовёт резолвер именно так — лишняя перекодировка стоит
+   * миллисекунд и не идёт ни по какой сети.
+   *
+   * Тип берётся из **сигнатуры файла**, а не из того, чем файл назвался:
+   * `mediaType` из формы — такой же ввод, как и всё остальное, и страница
+   * HTML, названная `image/png`, выполнилась бы в чужом браузере.
+   */
+  setAnnouncementImage: async (_parent, { id, image }, ctx) => {
+    const admin = await requireAdmin(ctx);
+
+    const existing = await ctx.db.announcement.findUnique({ where: { id } });
+    if (existing === null) {
+      throw notFound('Объявление не найдено.', { id });
+    }
+
+    if (image == null) {
+      if (existing.imageMediaType === null) return existing;
+
+      return ctx.db.$transaction(async (tx) => {
+        await tx.announcementImage.deleteMany({ where: { announcementId: id } });
+        const row = await tx.announcement.update({
+          where: { id },
+          data: { imageMediaType: null, imageAlt: null, imageWidth: null, imageHeight: null },
+        });
+
+        await writeAudit(tx, {
+          actorId: admin.id,
+          action: 'announcement.image',
+          entity: 'announcement',
+          entityId: id,
+          before: snapshot(existing),
+          after: snapshot(row),
+        });
+
+        return row;
+      });
+    }
+
+    const alt = requireText(image.alt, 'описание картинки');
+    if (alt.length > MAX_ALT) {
+      throw badInput(`Описание картинки длиннее ${MAX_ALT} символов — это уже текст.`, {
+        field: 'alt',
+      });
+    }
+
+    let bytes: Uint8Array<ArrayBuffer>;
+    try {
+      // Байты перекладываются в собственный `Uint8Array`, а не отдаются как
+      // `Buffer`: у того тип буфера шире (`ArrayBufferLike`), и колонка
+      // `Bytes` его не принимает. Содержимое при этом ровно то же.
+      const decoded = Buffer.from(image.base64, 'base64');
+      bytes = new Uint8Array(decoded.byteLength);
+      bytes.set(decoded);
+    } catch {
+      throw badInput('Файл картинки не удалось прочитать.', { field: 'image' });
+    }
+
+    let info;
+    try {
+      info = inspectImage(bytes, image.mediaType);
+    } catch (error) {
+      // `ImageError` несёт формулировку, написанную для человека; всё
+      // остальное — настоящая поломка, и прятать её под «неверный ввод» нельзя.
+      if (error instanceof ImageError) throw badInput(error.message, { field: 'image' });
+      throw error;
+    }
+
+    return ctx.db.$transaction(async (tx) => {
+      // Картинка у объявления одна, поэтому не «добавить», а «заменить».
+      await tx.announcementImage.deleteMany({ where: { announcementId: id } });
+      await tx.announcementImage.create({ data: { announcementId: id, bytes } });
+
+      const row = await tx.announcement.update({
+        where: { id },
+        data: {
+          imageMediaType: info.mediaType,
+          imageAlt: alt,
+          imageWidth: info.width,
+          imageHeight: info.height,
+        },
+      });
+
+      await writeAudit(tx, {
+        actorId: admin.id,
+        action: 'announcement.image',
         entity: 'announcement',
         entityId: id,
         before: snapshot(existing),

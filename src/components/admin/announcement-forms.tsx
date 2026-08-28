@@ -12,6 +12,7 @@ import {
   updateAnnouncementAction,
 } from '@/lib/actions/announcements';
 import { formatDateTime } from '@/lib/format';
+import { MAX_IMAGE_BYTES, SUPPORTED_IMAGE_TYPES } from '@/lib/images';
 import type { AnnouncementView } from '@/lib/view/announcements';
 
 /**
@@ -71,6 +72,8 @@ function Fields({
         <BodyHint />
       </div>
 
+      <ImageFields idPrefix={idPrefix} item={item} />
+
       <div className="flex flex-wrap gap-x-6 gap-y-2">
         <label className="flex items-center gap-2 text-sm" htmlFor={`${idPrefix}-pinned`}>
           <input
@@ -95,6 +98,80 @@ function Fields({
         </label>
       </div>
     </>
+  );
+}
+
+/**
+ * Картинка объявления.
+ *
+ * Подпись обязательна вместе с файлом: картинка без описания молчит для тех,
+ * кто её не видит (§12), и это же правило стоит в базе отдельным `CHECK`.
+ * Формат проверяется по сигнатуре файла, а не по расширению, — `accept`
+ * здесь лишь подсказка выбирающему, а не защита.
+ */
+function ImageFields({
+  idPrefix,
+  item,
+}: {
+  idPrefix: string;
+  item?: AnnouncementView;
+}): ReactNode {
+  const current = item?.image ?? null;
+  const limitMb = Math.round(MAX_IMAGE_BYTES / 1024 / 1024);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor={`${idPrefix}-image`}>Картинка</Label>
+
+      {current !== null && (
+        <div className="flex flex-wrap items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={current.url}
+            alt={current.alt}
+            width={current.width}
+            height={current.height}
+            className="border-border h-16 w-auto rounded-md border"
+          />
+          <span className="text-muted-foreground text-xs">
+            {current.width}×{current.height}, {current.mediaType}. Новый файл заменит эту картинку.
+          </span>
+        </div>
+      )}
+
+      <Input
+        id={`${idPrefix}-image`}
+        name="image"
+        type="file"
+        accept={SUPPORTED_IMAGE_TYPES.join(',')}
+        className="file:text-foreground file:mr-3 file:cursor-pointer file:border-0 file:bg-transparent file:text-sm"
+      />
+
+      <Input
+        name="imageAlt"
+        maxLength={300}
+        defaultValue={current?.alt}
+        placeholder="Что на картинке — для тех, кто её не видит"
+        aria-label="Описание картинки"
+      />
+
+      <p className="text-muted-foreground text-xs">
+        До {limitMb} МБ, форматы: PNG, JPEG, GIF, WebP. Описание обязательно — без него
+        картинка молчит для читалки экрана. Картинка у объявления одна.
+      </p>
+
+      {current !== null && (
+        <label className="flex items-center gap-2 text-sm" htmlFor={`${idPrefix}-remove-image`}>
+          <input
+            id={`${idPrefix}-remove-image`}
+            name="removeImage"
+            type="checkbox"
+            className="accent-primary size-4"
+          />
+          Убрать картинку
+        </label>
+      )}
+    </div>
   );
 }
 

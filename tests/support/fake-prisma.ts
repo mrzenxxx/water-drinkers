@@ -345,7 +345,18 @@ export function createFakeDb(): FakeDb {
       archivedAt: null,
       createdAt: now(),
       updatedAt: now(),
+      imageMediaType: null,
+      imageAlt: null,
+      imageWidth: null,
+      imageHeight: null,
     })),
+    // Ключ здесь — идентификатор объявления, а не собственный: картинка у
+    // объявления одна, и своего id у неё нет (§11).
+    announcementImage: new FakeTable(
+      'announcement_images',
+      () => undefined,
+      () => ({ createdAt: now() }),
+    ),
     auditEntry: new FakeTable(
       'audit_log',
       () => {

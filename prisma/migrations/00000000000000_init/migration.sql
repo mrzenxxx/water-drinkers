@@ -164,8 +164,32 @@ CREATE TABLE "announcements" (
   "created_by"   UUID NOT NULL REFERENCES "users"("id"),
   "created_at"   TIMESTAMPTZ NOT NULL DEFAULT now(),
   "updated_at"   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- Приложенная картинка: здесь её описание, байты — в announcement_images.
+  -- Тип определяется по сигнатуре файла, а не по тому, чем он назвался.
+  "image_media_type" TEXT,
+  "image_alt"        TEXT,
+  "image_width"      INTEGER,
+  "image_height"     INTEGER,
   CHECK (btrim("title") <> ''),
-  CHECK (btrim("body") <> '')
+  CHECK (btrim("body") <> ''),
+  -- Картинка описана целиком или её нет вовсе. Подпись обязательна: без неё
+  -- картинка молчит для тех, кто её не видит (§12).
+  CHECK (
+    ("image_media_type" IS NULL AND "image_alt" IS NULL
+       AND "image_width" IS NULL AND "image_height" IS NULL)
+    OR ("image_media_type" IS NOT NULL AND btrim("image_alt") <> ''
+       AND "image_width" > 0 AND "image_height" > 0)
+  )
+);
+
+-- Байты картинки — отдельной таблицей, а не колонкой в announcements: Prisma
+-- выбирает все колонки, если не попросить иначе, и список объявлений на каждом
+-- экране вычитывал бы мегабайты, которые ему не нужны. Сюда ходит ровно один
+-- обработчик — /api/notices/[id]/image.
+CREATE TABLE "announcement_images" (
+  "announcement_id" UUID PRIMARY KEY REFERENCES "announcements"("id"),
+  "bytes"           BYTEA NOT NULL,
+  "created_at"      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Список участника — это выборка опубликованных в порядке публикации.

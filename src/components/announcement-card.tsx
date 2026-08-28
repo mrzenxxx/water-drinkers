@@ -97,8 +97,28 @@ export function AnnouncementCard({
         </p>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="flex flex-col gap-4">
         <AnnouncementBody body={item.body} />
+
+        {item.image !== null && (
+          /*
+            Обычный `<img>`, а не `next/image`: оптимизатор ходит за картинкой
+            отдельным запросом без cookie сессии, а выдача закрыта входом
+            (`/api/notices/[id]/image`) — и получал бы 401 вместо картинки.
+            Размеры проставлены, поэтому место под неё резервируется заранее
+            и текст не подпрыгивает, когда она догрузится.
+          */
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={item.image.url}
+            alt={item.image.alt}
+            width={item.image.width}
+            height={item.image.height}
+            loading="lazy"
+            decoding="async"
+            className="border-border h-auto w-full max-w-lg rounded-lg border"
+          />
+        )}
       </CardContent>
     </Card>
   );

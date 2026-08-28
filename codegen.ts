@@ -30,6 +30,9 @@ const config: CodegenConfig = {
           AuditEntry: '@/generated/prisma/client#AuditEntry as PrismaAuditEntry',
           AssistantMessage: '@/generated/prisma/client#AssistantMessage as PrismaAssistantMessage',
           Announcement: '@/generated/prisma/client#Announcement as PrismaAnnouncement',
+          // Картинка собирается из колонок объявления, а не из строки таблицы
+          // с байтами: наружу отдаются описание и ссылка, но не содержимое.
+          AnnouncementImage: '@/lib/view/announcements#AnnouncementImageView',
           Fund: '@/lib/calc/types#FundSettings as CalcFundSettings',
           Balance: '@/lib/calc/types#Balance as CalcBalance',
           BalanceBreakdown: '@/lib/calc/types#BalanceBreakdown as CalcBalanceBreakdown',

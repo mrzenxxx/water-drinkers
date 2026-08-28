@@ -38,9 +38,35 @@ const ARCHIVE = `
 
 const LIST = `
   query ($includeHidden: Boolean) {
-    announcements(includeHidden: $includeHidden) { id title isNew }
+    announcements(includeHidden: $includeHidden) {
+      id
+      title
+      isNew
+      image { url alt mediaType width height }
+    }
   }
 `;
+
+const SET_IMAGE = `
+  mutation ($id: ID!, $image: AnnouncementImageInput) {
+    setAnnouncementImage(id: $id, image: $image) {
+      id
+      image { url alt mediaType width height }
+    }
+  }
+`;
+
+/** Настоящий PNG 4×2: размеры лежат в заголовке IHDR, больше ничего не нужно. */
+const PNG_BASE64 = Buffer.from(
+  Uint8Array.from([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    0x00, 0x00, 0x00, 0x0d,
+    0x49, 0x48, 0x44, 0x52,
+    0x00, 0x00, 0x00, 0x04,
+    0x00, 0x00, 0x00, 0x02,
+    0x08, 0x06, 0x00, 0x00, 0x00,
+  ]),
+).toString('base64');
 
 const UNREAD = `query { unreadAnnouncements }`;
 const MARK = `mutation { markAnnouncementsSeen }`;
@@ -301,5 +327,120 @@ describe('непрочитанное', () => {
     const db = seedOffice();
     expect(errorCode(await run(UNREAD, { db: db.client }))).toBe('UNAUTHENTICATED');
     expect(errorCode(await run(MARK, { db: db.client }))).toBe('UNAUTHENTICATED');
+  });
+});
+
+
+describe('картинка объявления', () => {
+  const IMAGE = { base64: PNG_BASE64, mediaType: 'image/png', alt: 'Снимок доски объявлений' };
+
+  it('прикладывается администратором и отдаётся ссылкой, а не байтами', async () => {
+    const db = seedOffice();
+    const id = await publish(db);
+
+    const data = await runOk(SET_IMAGE, {
+      db: db.client,
+      userId: ADMIN_ID,
+      variables: { id, image: IMAGE },
+    });
+
+    expect((data.setAnnouncementImage as { image: unknown }).image).toEqual({
+      url: `/api/notices/${id}/image`,
+      alt: IMAGE.alt,
+      mediaType: 'image/png',
+      width: 4,
+      height: 2,
+    });
+
+    // Байты лежат отдельной таблицей: список объявлений их не касается.
+    expect(db.tables.announcementImage.rows).toHaveLength(1);
+    expect(db.tables.auditEntry.rows.map((row) => row.action)).toEqual([
+      'announcement.create',
+      'announcement.image',
+    ]);
+  });
+
+  it('участнику прикладывать нельзя', async () => {
+    const db = seedOffice();
+    const id = await publish(db);
+
+    const result = await run(SET_IMAGE, {
+      db: db.client,
+      userId: 'u-0',
+      variables: { id, image: IMAGE },
+    });
+    expect(errorCode(result)).toBe('FORBIDDEN');
+  });
+
+  it('не картинка и картинка без описания отвергаются', async () => {
+    const db = seedOffice();
+    const id = await publish(db);
+
+    const notAnImage = await run(SET_IMAGE, {
+      db: db.client,
+      userId: ADMIN_ID,
+      variables: {
+        id,
+        image: { ...IMAGE, base64: Buffer.from('<!doctype html>').toString('base64') },
+      },
+    });
+    expect(errorCode(notAnImage)).toBe('BAD_USER_INPUT');
+
+    const noAlt = await run(SET_IMAGE, {
+      db: db.client,
+      userId: ADMIN_ID,
+      variables: { id, image: { ...IMAGE, alt: '   ' } },
+    });
+    expect(errorCode(noAlt)).toBe('BAD_USER_INPUT');
+
+    // Ни один отказ ничего за собой не оставил.
+    expect(db.tables.announcementImage.rows).toHaveLength(0);
+  });
+
+  it('вторая картинка заменяет первую, а не добавляется к ней', async () => {
+    const db = seedOffice();
+    const id = await publish(db);
+
+    await runOk(SET_IMAGE, { db: db.client, userId: ADMIN_ID, variables: { id, image: IMAGE } });
+    await runOk(SET_IMAGE, {
+      db: db.client,
+      userId: ADMIN_ID,
+      variables: { id, image: { ...IMAGE, alt: 'Другая подпись' } },
+    });
+
+    expect(db.tables.announcementImage.rows).toHaveLength(1);
+    expect(db.tables.announcement.rows[0]?.imageAlt).toBe('Другая подпись');
+  });
+
+  it('null убирает картинку вместе с байтами', async () => {
+    const db = seedOffice();
+    const id = await publish(db);
+    await runOk(SET_IMAGE, { db: db.client, userId: ADMIN_ID, variables: { id, image: IMAGE } });
+
+    const data = await runOk(SET_IMAGE, {
+      db: db.client,
+      userId: ADMIN_ID,
+      variables: { id, image: null },
+    });
+
+    expect((data.setAnnouncementImage as { image: unknown }).image).toBeNull();
+    expect(db.tables.announcementImage.rows).toHaveLength(0);
+  });
+
+  it('правка текста картинку не трогает', async () => {
+    const db = seedOffice();
+    const id = await publish(db);
+    await runOk(SET_IMAGE, { db: db.client, userId: ADMIN_ID, variables: { id, image: IMAGE } });
+
+    await runOk(UPDATE, {
+      db: db.client,
+      userId: ADMIN_ID,
+      variables: { id, input: { ...NOTICE, body: 'Текст переписан.' } },
+    });
+
+    const data = await runOk(LIST, { db: db.client, userId: 'u-0' });
+    expect((data.announcements as { image: { alt: string } | null }[])[0]?.image?.alt).toBe(
+      IMAGE.alt,
+    );
   });
 });

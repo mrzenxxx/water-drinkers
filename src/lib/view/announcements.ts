@@ -11,6 +11,64 @@
  * на пределе различимости. Поэтому — свой тип и свой список.
  */
 
+/**
+ * Картинка объявления в том виде, в каком её показывает экран.
+ *
+ * Байтов здесь нет: они лежат отдельной таблицей и отдаются одним обработчиком
+ * по ссылке. Размеры нужны разметке — зная их, страница резервирует место
+ * и не дёргается, когда картинка догрузится.
+ */
+export type AnnouncementImageView = {
+  url: string;
+  alt: string;
+  mediaType: string;
+  width: number;
+  height: number;
+};
+
+/**
+ * Адрес выдачи картинки.
+ *
+ * Ссылка ведёт на приложение, а не на хранилище: байты сегодня в базе, завтра
+ * могут переехать, и это не должно означать правку схемы и клиента. Ровно тем
+ * же соображением живёт `Receipt.url` (§8).
+ */
+export function announcementImageUrl(announcementId: string): string {
+  return `/api/notices/${announcementId}/image`;
+}
+
+/**
+ * Описание картинки из колонок объявления или `null`, если её нет.
+ *
+ * Четыре колонки заполнены вместе или пусты вместе — это гарантирует CHECK
+ * в §11. Здесь проверяется то же самое: строка, пришедшая из базы прошлой
+ * версии, не должна давать картинку без подписи.
+ */
+export function toImageView(row: {
+  id: string;
+  imageMediaType: string | null;
+  imageAlt: string | null;
+  imageWidth: number | null;
+  imageHeight: number | null;
+}): AnnouncementImageView | null {
+  if (
+    row.imageMediaType === null ||
+    row.imageAlt === null ||
+    row.imageWidth === null ||
+    row.imageHeight === null
+  ) {
+    return null;
+  }
+
+  return {
+    url: announcementImageUrl(row.id),
+    alt: row.imageAlt,
+    mediaType: row.imageMediaType,
+    width: row.imageWidth,
+    height: row.imageHeight,
+  };
+}
+
 /** Объявление в том виде, в каком его показывает экран. */
 export type AnnouncementView = {
   id: string;
@@ -24,6 +82,8 @@ export type AnnouncementView = {
   archivedAt: string | null;
   updatedAt: string;
   createdBy: string;
+  /** Приложенная картинка; `null` — её нет. */
+  image: AnnouncementImageView | null;
 };
 
 /** Видно ли объявление участнику: опубликовано и не убрано в архив. */

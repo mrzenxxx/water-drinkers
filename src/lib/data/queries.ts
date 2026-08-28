@@ -21,7 +21,12 @@ import { compareDates } from '@/lib/calc';
 import type { ContributionStatus, IsoDate } from '@/lib/calc/types';
 import { prisma } from '@/lib/db';
 import type { EventSource } from '@/lib/view/events';
-import { isVisible, sortAnnouncements, type AnnouncementView } from '@/lib/view/announcements';
+import {
+  isVisible,
+  sortAnnouncements,
+  toImageView,
+  type AnnouncementView,
+} from '@/lib/view/announcements';
 
 import { fromIsoDate, instantToIsoDate, toIsoDate, todayIso } from './dates';
 import { getFundState, type FundState } from './fund';
@@ -280,6 +285,7 @@ export const listAnnouncements = cache(
       archivedAt: row.archivedAt === null ? null : row.archivedAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
       createdBy: row.createdBy,
+      image: toImageView(row),
     }));
 
     return sortAnnouncements(includeHidden ? items : items.filter(isVisible));
