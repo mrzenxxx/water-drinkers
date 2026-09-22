@@ -156,6 +156,29 @@ const PENDING_DAYS: Record<number, number[]> = {
   5: [178],
 };
 
+/**
+ * Демонстрационный чек: настоящий однопиксельный PNG.
+ *
+ * Байты зашиты нарочно — демо-данные обязаны быть детерминированными, иначе
+ * скриншоты и отладка разъезжаются от запуска к запуску (§14а).
+ */
+const DEMO_RECEIPT = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+async function createDemoReceipt(): Promise<string> {
+  const receipt = await prisma.receipt.create({
+    data: { storageKey: '', mediaType: 'image/png', byteSize: DEMO_RECEIPT.byteLength },
+  });
+  await prisma.receipt.update({
+    where: { id: receipt.id },
+    data: { storageKey: `db:${receipt.id}` },
+  });
+  await prisma.receiptFile.create({ data: { receiptId: receipt.id, bytes: DEMO_RECEIPT } });
+  return receipt.id;
+}
+
 async function main(): Promise<void> {
   if (process.env.NODE_ENV === 'production') {
     throw new Error('Refusing to seed mock data in production');
@@ -177,6 +200,9 @@ async function main(): Promise<void> {
   await prisma.waterOrder.deleteMany();
   await prisma.absence.deleteMany();
   await prisma.announcement.deleteMany();
+  // Чеки удаляются после заказов и взносов — они на них ссылаются.
+  await prisma.receiptFile.deleteMany();
+  await prisma.receipt.deleteMany();
 
   const users = [];
   for (const person of PEOPLE) {
@@ -237,6 +263,11 @@ async function main(): Promise<void> {
   let orderTotal = 0;
   for (const order of ORDERS) {
     const amount = order.rubles * RUB;
+
+    // Чек есть не у каждого: часть истории заведена до того, как он стал
+    // обязательным, и экран обязан показывать оба случая честно (§6.5).
+    const receiptId = order.day % 2 === 0 ? await createDemoReceipt() : null;
+
     const created = await prisma.waterOrder.create({
       data: {
         amount: BigInt(amount),
@@ -244,6 +275,7 @@ async function main(): Promise<void> {
         bottlesCount: order.bottles,
         supplier: 'Аквафор Доставка',
         createdBy: admin.id,
+        receiptId,
       },
     });
 
