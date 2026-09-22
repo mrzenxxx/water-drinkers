@@ -33,6 +33,7 @@ export {
   CONTRIBUTION_STATUS_LABEL,
   CONTRIBUTION_STATUS_VARIANT,
   ROLE_LABEL,
+  formatFileSize,
   fullName,
   initials,
   shortName,

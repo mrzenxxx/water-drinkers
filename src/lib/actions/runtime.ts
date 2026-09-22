@@ -45,6 +45,7 @@ export async function actionContext(): Promise<GraphQLContext> {
     db: prisma,
     config,
     userId: payload?.uid ?? null,
+    sessionIssuedAt: payload?.iat ?? 0,
 
     async setSessionCookie(token: string) {
       (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions(config.appUrl));

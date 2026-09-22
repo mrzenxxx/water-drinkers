@@ -22,9 +22,28 @@ datasource db {
 
 model User {
   id             String    @id @default(uuid()) @db.Uuid
-  email          String    @unique @db.Citext
+  /// Необязательна: входят по логину, почта — только для справки (ADR-0004).
+  email          String?   @unique @db.Citext
   firstName      String?   @map("first_name")
   lastName       String?   @map("last_name")
+  middleName     String?   @map("middle_name")
+  /// Выдаётся администратором, по умолчанию из ФИО: `e.v.kondobarov`.
+  login          String    @unique @db.Citext
+  /// Отпечаток scrypt. `null` — учётные данные ещё не выданы, войти нельзя.
+  passwordHash   String?   @map("password_hash")
+  /// HMAC токена магической ссылки. Ссылка одна на участника, многоразовая
+  /// до срока; перевыпуск учётных данных её заменяет.
+  magicLinkHash      String?   @unique @map("magic_link_hash")
+  magicLinkExpiresAt DateTime? @map("magic_link_expires_at") @db.Timestamptz(6)
+  departmentId   String?   @map("department_id") @db.Uuid
+  /// NONE | MUTED | BANNED. MUTED — только просмотр, BANNED — вход закрыт.
+  restriction    String    @default("NONE")
+  /// Сессии, выданные раньше этого момента, недействительны: так отзываются
+  /// все входы участника при бане и перевыпуске учётных данных.
+  sessionsValidAfter DateTime? @map("sessions_valid_after") @db.Timestamptz(6)
+  /// Защита от перебора пароля: неудачи подряд и блокировка до момента.
+  failedLogins   Int       @default(0) @map("failed_logins") @db.SmallInt
+  lockedUntil    DateTime? @map("locked_until") @db.Timestamptz(6)
   /// PARTICIPANT | ADMIN
   role           String    @default("PARTICIPANT")
   joinedAt       DateTime  @map("joined_at") @db.Date
@@ -46,8 +65,20 @@ model User {
   auditEntries           AuditEntry[]
   assistantMessages      AssistantMessage[]
   announcements          Announcement[]
+  department             Department?        @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("users")
+}
+
+/// Справочник отделов. Пополняется администратором прямо из формы участника.
+model Department {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique @db.Citext
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  users User[]
+
+  @@map("departments")
 }
 
 model Identity {
@@ -78,13 +109,29 @@ model Receipt {
   id         String   @id @default(uuid()) @db.Uuid
   storageKey String   @map("storage_key")
   mediaType  String   @map("media_type")
+  /// Размер файла в байтах: подпись кнопки не должна вычитывать сам файл.
+  byteSize   Int      @default(0) @map("byte_size")
   extraction Json?
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
+  file          ReceiptFile?
   contributions Contribution[]
   waterOrders   WaterOrder[]
 
   @@map("receipts")
+}
+
+/// Байты чека отдельной таблицей: Prisma выбирает все колонки, и BYTEA внутри
+/// receipts означал бы, что каждый список взносов и заказов вычитывает
+/// мегабайты, которые ему не нужны (ADR-0003).
+model ReceiptFile {
+  receiptId String   @id @map("receipt_id") @db.Uuid
+  bytes     Bytes
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  receipt Receipt @relation(fields: [receiptId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("receipt_files")
 }
 
 model Contribution {
@@ -233,23 +280,8 @@ model AuditEntry {
 
   actor User? @relation(fields: [actorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
+  @@index([actorId, action, createdAt])
   @@map("audit_log")
-}
-
-/// Отклонение от §11: в SQL у таблицы нет первичного ключа, а Prisma требует
-/// уникальный идентификатор у каждой модели. Добавлен суррогатный id;
-/// набор содержательных колонок и их типы не изменены.
-model LoginCode {
-  id        BigInt   @id @default(autoincrement())
-  email     String   @db.Citext
-  codeHash  String   @map("code_hash")
-  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
-  attempts  Int      @default(0) @db.SmallInt
-  /// Нужен для лимита «не больше 3 запросов кода на адрес в час» (§7).
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  @@index([email, createdAt])
-  @@map("login_codes")
 }
 
 model AssistantMessage {

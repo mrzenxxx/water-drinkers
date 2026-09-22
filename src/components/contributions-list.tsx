@@ -37,7 +37,11 @@ type ContributionsListProps = {
   emptyText?: string;
 };
 
-/** Ссылка на чек. Выдача файлов — этап 6, поэтому пока только отметка о наличии. */
+/**
+ * Ссылка на чек — тот же маршрут `/api/receipts/:id` (§8.4), что и у заказов.
+ * У взносов `receiptId` пока всегда `null`: прикрепление чека к взносу
+ * появится на этапе 6, а до тех пор строка честно показывает «без чека».
+ */
 function ReceiptCell({ receiptId }: { receiptId: string | null }): ReactNode {
   if (receiptId === null) return <span className="text-muted-foreground">без чека</span>;
 

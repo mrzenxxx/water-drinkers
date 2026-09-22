@@ -38,7 +38,7 @@ export const fundState = cache(async (): Promise<FundState> => getFundState(pris
 /** Участник с именем — то, что нужно любому списку на экране. */
 export type PersonRow = {
   id: string;
-  email: string;
+  login: string;
   firstName: string | null;
   lastName: string | null;
   role: string;
@@ -49,7 +49,7 @@ export type PersonRow = {
 const PERSON_ORDER: Prisma.UserOrderByWithRelationInput[] = [
   { lastName: 'asc' },
   { firstName: 'asc' },
-  { email: 'asc' },
+  { login: 'asc' },
 ];
 
 /**
@@ -64,7 +64,7 @@ export const listPeople = cache(async (): Promise<PersonRow[]> => {
 
   return rows.map((row) => ({
     id: row.id,
-    email: row.email,
+    login: row.login,
     firstName: row.firstName,
     lastName: row.lastName,
     role: row.role,
@@ -132,6 +132,13 @@ export const listContributions = cache(
   },
 );
 
+/** Чек заказа: ровно то, что нужно кнопке, — без байтов и без распознавания. */
+export type OrderReceipt = {
+  id: string;
+  mediaType: string;
+  byteSize: number;
+};
+
 export type OrderRow = {
   id: string;
   amount: number;
@@ -141,11 +148,17 @@ export type OrderRow = {
   note: string | null;
   createdBy: string;
   receiptId: string | null;
+  receipt: OrderReceipt | null;
 };
 
 /** История заказов §6.5, свежие сверху. */
 export const listOrders = cache(async (): Promise<OrderRow[]> => {
-  const rows = await prisma.waterOrder.findMany({ orderBy: [{ orderedAt: 'desc' }, { id: 'desc' }] });
+  const rows = await prisma.waterOrder.findMany({
+    orderBy: [{ orderedAt: 'desc' }, { id: 'desc' }],
+    // Только метаданные чека: байты лежат отдельной таблицей и списку
+    // не нужны вовсе (ADR-0003).
+    include: { receipt: { select: { id: true, mediaType: true, byteSize: true } } },
+  });
 
   return rows.map((row) => ({
     id: row.id,
@@ -156,6 +169,10 @@ export const listOrders = cache(async (): Promise<OrderRow[]> => {
     note: row.note,
     createdBy: row.createdBy,
     receiptId: row.receiptId,
+    receipt:
+      row.receipt === null
+        ? null
+        : { id: row.receipt.id, mediaType: row.receipt.mediaType, byteSize: row.receipt.byteSize },
   }));
 });
 

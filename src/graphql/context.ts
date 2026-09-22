@@ -1,7 +1,13 @@
 import { GraphQLError } from 'graphql';
 import { cookies } from 'next/headers';
 
-import { SESSION_COOKIE, authConfigFromEnv, readSession, sessionCookieOptions } from '@/lib/auth';
+import {
+  SESSION_COOKIE,
+  authConfigFromEnv,
+  isSessionCurrent,
+  readSession,
+  sessionCookieOptions,
+} from '@/lib/auth';
 import type { AuthConfig } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import type { PrismaClient } from '@/generated/prisma/client';
@@ -23,6 +29,8 @@ export type GraphQLContext = {
   config: AuthConfig;
   /** id участника, если cookie валидна. */
   userId: string | null;
+  /** Момент выдачи cookie, мс. Сверяется с отзывом сессий участника. */
+  sessionIssuedAt: number;
   /** Батчинг связей на время запроса (§10.3). Создаются заново на каждый запрос. */
   loaders: Loaders;
   /**
@@ -45,6 +53,8 @@ export type ContextOptions = {
   db: PrismaClient;
   config: AuthConfig;
   userId: string | null;
+  /** Момент выдачи cookie, мс. По умолчанию 0 — как у cookie без поля `iat`. */
+  sessionIssuedAt?: number;
   setSessionCookie(token: string): Promise<void>;
   clearSessionCookie(): Promise<void>;
   /** «Сегодня» для расчёта (§4.3). Отдельным параметром — ради тестов. */
@@ -69,6 +79,7 @@ export function buildContext(options: ContextOptions): GraphQLContext {
     db: options.db,
     config: options.config,
     userId: options.userId,
+    sessionIssuedAt: options.sessionIssuedAt ?? 0,
     loaders: createLoaders(options.db),
 
     fundState() {
@@ -96,6 +107,7 @@ export async function createContext(request: Request): Promise<GraphQLContext> {
     db: prisma,
     config,
     userId: payload?.uid ?? null,
+    sessionIssuedAt: payload?.iat ?? 0,
 
     async setSessionCookie(token: string) {
       (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions(config.appUrl));
@@ -114,7 +126,7 @@ export async function createContext(request: Request): Promise<GraphQLContext> {
  * INTERNAL_SERVER_ERROR — и клиент не может отличить «войди заново»
  * от «сервер упал». Проверено живым запросом, а не только типами.
  */
-function authError(message: string, code: 'UNAUTHENTICATED' | 'FORBIDDEN'): never {
+function authError(message: string, code: 'UNAUTHENTICATED' | 'FORBIDDEN' | 'MUTED'): never {
   throw new GraphQLError(message, { extensions: { code } });
 }
 
@@ -125,11 +137,25 @@ export async function requireUser(ctx: GraphQLContext) {
   }
 
   const user = await ctx.loaders.userById.load(ctx.userId);
-  if (user === null) {
-    // Cookie подписана верно, но участника уже нет.
+  if (user === null || !isSessionCurrent(user, ctx.sessionIssuedAt)) {
+    // Cookie подписана верно, но участника уже нет, он забанен или его
+    // сессии отозваны перевыпуском учётных данных.
     authError('Требуется вход.', 'UNAUTHENTICATED');
   }
 
+  return user;
+}
+
+/**
+ * Участник, которому можно писать. Режим «только просмотр» (мьют, §3)
+ * закрывает записи участника от своего имени — отсутствия, взносы, чеки,
+ * профиль — но не чтение.
+ */
+export async function requireWriter(ctx: GraphQLContext) {
+  const user = await requireUser(ctx);
+  if (user.restriction === 'MUTED') {
+    authError('Администратор перевёл вас в режим только просмотра.', 'MUTED');
+  }
   return user;
 }
 

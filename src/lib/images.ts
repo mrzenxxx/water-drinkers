@@ -52,6 +52,22 @@ const TYPE_LABEL: Record<ImageMediaType, string> = {
 export const SUPPORTED_IMAGE_TYPES = Object.keys(TYPE_LABEL) as ImageMediaType[];
 
 /**
+ * Тип и размеры картинки по сигнатуре — или `null`, если это не картинка.
+ *
+ * Без ограничения размера: предел у объявления и у чека (§8.4) разный,
+ * и решает его вызывающая сторона.
+ */
+export function readImageInfo(bytes: Uint8Array): ImageInfo | null {
+  return readPng(bytes) ?? readGif(bytes) ?? readWebp(bytes) ?? readJpeg(bytes);
+}
+
+/** `image/jpg` пишут в половине форм, хотя правильный тип — `image/jpeg`. */
+export function normalizeMediaType(value: string): string {
+  const type = value.split(';')[0]?.trim().toLowerCase() ?? '';
+  return type === 'image/jpg' ? 'image/jpeg' : type;
+}
+
+/**
  * Тип и размеры картинки или отказ.
  *
  * `declaredType` — то, чем файл назвался. Он не решает ничего: если сигнатура
@@ -67,7 +83,7 @@ export function inspectImage(bytes: Uint8Array, declaredType?: string | null): I
     );
   }
 
-  const info = readPng(bytes) ?? readGif(bytes) ?? readWebp(bytes) ?? readJpeg(bytes);
+  const info = readImageInfo(bytes);
 
   if (info === null) {
     throw new ImageError(
@@ -81,7 +97,7 @@ export function inspectImage(bytes: Uint8Array, declaredType?: string | null): I
     declaredType !== undefined &&
     declaredType !== null &&
     declaredType !== '' &&
-    normalizeType(declaredType) !== info.mediaType
+    normalizeMediaType(declaredType) !== info.mediaType
   ) {
     throw new ImageError(
       `Файл назван «${declaredType}», а внутри ${TYPE_LABEL[info.mediaType]}. Пересохраните картинку.`,
@@ -93,12 +109,6 @@ export function inspectImage(bytes: Uint8Array, declaredType?: string | null): I
   }
 
   return info;
-}
-
-function normalizeType(value: string): string {
-  const type = value.split(';')[0]?.trim().toLowerCase() ?? '';
-  // `image/jpg` пишут в половине форм, хотя правильный тип — `image/jpeg`.
-  return type === 'image/jpg' ? 'image/jpeg' : type;
 }
 
 function matches(bytes: Uint8Array, offset: number, signature: readonly number[]): boolean {

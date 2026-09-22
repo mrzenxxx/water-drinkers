@@ -1,5 +1,7 @@
 import 'dotenv/config';
 
+import { createHash } from 'node:crypto';
+
 import { prisma } from '../src/lib/db';
 
 /**
@@ -156,6 +158,44 @@ const PENDING_DAYS: Record<number, number[]> = {
   5: [178],
 };
 
+/**
+ * Демонстрационный чек: настоящий однопиксельный PNG.
+ *
+ * Байты зашиты нарочно — демо-данные обязаны быть детерминированными, иначе
+ * скриншоты и отладка разъезжаются от запуска к запуску (§14а).
+ */
+const DEMO_RECEIPT = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+/**
+ * Устойчивый (не случайный) id демо-чека, выведенный из номера заказа.
+ *
+ * Настоящая мутация `uploadReceipt` (`src/graphql/resolvers/mutation/receipt.ts`)
+ * получает id заранее через `randomUUID()` и пишет строку одной вставкой сразу
+ * с правильным `storage_key = db:<id>` — без промежуточной пустой записи и
+ * второго запроса на её исправление. Здесь тот же приём, но не `randomUUID()`:
+ * демо-данные обязаны быть детерминированными (§14а), а он даёт новое значение
+ * на каждый прогон. Хеш смещения дня заказа даёт тот же id при повторном сиде.
+ */
+function demoReceiptId(orderDay: number): string {
+  const hash = createHash('sha256').update(`water-order-receipt:${orderDay}`).digest();
+  hash[6] = (hash[6]! & 0x0f) | 0x40; // версия 4
+  hash[8] = (hash[8]! & 0x3f) | 0x80; // вариант RFC 4122
+  const hex = hash.subarray(0, 16).toString('hex');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+}
+
+async function createDemoReceipt(orderDay: number): Promise<string> {
+  const id = demoReceiptId(orderDay);
+  await prisma.receipt.create({
+    data: { id, storageKey: `db:${id}`, mediaType: 'image/png', byteSize: DEMO_RECEIPT.byteLength },
+  });
+  await prisma.receiptFile.create({ data: { receiptId: id, bytes: DEMO_RECEIPT } });
+  return id;
+}
+
 async function main(): Promise<void> {
   if (process.env.NODE_ENV === 'production') {
     throw new Error('Refusing to seed mock data in production');
@@ -177,11 +217,14 @@ async function main(): Promise<void> {
   await prisma.waterOrder.deleteMany();
   await prisma.absence.deleteMany();
   await prisma.announcement.deleteMany();
+  // Чеки удаляются после заказов и взносов — они на них ссылаются.
+  await prisma.receiptFile.deleteMany();
+  await prisma.receipt.deleteMany();
 
   const users = [];
   for (const person of PEOPLE) {
     const user = await prisma.user.upsert({
-      where: { email: person.email },
+      where: { login: person.email.split('@')[0]! },
       update: {
         firstName: person.firstName,
         lastName: person.lastName,
@@ -190,6 +233,7 @@ async function main(): Promise<void> {
         leftAt: person.leftOffset === undefined ? null : dayFromStart(person.leftOffset),
       },
       create: {
+        login: person.email.split('@')[0]!,
         email: person.email,
         firstName: person.firstName,
         lastName: person.lastName,
@@ -237,6 +281,11 @@ async function main(): Promise<void> {
   let orderTotal = 0;
   for (const order of ORDERS) {
     const amount = order.rubles * RUB;
+
+    // Чек есть не у каждого: часть истории заведена до того, как он стал
+    // обязательным, и экран обязан показывать оба случая честно (§6.5).
+    const receiptId = order.day % 2 === 0 ? await createDemoReceipt(order.day) : null;
+
     const created = await prisma.waterOrder.create({
       data: {
         amount: BigInt(amount),
@@ -244,6 +293,7 @@ async function main(): Promise<void> {
         bottlesCount: order.bottles,
         supplier: 'Аквафор Доставка',
         createdBy: admin.id,
+        receiptId,
       },
     });
 

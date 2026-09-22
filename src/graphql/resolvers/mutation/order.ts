@@ -28,11 +28,11 @@ export const orderMutations: Pick<MutationResolvers<GraphQLContext>, 'createWate
       });
     }
 
-    if (input.receiptFileId != null) {
-      const receipt = await ctx.loaders.receiptById.load(input.receiptFileId);
-      if (receipt === null) {
-        throw notFound('Чек не найден. Загрузите файл заново.', { receiptFileId: input.receiptFileId });
-      }
+    // Чек обязателен (§6.5): проверяем, что он действительно есть в базе, —
+    // иначе заказ сослался бы на файл, которого нет.
+    const receipt = await ctx.loaders.receiptById.load(input.receiptFileId);
+    if (receipt === null) {
+      throw notFound('Чек не найден. Загрузите файл заново.', { receiptFileId: input.receiptFileId });
     }
 
     const created = await ctx.db.$transaction(async (tx) => {
@@ -43,7 +43,7 @@ export const orderMutations: Pick<MutationResolvers<GraphQLContext>, 'createWate
           bottlesCount: input.bottlesCount ?? null,
           supplier: input.supplier?.trim() || null,
           note: input.note?.trim() || null,
-          receiptId: input.receiptFileId ?? null,
+          receiptId: input.receiptFileId,
           createdBy: admin.id,
         },
       });

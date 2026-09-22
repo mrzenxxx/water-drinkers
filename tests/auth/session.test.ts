@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   SESSION_TTL_SECONDS,
+  isSessionCurrent,
   issueSession,
   readSession,
   sessionCookieOptions,
@@ -83,5 +84,25 @@ describe('sessionCookieOptions', () => {
   it('secure включается только под https, иначе локальная разработка сломается', () => {
     expect(sessionCookieOptions('http://localhost:3000').secure).toBe(false);
     expect(sessionCookieOptions('https://water.sspk.spb.ru').secure).toBe(true);
+  });
+});
+
+describe('isSessionCurrent', () => {
+  const active = { restriction: 'NONE', sessionsValidAfter: null };
+
+  it('в cookie лежит момент выдачи в миллисекундах', () => {
+    const token = issueSession(USER, SECRET, NOW);
+    expect(readSession(token, SECRET, NOW)?.iat).toBe(NOW.getTime());
+  });
+
+  it('сессия, выданная до отзыва, недействительна; выданная в тот же момент — действительна', () => {
+    const revoked = { restriction: 'NONE', sessionsValidAfter: NOW };
+    expect(isSessionCurrent(revoked, NOW.getTime() - 1)).toBe(false);
+    expect(isSessionCurrent(revoked, NOW.getTime())).toBe(true);
+    expect(isSessionCurrent(active, 0)).toBe(true);
+  });
+
+  it('бан закрывает любую сессию', () => {
+    expect(isSessionCurrent({ restriction: 'BANNED', sessionsValidAfter: null }, NOW.getTime())).toBe(false);
   });
 });

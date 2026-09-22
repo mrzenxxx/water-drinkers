@@ -15,11 +15,13 @@ import {
   requireText,
 } from '@/graphql/errors';
 import type { MutationResolvers } from '@/graphql/generated/graphql';
-import { isAllowedDomain, normalizeEmail } from '@/lib/auth';
+import { credentialFields } from '@/lib/auth';
 import { checkOpeningInvariant, compareDates, isMemberOn, splitOpeningBalanceEqually } from '@/lib/calc';
 import type { IsoDate } from '@/lib/calc/types';
 import { fromIsoDate, toBigIntKopecks, toIsoDate, toKopecks, writeAudit } from '@/lib/data';
 import type { DbClient } from '@/lib/data';
+
+import { readProfile, requireCredentials, requireFreeEmail, resolveDepartment } from './participant';
 
 /**
  * Администрирование состава и денег — админ-панель §6.7.
@@ -235,37 +237,37 @@ export const adminMutations: Pick<
   },
 
   /**
-   * Новый участник (§6.7).
+   * Новый участник (§6.7): ФИО, отдел, почта и сразу — учётные данные.
    *
-   * Имя и фамилию человек вводит сам при первом входе — приложение не выдумывает
-   * персональные данные. Здесь только адрес рабочей почты и дата вступления.
+   * Логин и пароль администратор получил от `suggestCredentials` и, возможно,
+   * поправил; здесь они проверяются заново. Пароль в открытом виде уходит
+   * только в ответ, в журнал аудита — лишь логин.
    *
    * Ненулевое начальное сальдо той же транзакцией увеличивает начальное сальдо
    * фонда (§4.2): у человека есть остаток ровно потому, что его деньги уже лежат
    * в кассе. Без этого `Σ балансов` мгновенно разошлась бы с фондом.
    */
-  addParticipant: async (_parent, { email, joinedAt, openingBalance }, ctx) => {
+  addParticipant: async (_parent, { input }, ctx) => {
     const admin = await requireAdmin(ctx);
 
-    const address = normalizeEmail(requireText(email, 'email'));
-    if (!isAllowedDomain(address, ctx.config.allowedDomain)) {
-      // Адрес чужого домена завести можно было бы, но войти по нему нельзя (§7):
-      // получился бы участник-призрак с балансом и без доступа.
-      throw badInput(`Адрес должен быть в домене ${ctx.config.allowedDomain}.`, { field: 'email' });
-    }
+    const profile = readProfile(input.profile);
+    const joined = requireDate(input.joinedAt, 'joinedAt');
+    const opening = requireMoney(input.openingBalance ?? 0, 'openingBalance');
+    const login = await requireCredentials(ctx.db, input.login, input.password);
+    await requireFreeEmail(ctx.db, profile.email);
 
-    const joined = requireDate(joinedAt, 'joinedAt');
-    const opening = requireMoney(openingBalance ?? 0, 'openingBalance');
-
-    const existing = await ctx.db.user.findUnique({ where: { email: address } });
-    if (existing !== null) {
-      throw conflict('Участник с таким адресом уже есть.', { email: address, id: existing.id });
-    }
+    const { data, credentials } = await credentialFields(ctx.config, login, input.password, new Date());
 
     const created = await ctx.db.$transaction(async (tx) => {
+      const departmentId = await resolveDepartment(tx, profile);
       const row = await tx.user.create({
         data: {
-          email: address,
+          ...data,
+          firstName: profile.firstName,
+          middleName: profile.middleName,
+          lastName: profile.lastName,
+          email: profile.email,
+          departmentId,
           role: 'PARTICIPANT',
           joinedAt: fromIsoDate(joined),
           openingBalance: toBigIntKopecks(opening, 'начальное сальдо участника'),
@@ -279,14 +281,26 @@ export const adminMutations: Pick<
         action: 'participant.add',
         entity: 'user',
         entityId: row.id,
-        after: { email: address, joinedAt: joined, openingBalance: opening },
+        after: {
+          login,
+          firstName: profile.firstName,
+          middleName: profile.middleName,
+          lastName: profile.lastName,
+          email: profile.email,
+          departmentId,
+          joinedAt: joined,
+          openingBalance: opening,
+        },
       });
 
       return row;
     });
 
     ctx.invalidateFundState();
-    return created;
+    return {
+      user: created,
+      credentials: { ...credentials, magicLinkExpiresAt: credentials.magicLinkExpiresAt.toISOString() },
+    };
   },
 
   /**
@@ -380,6 +394,11 @@ export const adminMutations: Pick<
     }
     if (role === 'PARTICIPANT' && (await otherActiveAdmins(ctx.db, id)) === 0) {
       throw conflict(LAST_ADMIN, { id });
+    }
+    if (role === 'ADMIN' && user.restriction !== 'NONE') {
+      // Администратор с мьютом или баном — противоречие: ограничение
+      // администратору не ставится (`setParticipantRestriction`).
+      throw conflict('Сначала снимите с участника ограничение.', { id });
     }
 
     return ctx.db.$transaction(async (tx) => {

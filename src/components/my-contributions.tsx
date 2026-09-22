@@ -32,12 +32,15 @@ export function MyContributions({
   people,
   today,
   suggestedAmount,
+  readOnly = false,
 }: {
   rows: readonly ContributionRow[];
   /** Участники массивом: `Map` собирается здесь, чтобы не гонять её через границу. */
   people: readonly (NamedUser & { id: string })[];
   today: string;
   suggestedAmount: string;
+  /** Режим только просмотра (мьют, §3): история есть, формы нет. */
+  readOnly?: boolean;
 }): ReactNode {
   const [optimisticRows, addOptimisticRow] = useOptimistic(
     rows,
@@ -70,12 +73,18 @@ export function MyContributions({
 
   return (
     <>
-      <ContributionForm
-        today={today}
-        suggestedAmount={suggestedAmount}
-        action={action}
-        state={state}
-      />
+      {readOnly ? (
+        <p className="text-muted-foreground text-sm">
+          Подавать взносы сейчас нельзя: администратор включил режим только просмотра.
+        </p>
+      ) : (
+        <ContributionForm
+          today={today}
+          suggestedAmount={suggestedAmount}
+          action={action}
+          state={state}
+        />
+      )}
       <div className="mt-6">
         <ContributionsList
           rows={optimisticRows}

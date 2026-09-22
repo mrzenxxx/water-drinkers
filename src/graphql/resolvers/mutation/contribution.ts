@@ -1,7 +1,8 @@
 import type { GraphQLContext } from '@/graphql/context';
-import { requireAdmin, requireUser } from '@/graphql/context';
+import { requireAdmin, requireWriter } from '@/graphql/context';
 import { conflict, notFound, notImplemented, requireDate, requirePositiveMoney, requireText } from '@/graphql/errors';
 import type { MutationResolvers } from '@/graphql/generated/graphql';
+import { requireWriteQuota } from '@/graphql/write-quota';
 import { fromIsoDate, toBigIntKopecks, writeAudit } from '@/lib/data';
 
 /**
@@ -22,7 +23,7 @@ export const contributionMutations: Pick<
   'submitContribution' | 'confirmContribution' | 'rejectContribution' | 'extractReceipt'
 > = {
   submitContribution: async (_parent, { amount, paidAt, receiptFileId }, ctx) => {
-    const user = await requireUser(ctx);
+    const user = await requireWriter(ctx);
     const value = requirePositiveMoney(amount, 'amount');
     const date = requireDate(paidAt, 'paidAt');
 
@@ -32,6 +33,8 @@ export const contributionMutations: Pick<
         throw notFound('Чек не найден. Загрузите файл заново.', { receiptFileId });
       }
     }
+
+    await requireWriteQuota(ctx, user, 'contribution.submit');
 
     const created = await ctx.db.$transaction(async (tx) => {
       const row = await tx.contribution.create({

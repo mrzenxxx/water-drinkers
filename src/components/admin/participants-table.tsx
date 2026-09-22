@@ -1,11 +1,14 @@
 import type { ReactNode } from 'react';
 
 import { ActionForm } from '@/components/admin/action-form';
+import { DepartmentField, type DepartmentOption } from '@/components/admin/department-field';
+import { IssueCredentialsForm } from '@/components/admin/issue-credentials-form';
 import { BalanceAmount, MoneyAmount } from '@/components/admin/money-amount';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NativeSelect } from '@/components/ui/native-select';
 import {
   Table,
   TableBody,
@@ -20,6 +23,7 @@ import {
   setParticipantRoleAction,
   settleParticipantAction,
 } from '@/lib/actions/admin';
+import { setRestrictionAction, updateParticipantAction } from '@/lib/actions/participants';
 import type { ParticipantRow } from '@/lib/data/admin';
 import { toRublesString } from '@/lib/money';
 
@@ -46,15 +50,110 @@ function RoleBadge({ participant }: { participant: ParticipantRow }): ReactNode 
   return participant.role === 'ADMIN' ? <Badge>Администратор</Badge> : null;
 }
 
+const RESTRICTION_LABEL = { NONE: 'Без ограничений', MUTED: 'Только просмотр', BANNED: 'Вход закрыт' } as const;
+
+function RestrictionBadge({ participant }: { participant: ParticipantRow }): ReactNode {
+  if (participant.restriction === 'NONE') return null;
+  return <Badge variant="destructive">{RESTRICTION_LABEL[participant.restriction]}</Badge>;
+}
+
+/** Логин и отдел под именем: по логину человек входит, его спрашивают первым. */
+function ParticipantMeta({ participant }: { participant: ParticipantRow }): ReactNode {
+  return (
+    <>
+      <p className="text-muted-foreground font-mono text-xs">
+        {participant.login}
+        {!participant.hasCredentials && <span className="font-sans"> · пароль не выдан</span>}
+      </p>
+      {participant.department !== null && (
+        <p className="text-muted-foreground text-xs">{participant.department}</p>
+      )}
+    </>
+  );
+}
+
+function EditParticipantForm({
+  participant,
+  departments,
+}: {
+  participant: ParticipantRow;
+  departments: readonly DepartmentOption[];
+}): ReactNode {
+  const id = `edit-${participant.id}`;
+  return (
+    <ActionForm action={updateParticipantAction} submitLabel="Сохранить" size="sm" className="mt-2">
+      <input type="hidden" name="id" value={participant.id} />
+      <Label htmlFor={`${id}-last`}>Фамилия</Label>
+      <Input id={`${id}-last`} name="lastName" defaultValue={participant.lastName ?? ''} required />
+      <Label htmlFor={`${id}-first`}>Имя</Label>
+      <Input id={`${id}-first`} name="firstName" defaultValue={participant.firstName ?? ''} required />
+      <Label htmlFor={`${id}-middle`}>Отчество</Label>
+      <Input id={`${id}-middle`} name="middleName" defaultValue={participant.middleName ?? ''} />
+      <DepartmentField
+        departments={departments}
+        idPrefix={id}
+        defaultId={participant.departmentId ?? undefined}
+      />
+      <Label htmlFor={`${id}-email`}>Почта</Label>
+      <Input id={`${id}-email`} name="email" type="email" defaultValue={participant.email ?? ''} />
+      <p className="text-muted-foreground text-xs">Логин от смены ФИО не меняется.</p>
+    </ActionForm>
+  );
+}
+
+/**
+ * Мьют и бан (§3). Администратору ограничение не ставится — чтобы
+ * ограничить, сначала снимите роль.
+ */
+function RestrictionForm({ participant }: { participant: ParticipantRow }): ReactNode {
+  const id = `restriction-${participant.id}`;
+  return (
+    <ActionForm action={setRestrictionAction} submitLabel="Применить" variant="outline" size="sm" className="mt-2">
+      <input type="hidden" name="id" value={participant.id} />
+      <Label htmlFor={id}>Ограничение</Label>
+      <NativeSelect id={id} name="restriction" defaultValue={participant.restriction}>
+        <option value="NONE">{RESTRICTION_LABEL.NONE}</option>
+        <option value="MUTED">{RESTRICTION_LABEL.MUTED} — не может добавлять записи</option>
+        <option value="BANNED">{RESTRICTION_LABEL.BANNED} — не может войти</option>
+      </NativeSelect>
+    </ActionForm>
+  );
+}
+
+function Disclosure({ label, children }: { label: string; children: ReactNode }): ReactNode {
+  return (
+    <details>
+      <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-sm">{label}</summary>
+      {children}
+    </details>
+  );
+}
+
 function ParticipantActions({
   participant,
   today,
+  departments,
 }: {
   participant: ParticipantRow;
   today: string;
+  departments: readonly DepartmentOption[];
 }): ReactNode {
   return (
     <div className="flex flex-col gap-3">
+      <Disclosure label={participant.hasCredentials ? 'Новые учётные данные' : 'Выдать учётные данные'}>
+        <IssueCredentialsForm participant={participant} />
+      </Disclosure>
+
+      <Disclosure label="Изменить данные">
+        <EditParticipantForm participant={participant} departments={departments} />
+      </Disclosure>
+
+      {participant.role !== 'ADMIN' && (
+        <Disclosure label="Ограничение">
+          <RestrictionForm participant={participant} />
+        </Disclosure>
+      )}
+
       <ActionForm
         action={setParticipantRoleAction}
         submitLabel={participant.role === 'ADMIN' ? 'Разжаловать' : 'Назначить администратором'}
@@ -142,9 +241,11 @@ function ParticipantActions({
 export function ParticipantsTable({
   participants,
   today,
+  departments,
 }: {
   participants: readonly ParticipantRow[];
   today: string;
+  departments: readonly DepartmentOption[];
 }): ReactNode {
   if (participants.length === 0) {
     return (
@@ -167,12 +268,11 @@ export function ParticipantsTable({
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="font-medium">{participant.name}</p>
-                    {participant.hasProfile && (
-                      <p className="text-muted-foreground text-xs">{participant.email}</p>
-                    )}
+                    <ParticipantMeta participant={participant} />
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <RoleBadge participant={participant} />
+                    <RestrictionBadge participant={participant} />
                     <StatusBadge participant={participant} />
                   </div>
                 </div>
@@ -196,7 +296,7 @@ export function ParticipantsTable({
                   </div>
                 </dl>
 
-                <ParticipantActions participant={participant} today={today} />
+                <ParticipantActions participant={participant} today={today} departments={departments} />
               </CardContent>
             </Card>
           </li>
@@ -220,14 +320,13 @@ export function ParticipantsTable({
               <TableRow key={participant.id}>
                 <TableCell className="align-top">
                   <p className="font-medium">{participant.name}</p>
-                  {participant.hasProfile && (
-                    <p className="text-muted-foreground text-xs">{participant.email}</p>
-                  )}
+                  <ParticipantMeta participant={participant} />
                   <p className="text-muted-foreground text-xs">с {participant.joinedAt}</p>
                 </TableCell>
                 <TableCell className="align-top">
                   <div className="flex flex-col items-start gap-1">
                     <RoleBadge participant={participant} />
+                    <RestrictionBadge participant={participant} />
                     <StatusBadge participant={participant} />
                   </div>
                 </TableCell>
@@ -238,7 +337,7 @@ export function ParticipantsTable({
                   <BalanceAmount amount={participant.balance} />
                 </TableCell>
                 <TableCell className="w-72 align-top">
-                  <ParticipantActions participant={participant} today={today} />
+                  <ParticipantActions participant={participant} today={today} departments={departments} />
                 </TableCell>
               </TableRow>
             ))}

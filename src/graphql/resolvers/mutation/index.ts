@@ -8,6 +8,8 @@ import { assistantMutations } from './assistant';
 import { authMutations } from './auth';
 import { contributionMutations } from './contribution';
 import { orderMutations } from './order';
+import { participantMutations } from './participant';
+import { receiptMutations } from './receipt';
 
 /**
  * Мутации разложены по доменам, а не свалены в один файл: этапы дописывают
@@ -19,10 +21,12 @@ import { orderMutations } from './order';
  */
 export const Mutation: MutationResolvers<GraphQLContext> = {
   ...authMutations,
+  ...receiptMutations,
   ...contributionMutations,
   ...orderMutations,
   ...absenceMutations,
   ...adminMutations,
+  ...participantMutations,
   ...announcementMutations,
   ...assistantMutations,
 };

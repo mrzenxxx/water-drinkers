@@ -2,7 +2,7 @@
 # Дословно повторяет docs/SPEC.md §10.2.
 #
 # Дополнения к §10.2 (в спецификации типы упомянуты, но не расписаны — без них
-# схема не собирается): RequestCodeResult, AuthResult, AuditEntry,
+# схема не собирается): AuthResult, Credentials, AuditEntry,
 # AssistantMessage и скаляр JSON для полей before/after журнала аудита.
 
 scalar Date # YYYY-MM-DD
@@ -13,6 +13,13 @@ scalar JSON # произвольный JSON (before/after в журнале ау
 enum Role {
   PARTICIPANT
   ADMIN
+}
+
+"Ограничение участника (§3): мьют — только просмотр, бан — вход закрыт."
+enum Restriction {
+  NONE
+  MUTED
+  BANNED
 }
 
 enum ContributionStatus {
@@ -36,10 +43,14 @@ enum AbsenceType {
 
 type User {
   id: ID!
-  email: String!
+  login: String!
+  email: String
   firstName: String
+  middleName: String
   lastName: String
+  department: Department
   role: Role!
+  restriction: Restriction!
   joinedAt: Date!
   leftAt: Date
   isActive: Boolean!
@@ -47,6 +58,11 @@ type User {
   balance: Balance!
   absences: [Absence!]!
   contributions(status: ContributionStatus): [Contribution!]!
+}
+
+type Department {
+  id: ID!
+  name: String!
 }
 
 type Balance {
@@ -110,7 +126,11 @@ type Contribution {
 
 type Receipt {
   id: ID!
+  "/api/receipts/:id — ссылка на приложение, а не на хранилище (§8.4)"
   url: String!
+  mediaType: String!
+  "Размер файла в байтах: для подписи кнопки «PDF · 1,2 МБ»"
+  byteSize: Int!
   extraction: ReceiptExtraction
 }
 
@@ -203,6 +223,19 @@ input AnnouncementImageInput {
   alt: String!
 }
 
+"""
+Файл чека на загрузку (§8.4).
+
+Байты приходят в base64: у GraphQL нет своего способа передать файл. Тип
+определяется по сигнатуре файла — `mediaType` лишь сверяется.
+"""
+input ReceiptFileInput {
+  "У GraphQL нет своего способа передать файл"
+  base64: String!
+  "Только сверяется: решает сигнатура файла (§8.4)"
+  mediaType: String
+}
+
 input AnnouncementInput {
   title: String!
   body: String!
@@ -235,19 +268,32 @@ type AssistantMessage {
 
 # ─── Результаты аутентификации ───────────────────────────
 
-"""
-Ответ на запрос кода. По §7 он одинаков для разрешённого и неразрешённого
-адреса, поэтому не содержит ничего, что раскрывало бы состав команды.
-"""
-type RequestCodeResult {
-  ok: Boolean!
-  expiresInSeconds: Int!
-}
-
-"Результат проверки кода. Сессия уходит в httpOnly-cookie, а не в ответ."
+"Результат входа. Сессия уходит в httpOnly-cookie, а не в ответ."
 type AuthResult {
   user: User!
-  needsProfile: Boolean! # первый вход: не заполнены имя и фамилия
+  needsProfile: Boolean! # не заполнены имя и фамилия
+}
+
+"""
+Выданные учётные данные — то, что администратор пересылает человеку.
+Пароль в открытом виде бывает только в этом ответе: в базе лежит отпечаток.
+"""
+type Credentials {
+  login: String!
+  password: String!
+  magicLinkUrl: String!
+  magicLinkExpiresAt: DateTime!
+}
+
+type IssuedCredentials {
+  user: User!
+  credentials: Credentials!
+}
+
+"Предложение логина и пароля. Ничего не записывает; администратор может их поправить."
+type CredentialsSuggestion {
+  login: String!
+  password: String!
 }
 
 # ─── Запросы ─────────────────────────────────────────────
@@ -273,16 +319,27 @@ type Query {
   # includeHidden от участника — ошибка доступа, а не молча пустой список.
   announcements(includeHidden: Boolean = false): [Announcement!]!
   unreadAnnouncements: Int!
+
+  departments: [Department!]!
+  "Свободный логин из ФИО и случайный пароль. excludeUserId — не считать занятым свой логин. Только ADMIN."
+  suggestCredentials(
+    firstName: String!
+    middleName: String
+    lastName: String!
+    excludeUserId: ID
+  ): CredentialsSuggestion!
 }
 
 # ─── Мутации ─────────────────────────────────────────────
 
 type Mutation {
   # Аутентификация
-  requestLoginCode(email: String!): RequestCodeResult!
-  verifyLoginCode(email: String!, code: String!): AuthResult!
+  login(login: String!, password: String!): AuthResult!
   logout: Boolean!
   updateProfile(firstName: String!, lastName: String!): User!
+
+  # Чеки (§8.4)
+  uploadReceipt(file: ReceiptFileInput!): Receipt!
 
   # Взносы
   extractReceipt(fileId: ID!): ReceiptExtraction!
@@ -299,7 +356,11 @@ type Mutation {
 
   # Администрирование
   setOpeningBalances(input: OpeningBalancesInput!): Fund! # ADMIN
-  addParticipant(email: String!, joinedAt: Date!, openingBalance: Money = 0): User! # ADMIN
+  addParticipant(input: NewParticipantInput!): IssuedCredentials! # ADMIN
+  updateParticipant(id: ID!, input: ParticipantProfileInput!): User! # ADMIN
+  "Новые логин, пароль и ссылка; прежние входы участника отзываются. Только ADMIN."
+  issueCredentials(id: ID!, login: String!, password: String!): IssuedCredentials!
+  setParticipantRestriction(id: ID!, restriction: Restriction!): User! # ADMIN
   deactivateParticipant(id: ID!, leftAt: Date!): User! # ADMIN
   reactivateParticipant(id: ID!): User! # ADMIN
   setParticipantRole(id: ID!, role: Role!): User! # ADMIN
@@ -324,6 +385,27 @@ type Mutation {
 
   # Помощник
   askAssistant(question: String!): AssistantMessage!
+}
+
+"""
+Отдел — либо существующий (departmentId), либо новый по названию
+(newDepartment); если есть одноимённый, берётся он. Оба пустые — без отдела.
+"""
+input ParticipantProfileInput {
+  firstName: String!
+  middleName: String
+  lastName: String!
+  email: String
+  departmentId: ID
+  newDepartment: String
+}
+
+input NewParticipantInput {
+  profile: ParticipantProfileInput!
+  joinedAt: Date!
+  openingBalance: Money = 0
+  login: String!
+  password: String!
 }
 
 input OpeningBalancesInput {
@@ -366,7 +448,11 @@ input WaterOrderInput {
   bottlesCount: Int
   supplier: String
   note: String
-  receiptFileId: ID
+  """
+  Обязателен: поставка без подтверждения оплаты не отмечается (§6.5).
+  Колонка в базе остаётся NULL-разрешающей ради заказов, заведённых раньше.
+  """
+  receiptFileId: ID!
 }
 
 type Subscription {

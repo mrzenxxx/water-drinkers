@@ -6,7 +6,8 @@ import { ProfileForm } from '@/components/profile-form';
 import { hasProfile, requirePageUser } from '@/lib/auth/current-user';
 
 /**
- * Знакомство после первого входа (§7): имя и фамилия.
+ * Знакомство после первого входа (§7): имя и фамилия. Нужно только тем, кого
+ * завели до выдачи логинов: сейчас ФИО вводит администратор.
  *
  * Лежит вне группы `(app)`: её layout как раз и отправляет сюда участника
  * без имени, и попади страница внутрь — вышел бы бесконечный редирект.
@@ -36,8 +37,7 @@ export default async function WelcomePage(): Promise<ReactNode> {
           <h1 className="text-2xl font-semibold tracking-tight">Как вас зовут?</h1>
           <p className="text-muted-foreground text-sm">
             Имя и фамилия нужны, чтобы в списках взносов и заказов было видно, кто есть кто.
-            Больше приложение о вас ничего не хранит — только рабочую почту{' '}
-            <span className="text-foreground font-medium">{user.email}</span>.
+            Вы вошли как <span className="text-foreground font-mono font-medium">{user.login}</span>.
           </p>
         </header>
 

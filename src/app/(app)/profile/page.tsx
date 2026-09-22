@@ -61,7 +61,13 @@ export default async function ProfilePage(): Promise<ReactNode> {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ProfileForm firstName={user.firstName ?? ''} lastName={user.lastName ?? ''} />
+          {user.restriction === 'MUTED' ? (
+            <p className="text-sm">
+              {user.lastName} {user.firstName} {user.middleName}
+            </p>
+          ) : (
+            <ProfileForm firstName={user.firstName ?? ''} lastName={user.lastName ?? ''} />
+          )}
         </CardContent>
       </Card>
 
@@ -72,13 +78,20 @@ export default async function ProfilePage(): Promise<ReactNode> {
             <CardTitle>Учётная запись</CardTitle>
           </div>
           <CardDescription>
-            Почту и роль меняет администратор — обратитесь к нему.
+            Логин, пароль и роль меняет администратор — обратитесь к нему.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <dl className="grid gap-3 text-sm sm:grid-cols-[10rem_1fr]">
-            <dt className="text-muted-foreground">Рабочая почта</dt>
-            <dd className="font-medium">{user.email}</dd>
+            <dt className="text-muted-foreground">Логин</dt>
+            <dd className="font-mono font-medium">{user.login}</dd>
+
+            {user.email !== null && (
+              <>
+                <dt className="text-muted-foreground">Почта</dt>
+                <dd className="font-medium">{user.email}</dd>
+              </>
+            )}
 
             <dt className="text-muted-foreground">Роль</dt>
             <dd className="font-medium">{ROLE_LABEL[user.role] ?? 'Участник'}</dd>
@@ -125,8 +138,8 @@ export default async function ProfilePage(): Promise<ReactNode> {
             <CardTitle>Выход</CardTitle>
           </div>
           <CardDescription>
-            Сессия закроется на этом устройстве. Чтобы вернуться, понадобится
-            новый код на рабочую почту.
+            Сессия закроется на этом устройстве. Чтобы вернуться, понадобятся
+            логин и пароль.
           </CardDescription>
         </CardHeader>
         <CardContent>

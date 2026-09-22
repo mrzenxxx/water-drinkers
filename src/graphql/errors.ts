@@ -20,6 +20,7 @@ export type ErrorCode =
   | 'NOT_FOUND'
   | 'CONFLICT'
   | 'ABSENCE_OVERLAP'
+  | 'RATE_LIMITED'
   | 'NOT_IMPLEMENTED';
 
 export function graphqlError(message: string, code: ErrorCode, extra: Record<string, unknown> = {}): GraphQLError {

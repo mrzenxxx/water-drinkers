@@ -20,17 +20,19 @@ import { schema } from '@/graphql/schema';
 import type { AuthConfig } from '@/lib/auth';
 import type { IsoDate } from '@/lib/calc/types';
 
-const TEST_CONFIG = {
+export const TEST_CONFIG: AuthConfig = {
   appUrl: 'http://localhost:3000',
-  sessionSecret: 'test-secret',
-  allowedDomain: 'sspk.spb.ru',
-} as unknown as AuthConfig;
+  sessionSecret: 'test-secret-at-least-thirty-two-chars',
+};
 
 export type TestContextOptions = {
   db: PrismaClient;
   /** id вошедшего участника; `null` — анонимный запрос. */
   userId?: string | null;
+  /** Момент выдачи cookie, мс; по умолчанию — «только что». */
+  sessionIssuedAt?: number;
   asOf?: IsoDate;
+  setSessionCookie?: (token: string) => Promise<void>;
 };
 
 export function testContext(options: TestContextOptions): GraphQLContext {
@@ -39,8 +41,9 @@ export function testContext(options: TestContextOptions): GraphQLContext {
     db: options.db,
     config: TEST_CONFIG,
     userId: options.userId ?? null,
+    sessionIssuedAt: options.sessionIssuedAt ?? Date.now(),
     asOf: options.asOf,
-    setSessionCookie: async () => {},
+    setSessionCookie: options.setSessionCookie ?? (async () => {}),
     clearSessionCookie: async () => {},
   });
 }

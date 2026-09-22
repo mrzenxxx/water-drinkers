@@ -15,7 +15,7 @@ import {
   startOfWeek,
   weekdayIndex,
 } from '@/lib/format/dates';
-import { fullName, initials, shortName } from '@/lib/format/labels';
+import { formatFileSize, fullName, initials, shortName } from '@/lib/format/labels';
 import { DAYS, pluralize, withCount } from '@/lib/format/plural';
 
 describe('даты для экрана', () => {
@@ -92,17 +92,44 @@ describe('склонение', () => {
 });
 
 describe('имена участников', () => {
-  it('до заполнения профиля показывает почту', () => {
-    expect(fullName({ email: 'i@sspk.spb.ru' })).toBe('i@sspk.spb.ru');
-    expect(fullName({ email: 'i@sspk.spb.ru', firstName: 'Иван', lastName: 'Петров' })).toBe(
+  it('без имени показывает логин', () => {
+    expect(fullName({ login: 'i.petrov' })).toBe('i.petrov');
+    expect(fullName({ login: 'i.petrov', firstName: 'Иван', lastName: 'Петров' })).toBe(
       'Иван Петров',
     );
   });
 
   it('сокращает имя для тесных мест', () => {
-    expect(shortName({ email: 'i@x', firstName: 'Иван', lastName: 'Петров' })).toBe('И. Петров');
-    expect(shortName({ email: 'i@x', lastName: 'Петров' })).toBe('Петров');
-    expect(initials({ email: 'iv@x', firstName: 'Иван', lastName: 'Петров' })).toBe('ИП');
-    expect(initials({ email: 'iv@x' })).toBe('IV');
+    expect(shortName({ login: 'i', firstName: 'Иван', lastName: 'Петров' })).toBe('И. Петров');
+    expect(shortName({ login: 'i', lastName: 'Петров' })).toBe('Петров');
+    expect(initials({ login: 'iv', firstName: 'Иван', lastName: 'Петров' })).toBe('ИП');
+    expect(initials({ login: 'iv' })).toBe('IV');
+  });
+});
+
+describe('размер файла', () => {
+  it('до килобайта считает в байтах', () => {
+    expect(formatFileSize(512)).toBe('512 Б');
+  });
+
+  it('килобайты — с одним знаком, пока их мало', () => {
+    expect(formatFileSize(1536)).toBe('1,5 КБ');
+    expect(formatFileSize(64 * 1024)).toBe('64 КБ');
+  });
+
+  it('мегабайты — так же', () => {
+    expect(formatFileSize(1024 * 1024 + 512 * 1024)).toBe('1,5 МБ');
+  });
+
+  it('десятичный разделитель — запятая, как во всех числах интерфейса', () => {
+    expect(formatFileSize(2560)).toContain(',');
+  });
+
+  it('не печатает 1024 на стыке единиц: КБ→МБ и МБ→ГБ', () => {
+    // При 1048575 (1 МБ - 1 байт) получаем ~1023.999 КБ, который должен
+    // округлиться до 1 МБ, а не до 1024 КБ.
+    expect(formatFileSize(1048575)).toBe('1 МБ');
+    // Симметрично для 1073741823 (1 ГБ - 1 байт): ~1023.999 МБ → 1 ГБ.
+    expect(formatFileSize(1073741823)).toBe('1 ГБ');
   });
 });

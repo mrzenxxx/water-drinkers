@@ -122,6 +122,38 @@ async function main(): Promise<void> {
     `${intruder.status} ${intruder.headers.get('location') ?? ''}`,
   );
 
+  // ─── Чеки (§8.4) ──────────────────────────────────────────────────────
+  const withReceipt = await prisma.waterOrder.findFirst({
+    where: { receiptId: { not: null } },
+    select: { receiptId: true },
+  });
+
+  if (withReceipt?.receiptId == null) {
+    // Не ошибка: это ожидаемо, пока ни одной поставки с чеком не отмечено.
+    // `db:seed:mock` тут не подсказка — он стирает взносы, заказы, отсутствия
+    // и объявления в базе, а в базе разработки лежат настоящие данные владельца.
+    report(true, 'в базе нет заказа с чеком — проверка чеков пропущена, пока поставка не отмечена');
+  } else {
+    const path = `/api/receipts/${withReceipt.receiptId}`;
+
+    const guestReceipt = await fetch(`${BASE}${path}`, { redirect: 'manual' });
+    report(guestReceipt.status === 401, 'чек не отдаётся без входа', `статус ${guestReceipt.status}`);
+
+    const memberReceipt = await fetch(`${BASE}${path}`, { headers: { cookie: cookies.member } });
+    const type = memberReceipt.headers.get('content-type') ?? '';
+    report(
+      memberReceipt.status === 200 && (type.startsWith('image/') || type === 'application/pdf'),
+      'чек заказа открыт участнику',
+      `статус ${memberReceipt.status}, тип ${type}`,
+    );
+
+    const etag = memberReceipt.headers.get('etag') ?? '';
+    const cached = await fetch(`${BASE}${path}`, {
+      headers: { cookie: cookies.member, 'if-none-match': etag },
+    });
+    report(cached.status === 304, 'повторный запрос чека отдаёт 304', `статус ${cached.status}`);
+  }
+
   // ─── Страницы ─────────────────────────────────────────────────────────
   for (const page of PAGES) {
     const response = await fetch(`${BASE}${page.path}`, { headers: { cookie: cookies[page.as] } });

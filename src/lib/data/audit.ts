@@ -35,6 +35,9 @@ export type AuditAction =
   | 'participant.deactivate'
   | 'participant.reactivate'
   | 'participant.role'
+  | 'participant.update'
+  | 'participant.credentials'
+  | 'participant.restriction'
   | 'participant.settle'
   | 'fund.adjust'
   | 'fund.opening'
@@ -42,7 +45,8 @@ export type AuditAction =
   | 'announcement.update'
   | 'announcement.archive'
   | 'announcement.restore'
-  | 'announcement.image';
+  | 'announcement.image'
+  | 'receipt.upload';
 
 /** Подписи действий по-русски — журнал §6.7 читают люди, а не машины. */
 export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
@@ -58,6 +62,9 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'participant.deactivate': 'Участник исключён',
   'participant.reactivate': 'Участник возвращён',
   'participant.role': 'Смена роли',
+  'participant.update': 'Данные участника изменены',
+  'participant.credentials': 'Выданы учётные данные',
+  'participant.restriction': 'Смена ограничения',
   'participant.settle': 'Выплата остатка',
   'fund.adjust': 'Корректировка',
   'fund.opening': 'Стартовое состояние фонда',
@@ -66,6 +73,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'announcement.archive': 'Объявление убрано в архив',
   'announcement.restore': 'Объявление возвращено из архива',
   'announcement.image': 'Картинка объявления',
+  'receipt.upload': 'Чек загружен',
 };
 
 /** Все известные действия — для выпадающего фильтра журнала. */

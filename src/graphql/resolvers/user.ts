@@ -18,6 +18,9 @@ export const User: UserResolvers<GraphQLContext> = {
   joinedAt: (parent) => toIsoDate(parent.joinedAt),
   leftAt: (parent) => toIsoDateOrNull(parent.leftAt),
 
+  department: (parent, _args, ctx) =>
+    parent.departmentId === null ? null : ctx.loaders.departmentById.load(parent.departmentId),
+
   openingBalance: (parent) => toKopecks(parent.openingBalance, `начальное сальдо ${parent.id}`),
 
   balance: async (parent, _args, ctx) => {

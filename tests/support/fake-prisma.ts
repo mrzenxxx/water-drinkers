@@ -14,7 +14,8 @@
  *  * `CHECK (amount > 0)` на взносах и заказах тоже воспроизведён.
  *
  * Всё остальное — минимум, нужный слою данных: `where` понимает равенство,
- * `in`, `not`, `gte`/`lte` и `OR`. Незнакомую форму условия подделка не
+ * `in`, `not`, `gte`/`lte`, `startsWith` и `OR`; `select` и `include`
+ * не применяются — возвращается строка целиком. Незнакомую форму условия подделка не
  * пытается угадать, а бросает: тихо вернуть не те строки хуже, чем упасть.
  */
 
@@ -60,6 +61,9 @@ function matchesCondition(value: unknown, condition: unknown): boolean {
           break;
         case 'lt':
           if (!(compare(value, operand) < 0)) return false;
+          break;
+        case 'startsWith':
+          if (typeof value !== 'string' || !value.startsWith(operand as string)) return false;
           break;
         default:
           throw new Error(`fake-prisma: оператор "${operator}" не поддержан`);
@@ -282,14 +286,25 @@ export function createFakeDb(): FakeDb {
 
   const tables: Record<string, FakeTable> = {
     user: new FakeTable('users', fakeUuid, () => ({
+      email: null,
       firstName: null,
+      middleName: null,
       lastName: null,
+      passwordHash: null,
+      magicLinkHash: null,
+      magicLinkExpiresAt: null,
+      departmentId: null,
+      restriction: 'NONE',
+      sessionsValidAfter: null,
+      failedLogins: 0,
+      lockedUntil: null,
       role: 'PARTICIPANT',
       leftAt: null,
       openingBalance: 0n,
       createdAt: now(),
       announcementsSeenAt: null,
     })),
+    department: new FakeTable('departments', fakeUuid, () => ({ createdAt: now() })),
     fundSettings: new FakeTable('fund_settings', () => 1, () => ({
       id: 1,
       openingBalance: 0n,
@@ -299,8 +314,16 @@ export function createFakeDb(): FakeDb {
     receipt: new FakeTable('receipts', fakeUuid, () => ({
       extraction: null,
       mediaType: 'image/jpeg',
+      byteSize: 0,
       createdAt: now(),
     })),
+    // Ключ здесь — идентификатор чека, а не собственный: файл у чека один,
+    // и своего id у него нет (§11).
+    receiptFile: new FakeTable(
+      'receipt_files',
+      () => undefined,
+      () => ({ createdAt: now() }),
+    ),
     contribution: new FakeTable(
       'contributions',
       fakeUuid,

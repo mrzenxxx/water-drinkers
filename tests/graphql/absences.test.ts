@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { errorCode, run, runOk } from '../support/graphql';
-import { ADMIN_ID, seedOffice } from '../support/office';
+import { ADMIN_ID, RECEIPT_ID, seedOffice } from '../support/office';
 
 const ADD = `
   mutation ($type: AbsenceType!, $startsOn: Date!, $endsOn: Date!, $note: String) {
@@ -108,7 +108,7 @@ describe('добавление отсутствия', () => {
       {
         db: db.client,
         userId: ADMIN_ID,
-        variables: { input: { amount: 200_000, orderedAt: '2026-06-01' } },
+        variables: { input: { amount: 200_000, orderedAt: '2026-06-01', receiptFileId: RECEIPT_ID } },
       },
     );
 
