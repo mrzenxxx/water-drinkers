@@ -51,12 +51,17 @@ describe('загрузка чека', () => {
 
     const { id } = data.uploadReceipt as { id: string };
     expect(db.tables.receiptFile.rows).toHaveLength(1);
-    expect(db.tables.receipt.rows[0]).toMatchObject({ id, storageKey: `db:${id}` });
+    // seedOffice заводит один чек заранее (§6.5): ищем свежую запись по id,
+    // а не по индексу — порядок строк таблицы не гарантирован.
+    const uploaded = db.tables.receipt.rows.find((row) => row.id === id);
+    expect(uploaded).toMatchObject({ id, storageKey: `db:${id}` });
     expect(db.tables.auditEntry.rows.map((row) => row.action)).toContain('receipt.upload');
   });
 
   it('отказывает файлу, который не является чеком', async () => {
     const db = seedOffice();
+    // seedOffice заводит один чек заранее (§6.5) — отказ не должен добавить второй.
+    const receiptCountBeforeUpload = db.tables.receipt.rows.length;
     const result = await run(UPLOAD, {
       db: db.client,
       userId: ADMIN_ID,
@@ -72,7 +77,7 @@ describe('загрузка чека', () => {
     // остальных отказов по вводу в проекте.
     expect(errorCode(result)).toBe('BAD_USER_INPUT');
     // Отказ не оставляет за собой ни чека, ни файла.
-    expect(db.tables.receipt.rows).toHaveLength(0);
+    expect(db.tables.receipt.rows).toHaveLength(receiptCountBeforeUpload);
     expect(db.tables.receiptFile.rows).toHaveLength(0);
   });
 

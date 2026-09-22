@@ -386,7 +386,11 @@ input WaterOrderInput {
   bottlesCount: Int
   supplier: String
   note: String
-  receiptFileId: ID
+  """
+  Обязателен: поставка без подтверждения оплаты не отмечается (§6.5).
+  Колонка в базе остаётся NULL-разрешающей ради заказов, заведённых раньше.
+  """
+  receiptFileId: ID!
 }
 
 type Subscription {

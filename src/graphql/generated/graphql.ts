@@ -561,7 +561,11 @@ export type WaterOrderInput = {
   bottlesCount?: InputMaybe<Scalars['Int']['input']>;
   note?: InputMaybe<Scalars['String']['input']>;
   orderedAt: Scalars['Date']['input'];
-  receiptFileId?: InputMaybe<Scalars['ID']['input']>;
+  /**
+   * Обязателен: поставка без подтверждения оплаты не отмечается (§6.5).
+   * Колонка в базе остаётся NULL-разрешающей ради заказов, заведённых раньше.
+   */
+  receiptFileId: Scalars['ID']['input'];
   supplier?: InputMaybe<Scalars['String']['input']>;
 };
 

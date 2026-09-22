@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { errorCode, run, runOk } from '../support/graphql';
-import { ADMIN_ID, seedOffice } from '../support/office';
+import { ADMIN_ID, RECEIPT_ID, seedOffice } from '../support/office';
 
 const CREATE = `
   mutation ($input: WaterOrderInput!) {
@@ -23,6 +23,7 @@ const ORDER_INPUT = {
   orderedAt: '2026-06-05',
   bottlesCount: 10,
   supplier: 'Аквафор Доставка',
+  receiptFileId: RECEIPT_ID,
 };
 
 describe('внесение заказа', () => {
@@ -132,5 +133,32 @@ describe('внесение заказа', () => {
     // Ни одной строки: неудачная мутация не оставляет следов.
     expect(db.tables.waterOrder.rows).toHaveLength(0);
     expect(db.tables.fundTransaction.rows).toHaveLength(0);
+  });
+
+  it('без чека не проходит: поставка отмечается только с подтверждением (§6.5)', async () => {
+    const db = seedOffice();
+    const { receiptFileId: _dropped, ...withoutReceipt } = ORDER_INPUT;
+
+    const result = await run(CREATE, {
+      db: db.client,
+      userId: ADMIN_ID,
+      variables: { input: withoutReceipt },
+    });
+
+    // Обязательность держится схемой, а не разметкой формы.
+    expect(result.errors?.[0]?.message ?? '').toContain('receiptFileId');
+    expect(db.tables.waterOrder.rows).toHaveLength(0);
+  });
+
+  it('с несуществующим чеком не проходит', async () => {
+    const db = seedOffice();
+    const result = await run(CREATE, {
+      db: db.client,
+      userId: ADMIN_ID,
+      variables: { input: { ...ORDER_INPUT, receiptFileId: '00000000-0000-0000-0000-000000000000' } },
+    });
+
+    expect(errorCode(result)).toBe('NOT_FOUND');
+    expect(db.tables.waterOrder.rows).toHaveLength(0);
   });
 });

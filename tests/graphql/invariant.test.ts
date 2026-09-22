@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { addDays } from '@/lib/calc';
 import { run, runOk, type GraphQLResponse } from '../support/graphql';
-import { ADMIN_ID, seedOffice, START_DATE } from '../support/office';
+import { ADMIN_ID, RECEIPT_ID, seedOffice, START_DATE } from '../support/office';
 
 /**
  * Инвариант §5 после **каждой** мутации, а не только в конце.
@@ -36,7 +36,7 @@ const pick = <T,>(rng: Rng, items: readonly T[]): T => items[int(rng, 0, items.l
 const SUBMIT = `mutation ($amount: Money!, $paidAt: Date!) { submitContribution(amount: $amount, paidAt: $paidAt) { id } }`;
 const CONFIRM = `mutation ($id: ID!) { confirmContribution(id: $id) { id } }`;
 const REJECT = `mutation ($id: ID!) { rejectContribution(id: $id, comment: "не сходится") { id } }`;
-const ORDER = `mutation ($amount: Money!, $orderedAt: Date!) { createWaterOrder(input: { amount: $amount, orderedAt: $orderedAt }) { id } }`;
+const ORDER = `mutation ($amount: Money!, $orderedAt: Date!, $receiptFileId: ID!) { createWaterOrder(input: { amount: $amount, orderedAt: $orderedAt, receiptFileId: $receiptFileId }) { id } }`;
 const ADD_ABSENCE = `mutation ($type: AbsenceType!, $startsOn: Date!, $endsOn: Date!) { addAbsence(type: $type, startsOn: $startsOn, endsOn: $endsOn) { id } }`;
 const DELETE_ABSENCE = `mutation ($id: ID!) { deleteAbsence(id: $id) }`;
 
@@ -104,7 +104,7 @@ describe('инвариант §5 после каждой мутации', () => 
             result = await run(ORDER, {
               ...options,
               userId: actor,
-              variables: { amount: int(rng, 1, 500_000), orderedAt: day },
+              variables: { amount: int(rng, 1, 500_000), orderedAt: day, receiptFileId: RECEIPT_ID },
             });
             break;
           case 4: {
