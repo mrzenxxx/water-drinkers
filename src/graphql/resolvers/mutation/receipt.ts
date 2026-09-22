@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { GraphQLContext } from '@/graphql/context';
-import { requireUser } from '@/graphql/context';
+import { requireWriter } from '@/graphql/context';
 import { badInput } from '@/graphql/errors';
 import type { MutationResolvers } from '@/graphql/generated/graphql';
 import { writeAudit } from '@/lib/data';
@@ -20,7 +20,7 @@ import { MAX_RECEIPT_BYTES, ReceiptFileError, inspectReceiptFile } from '@/lib/r
  */
 export const receiptMutations: Pick<MutationResolvers<GraphQLContext>, 'uploadReceipt'> = {
   uploadReceipt: async (_parent, { file }, ctx) => {
-    const user = await requireUser(ctx);
+    const user = await requireWriter(ctx);
 
     // База64 раздувает данные на треть. Предел проверяется до декодирования:
     // разворачивать в память заведомо слишком большую строку незачем.

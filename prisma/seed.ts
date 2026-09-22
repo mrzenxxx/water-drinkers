@@ -9,9 +9,11 @@ import { prisma } from '../src/lib/db';
  * Остальные участники заводятся администратором через `addParticipant`
  * (этап 4), а не здесь: состав команды меняется и в коде ему не место.
  *
- * Имя и фамилия намеренно не заполняются — человек вводит их сам при
- * первом входе (§7), приложение не выдумывает персональные данные.
+ * Имя и фамилия намеренно не заполняются — администратор введёт их сам на
+ * экране знакомства. Пароль сид не выдаёт: его печатает
+ * `npm run credentials -- e.kondobarov` (ADR-0004).
  */
+const ADMIN_LOGIN = 'e.kondobarov';
 const ADMIN_EMAIL = 'e.kondobarov@sspk.spb.ru';
 
 async function main(): Promise<void> {
@@ -22,9 +24,10 @@ async function main(): Promise<void> {
   });
 
   const admin = await prisma.user.upsert({
-    where: { email: ADMIN_EMAIL },
+    where: { login: ADMIN_LOGIN },
     update: { role: 'ADMIN' },
     create: {
+      login: ADMIN_LOGIN,
       email: ADMIN_EMAIL,
       role: 'ADMIN',
       joinedAt: new Date(),
@@ -72,7 +75,7 @@ async function main(): Promise<void> {
     console.info('Заведена закреплённая инструкция «Как пользоваться кассой»');
   }
 
-  console.info(`Администратор: ${admin.email} (${admin.id})`);
+  console.info(`Администратор: ${admin.login} (${admin.id})`);
 }
 
 main()

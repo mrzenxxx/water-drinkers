@@ -31,9 +31,18 @@ import { toKopecks } from './money';
 
 export type ParticipantRow = {
   id: string;
-  email: string;
-  /** Имя и фамилия, если человек их уже ввёл; иначе адрес почты (§6.7, §7). */
+  login: string;
+  email: string | null;
+  firstName: string | null;
+  middleName: string | null;
+  lastName: string | null;
+  departmentId: string | null;
+  department: string | null;
+  /** «Фамилия Имя», а без имени — логин. */
   name: string;
+  restriction: 'NONE' | 'MUTED' | 'BANNED';
+  /** Выданы ли логин с паролем: без них войти нельзя. */
+  hasCredentials: boolean;
   hasProfile: boolean;
   role: 'PARTICIPANT' | 'ADMIN';
   joinedAt: IsoDate;
@@ -47,12 +56,13 @@ export type ParticipantRow = {
 /**
  * Как называть человека на экране.
  *
- * Имя и фамилию приложение не выдумывает (§6.7): пока участник не вошёл и не
- * заполнил профиль, его зовут его же адресом — это честнее прочерка.
+ * Имя и фамилию приложение не выдумывает (§6.7): у участника, заведённого
+ * до выдачи логинов и ещё не заполнившего профиль, имени нет — его зовут
+ * логином, это честнее прочерка.
  */
-export function participantName(user: Pick<PrismaUser, 'firstName' | 'lastName' | 'email'>): string {
+export function participantName(user: Pick<PrismaUser, 'firstName' | 'lastName' | 'login'>): string {
   const parts = [user.lastName, user.firstName].filter((part): part is string => (part ?? '').length > 0);
-  return parts.length > 0 ? parts.join(' ') : user.email;
+  return parts.length > 0 ? parts.join(' ') : user.login;
 }
 
 export function hasProfile(user: Pick<PrismaUser, 'firstName' | 'lastName'>): boolean {
@@ -62,7 +72,10 @@ export function hasProfile(user: Pick<PrismaUser, 'firstName' | 'lastName'>): bo
 /** Состав с балансами: таблица вкладки «Участники». */
 export async function loadParticipants(db: PrismaClient): Promise<ParticipantRow[]> {
   const [users, state] = await Promise.all([
-    db.user.findMany({ orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }, { email: 'asc' }] }),
+    db.user.findMany({
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }, { login: 'asc' }],
+      include: { department: true },
+    }),
     getFundState(db),
   ]);
 
@@ -70,8 +83,16 @@ export async function loadParticipants(db: PrismaClient): Promise<ParticipantRow
     const balance = state.balanceOf(user.id);
     return {
       id: user.id,
+      login: user.login,
       email: user.email,
+      firstName: user.firstName,
+      middleName: user.middleName,
+      lastName: user.lastName,
+      departmentId: user.departmentId,
+      department: user.department?.name ?? null,
       name: participantName(user),
+      restriction: user.restriction === 'MUTED' || user.restriction === 'BANNED' ? user.restriction : 'NONE',
+      hasCredentials: user.passwordHash !== null,
       hasProfile: hasProfile(user),
       role: user.role === 'ADMIN' ? 'ADMIN' : 'PARTICIPANT',
       joinedAt: toIsoDate(user.joinedAt),
@@ -300,6 +321,9 @@ const VALUE_LABELS: Record<string, string> = {
   PARTICIPANT: 'участник',
   VACATION: 'отпуск',
   SICK_LEAVE: 'больничный',
+  NONE: 'без ограничений',
+  MUTED: 'только просмотр',
+  BANNED: 'вход закрыт',
   'equal-split': 'поровну',
   manual: 'вручную',
 };
@@ -318,6 +342,12 @@ const KEY_LABELS: Record<string, string> = {
   status: 'статус',
   role: 'роль',
   email: 'почта',
+  login: 'логин',
+  firstName: 'имя',
+  middleName: 'отчество',
+  lastName: 'фамилия',
+  departmentId: 'отдел',
+  restriction: 'ограничение',
   comment: 'комментарий',
   reviewComment: 'комментарий',
   type: 'тип',

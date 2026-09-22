@@ -85,6 +85,7 @@ export default async function MyContributionsPage(): Promise<ReactNode> {
             people={people}
             today={todayIso()}
             suggestedAmount={toRublesString(state.input.fund.defaultContribution)}
+            readOnly={user.restriction === 'MUTED'}
           />
         </CardContent>
       </Card>

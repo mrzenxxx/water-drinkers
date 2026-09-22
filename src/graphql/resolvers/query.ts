@@ -1,8 +1,9 @@
 import type { Prisma } from '@/generated/prisma/client';
 import type { GraphQLContext } from '@/graphql/context';
 import { requireAdmin, requireUser } from '@/graphql/context';
-import { forbidden, notImplemented, requireDate } from '@/graphql/errors';
+import { badInput, forbidden, notImplemented, requireDate, requireText } from '@/graphql/errors';
 import type { QueryResolvers } from '@/graphql/generated/graphql';
+import { buildLogin, generatePassword, uniqueLogin } from '@/lib/auth';
 import { fromIsoDate } from '@/lib/data';
 
 /**
@@ -48,8 +49,38 @@ export const Query: QueryResolvers<GraphQLContext> = {
     await requireUser(ctx);
     return ctx.db.user.findMany({
       where: includeInactive ? undefined : { leftAt: null },
-      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }, { email: 'asc' }],
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }, { login: 'asc' }],
     });
+  },
+
+  departments: async (_parent, _args, ctx) => {
+    await requireUser(ctx);
+    return ctx.db.department.findMany({ orderBy: { name: 'asc' } });
+  },
+
+  /**
+   * Предложение учётных данных для формы администратора. Ничего не пишет:
+   * администратор может поправить логин и пароль, прежде чем сохранить.
+   * Занятые логины — все, кроме логина самого участника при перевыпуске.
+   */
+  suggestCredentials: async (_parent, { firstName, middleName, lastName, excludeUserId }, ctx) => {
+    await requireAdmin(ctx);
+    const base = buildLogin({
+      firstName: requireText(firstName, 'firstName'),
+      middleName,
+      lastName: requireText(lastName, 'lastName'),
+    });
+    if (base === '') {
+      throw badInput('Из фамилии не получается логин латиницей. Введите логин вручную.', { field: 'lastName' });
+    }
+
+    // Все логины с тем же началом: `e.kondobarov`, `e.kondobarov2`, …
+    const taken = await ctx.db.user.findMany({
+      where: { login: { startsWith: base }, ...(excludeUserId ? { id: { not: excludeUserId } } : {}) },
+      select: { login: true },
+    });
+
+    return { login: uniqueLogin(base, taken.map((row) => row.login)), password: generatePassword() };
   },
 
   balances: async (_parent, _args, ctx) => {

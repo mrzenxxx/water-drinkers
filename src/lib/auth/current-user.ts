@@ -16,7 +16,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { cache } from 'react';
 
-import { SESSION_COOKIE, authConfigFromEnv, readSession } from '@/lib/auth';
+import { SESSION_COOKIE, authConfigFromEnv, isSessionCurrent, readSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import type { User } from '@/generated/prisma/client';
 
@@ -34,7 +34,11 @@ export const currentUser = cache(async (): Promise<User | null> => {
   const payload = readSession(token, config.sessionSecret, new Date());
   if (payload === null) return null;
 
-  return prisma.user.findUnique({ where: { id: payload.uid } });
+  const user = await prisma.user.findUnique({ where: { id: payload.uid } });
+  // Бан и перевыпуск учётных данных отзывают сессию и для страниц, а не только
+  // для резолверов: иначе забаненный продолжал бы видеть всё до конца срока cookie.
+  if (user === null || !isSessionCurrent(user, payload.iat)) return null;
+  return user;
 });
 
 /** Участник или переход на вход. Для страниц, закрытых от гостя. */

@@ -20,6 +20,7 @@ import DataLoader from 'dataloader';
 import type {
   Absence as PrismaAbsence,
   Contribution as PrismaContribution,
+  Department as PrismaDepartment,
   PrismaClient,
   Receipt as PrismaReceipt,
   User as PrismaUser,
@@ -28,6 +29,7 @@ import type {
 
 export type Loaders = {
   userById: DataLoader<string, PrismaUser | null>;
+  departmentById: DataLoader<string, PrismaDepartment | null>;
   receiptById: DataLoader<string, PrismaReceipt | null>;
   waterOrderById: DataLoader<string, PrismaWaterOrder | null>;
   absencesByUserId: DataLoader<string, PrismaAbsence[]>;
@@ -53,6 +55,11 @@ export function createLoaders(db: PrismaClient): Loaders {
   return {
     userById: new DataLoader(async (ids) => {
       const rows = await db.user.findMany({ where: { id: { in: [...ids] } } });
+      return byKey(rows, ids as readonly string[], (row) => row.id);
+    }),
+
+    departmentById: new DataLoader(async (ids) => {
+      const rows = await db.department.findMany({ where: { id: { in: [...ids] } } });
       return byKey(rows, ids as readonly string[], (row) => row.id);
     }),
 

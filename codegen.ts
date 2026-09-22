@@ -23,6 +23,7 @@ const config: CodegenConfig = {
          */
         mappers: {
           User: '@/generated/prisma/client#User as PrismaUser',
+          Department: '@/generated/prisma/client#Department as PrismaDepartment',
           Contribution: '@/generated/prisma/client#Contribution as PrismaContribution',
           WaterOrder: '@/generated/prisma/client#WaterOrder as PrismaWaterOrder',
           Absence: '@/generated/prisma/client#Absence as PrismaAbsence',

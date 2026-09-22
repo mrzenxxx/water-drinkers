@@ -92,18 +92,18 @@ describe('склонение', () => {
 });
 
 describe('имена участников', () => {
-  it('до заполнения профиля показывает почту', () => {
-    expect(fullName({ email: 'i@sspk.spb.ru' })).toBe('i@sspk.spb.ru');
-    expect(fullName({ email: 'i@sspk.spb.ru', firstName: 'Иван', lastName: 'Петров' })).toBe(
+  it('без имени показывает логин', () => {
+    expect(fullName({ login: 'i.petrov' })).toBe('i.petrov');
+    expect(fullName({ login: 'i.petrov', firstName: 'Иван', lastName: 'Петров' })).toBe(
       'Иван Петров',
     );
   });
 
   it('сокращает имя для тесных мест', () => {
-    expect(shortName({ email: 'i@x', firstName: 'Иван', lastName: 'Петров' })).toBe('И. Петров');
-    expect(shortName({ email: 'i@x', lastName: 'Петров' })).toBe('Петров');
-    expect(initials({ email: 'iv@x', firstName: 'Иван', lastName: 'Петров' })).toBe('ИП');
-    expect(initials({ email: 'iv@x' })).toBe('IV');
+    expect(shortName({ login: 'i', firstName: 'Иван', lastName: 'Петров' })).toBe('И. Петров');
+    expect(shortName({ login: 'i', lastName: 'Петров' })).toBe('Петров');
+    expect(initials({ login: 'iv', firstName: 'Иван', lastName: 'Петров' })).toBe('ИП');
+    expect(initials({ login: 'iv' })).toBe('IV');
   });
 });
 

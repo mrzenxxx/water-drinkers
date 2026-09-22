@@ -1,7 +1,8 @@
 import type { GraphQLContext } from '@/graphql/context';
-import { requireUser } from '@/graphql/context';
+import { requireWriter } from '@/graphql/context';
 import { badInput, forbidden, graphqlError, isExclusionViolation, requireDate } from '@/graphql/errors';
 import type { MutationResolvers } from '@/graphql/generated/graphql';
+import { requireWriteQuota } from '@/graphql/write-quota';
 import { compareDates } from '@/lib/calc';
 import { fromIsoDate, writeAudit } from '@/lib/data';
 
@@ -29,7 +30,7 @@ function overlapError(startsOn: string, endsOn: string): ReturnType<typeof graph
 
 export const absenceMutations: Pick<MutationResolvers<GraphQLContext>, 'addAbsence' | 'deleteAbsence'> = {
   addAbsence: async (_parent, { type, startsOn, endsOn, note }, ctx) => {
-    const user = await requireUser(ctx);
+    const user = await requireWriter(ctx);
 
     const from = requireDate(startsOn, 'startsOn');
     const to = requireDate(endsOn, 'endsOn');
@@ -49,6 +50,10 @@ export const absenceMutations: Pick<MutationResolvers<GraphQLContext>, 'addAbsen
     if (overlapping !== null) {
       throw overlapError(from, to);
     }
+
+    // Лимит — после проверки дат: ошибку в датах человеку полезнее увидеть,
+    // чем «слишком часто».
+    await requireWriteQuota(ctx, user, 'absence.add');
 
     try {
       const created = await ctx.db.$transaction(async (tx) => {
@@ -90,7 +95,7 @@ export const absenceMutations: Pick<MutationResolvers<GraphQLContext>, 'addAbsen
    * выводятся из текущего состояния, а не хранятся.
    */
   deleteAbsence: async (_parent, { id }, ctx) => {
-    const user = await requireUser(ctx);
+    const user = await requireWriter(ctx);
 
     const existing = await ctx.db.absence.findUnique({ where: { id } });
     // Повторный вызов не ошибка: кнопку нажали дважды — результат тот же.

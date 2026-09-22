@@ -10,15 +10,15 @@ import type { AbsenceType, ContributionStatus } from '@/lib/calc/types';
 
 /** Участник, у которого может не быть заполненного профиля (§7). */
 export type NamedUser = {
-  email: string;
+  login: string;
   firstName?: string | null;
   lastName?: string | null;
 };
 
-/** «Иван Петров», а до заполнения профиля — адрес почты. */
+/** «Иван Петров», а без имени — логин. */
 export function fullName(user: NamedUser): string {
   const name = [user.firstName, user.lastName].filter((part) => (part ?? '') !== '').join(' ');
-  return name === '' ? user.email : name;
+  return name === '' ? user.login : name;
 }
 
 /** «И. Петров» — для тесных мест: подписи графика, ячейки календаря. */
@@ -33,7 +33,7 @@ export function shortName(user: NamedUser): string {
 export function initials(user: NamedUser): string {
   const first = (user.firstName ?? '').trim();
   const last = (user.lastName ?? '').trim();
-  if (first === '' && last === '') return user.email.slice(0, 2).toUpperCase();
+  if (first === '' && last === '') return user.login.slice(0, 2).toUpperCase();
   return `${first.slice(0, 1)}${last.slice(0, 1)}`.toUpperCase();
 }
 

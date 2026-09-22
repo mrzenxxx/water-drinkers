@@ -38,7 +38,7 @@ export const fundState = cache(async (): Promise<FundState> => getFundState(pris
 /** Участник с именем — то, что нужно любому списку на экране. */
 export type PersonRow = {
   id: string;
-  email: string;
+  login: string;
   firstName: string | null;
   lastName: string | null;
   role: string;
@@ -49,7 +49,7 @@ export type PersonRow = {
 const PERSON_ORDER: Prisma.UserOrderByWithRelationInput[] = [
   { lastName: 'asc' },
   { firstName: 'asc' },
-  { email: 'asc' },
+  { login: 'asc' },
 ];
 
 /**
@@ -64,7 +64,7 @@ export const listPeople = cache(async (): Promise<PersonRow[]> => {
 
   return rows.map((row) => ({
     id: row.id,
-    email: row.email,
+    login: row.login,
     firstName: row.firstName,
     lastName: row.lastName,
     role: row.role,

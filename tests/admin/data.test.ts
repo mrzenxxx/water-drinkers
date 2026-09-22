@@ -115,9 +115,9 @@ describe('журнал аудита', () => {
 });
 
 describe('участники', () => {
-  it('пока профиль не заполнен, человека зовут его адресом (§6.7)', () => {
-    expect(participantName({ firstName: 'Иван', lastName: 'Иванов', email: 'i@x.ru' })).toBe('Иванов Иван');
-    expect(participantName({ firstName: null, lastName: null, email: 'i@x.ru' })).toBe('i@x.ru');
+  it('без имени человека зовут его логином (§6.7)', () => {
+    expect(participantName({ firstName: 'Иван', lastName: 'Иванов', login: 'i.ivanov' })).toBe('Иванов Иван');
+    expect(participantName({ firstName: null, lastName: null, login: 'i.ivanov' })).toBe('i.ivanov');
   });
 });
 

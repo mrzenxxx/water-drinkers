@@ -1,27 +1,18 @@
-import type { PrismaClient } from '@/generated/prisma/client';
+import type { PrismaClient, User } from '@/generated/prisma/client';
 
-import {
-  MAX_ATTEMPTS,
-  canRequestCode,
-  codeExpiryFrom,
-  generateCode,
-  hashCode,
-  verifyCode,
-} from './codes';
-import { createMailer, loginCodeLetter } from './mailer';
+import { normalizeLogin } from './login-name';
+import { createMagicLink, hashMagicToken, magicLinkUrl } from './magic-link';
+import { hashPassword, verifyPassword } from './password';
 import { issueSession } from './session';
-import { decideAccess } from './whitelist';
 
-export * from './codes';
-export * from './mailer';
+export * from './login-name';
+export * from './magic-link';
+export * from './password';
 export * from './session';
-export * from './whitelist';
 
 export type AuthConfig = {
-  allowedDomain: string;
   sessionSecret: string;
   appUrl: string;
-  mailProvider: string | undefined;
 };
 
 export function authConfigFromEnv(env: NodeJS.ProcessEnv = process.env): AuthConfig {
@@ -32,128 +23,130 @@ export function authConfigFromEnv(env: NodeJS.ProcessEnv = process.env): AuthCon
     );
   }
 
-  const allowedDomain = env.ALLOWED_EMAIL_DOMAIN ?? '';
-  if (allowedDomain.length === 0) {
-    throw new Error('ALLOWED_EMAIL_DOMAIN is not set: refusing to accept logins from any domain');
-  }
-
   return {
-    allowedDomain,
     sessionSecret,
     appUrl: env.APP_URL ?? 'http://localhost:3000',
-    mailProvider: env.MAIL_PROVIDER,
   };
 }
 
-/** Сколько секунд ждать, прежде чем код перестанет действовать. */
-const CODE_TTL_SECONDS_PUBLIC = 10 * 60;
+/** Неудач подряд до блокировки и её длительность. */
+export const MAX_FAILED_LOGINS = 10;
+export const LOCK_MINUTES = 15;
 
-export type RequestCodeResult = {
-  ok: boolean;
-  expiresInSeconds: number;
+export type LoginResult =
+  | { ok: true; token: string; user: User }
+  | { ok: false; reason: 'invalid' | 'locked' | 'banned' };
+
+/**
+ * Вход по логину и паролю.
+ *
+ * «Нет такого логина», «пароль не выдан» и «неверный пароль» неразличимы:
+ * различимый ответ превращает форму входа в справочник участников.
+ * Бан сообщается только после верного пароля — угадать по нему, чей это
+ * логин, нельзя. Блокировка проверяется до пароля, иначе перебор шёл бы
+ * и во время неё.
+ */
+export async function loginWithPassword(
+  db: PrismaClient,
+  config: AuthConfig,
+  rawLogin: string,
+  password: string,
+  now: Date = new Date(),
+): Promise<LoginResult> {
+  const user = await db.user.findUnique({ where: { login: normalizeLogin(rawLogin) } });
+
+  if (user === null || user.passwordHash === null) {
+    // Отпечаток считается и здесь: без этого по времени ответа видно,
+    // что логина нет.
+    await hashPassword(password);
+    return { ok: false, reason: 'invalid' };
+  }
+
+  if (user.lockedUntil !== null && user.lockedUntil.getTime() > now.getTime()) {
+    return { ok: false, reason: 'locked' };
+  }
+
+  if (!(await verifyPassword(password, user.passwordHash))) {
+    const failed = user.failedLogins + 1;
+    const lock = failed >= MAX_FAILED_LOGINS;
+    await db.user.update({
+      where: { id: user.id },
+      data: {
+        failedLogins: lock ? 0 : failed,
+        lockedUntil: lock ? new Date(now.getTime() + LOCK_MINUTES * 60 * 1000) : user.lockedUntil,
+      },
+    });
+    return { ok: false, reason: lock ? 'locked' : 'invalid' };
+  }
+
+  if (user.restriction === 'BANNED') return { ok: false, reason: 'banned' };
+
+  const fresh =
+    user.failedLogins === 0 && user.lockedUntil === null
+      ? user
+      : await db.user.update({ where: { id: user.id }, data: { failedLogins: 0, lockedUntil: null } });
+
+  return { ok: true, token: issueSession(user.id, config.sessionSecret, now), user: fresh };
+}
+
+export type MagicLoginResult = { ok: true; token: string } | { ok: false };
+
+/** Вход по магической ссылке. Причину отказа наружу не сообщаем. */
+export async function loginWithMagicLink(
+  db: PrismaClient,
+  config: AuthConfig,
+  token: string,
+  now: Date = new Date(),
+): Promise<MagicLoginResult> {
+  if (token.length === 0) return { ok: false };
+
+  const user = await db.user.findUnique({
+    where: { magicLinkHash: hashMagicToken(token, config.sessionSecret) },
+  });
+
+  if (user === null || user.magicLinkExpiresAt === null) return { ok: false };
+  if (user.magicLinkExpiresAt.getTime() <= now.getTime()) return { ok: false };
+  if (user.restriction === 'BANNED') return { ok: false };
+
+  return { ok: true, token: issueSession(user.id, config.sessionSecret, now) };
+}
+
+/** Выданные учётные данные — ровно то, что администратор пересылает человеку. */
+export type IssuedCredentials = {
+  login: string;
+  password: string;
+  magicLinkUrl: string;
+  magicLinkExpiresAt: Date;
 };
 
 /**
- * Запрос кода на почту.
- *
- * Ответ **одинаков** для разрешённого и неразрешённого адреса. Это не
- * перестраховка: различимый ответ превращает форму входа в справочник
- * «кто скидывается на воду», а состав участников — не публичные данные.
- * По той же причине лимит запросов проверяется до решения о допуске.
+ * Поля участника для новых учётных данных: отпечаток пароля, свежая ссылка
+ * и отзыв всех прежних входов. Пароль в открытом виде уходит только
+ * в `credentials` — в базу и в журнал он не попадает.
  */
-export async function requestLoginCode(
-  db: PrismaClient,
+export async function credentialFields(
   config: AuthConfig,
-  rawEmail: string,
-  now: Date = new Date(),
-): Promise<RequestCodeResult> {
-  const uniform: RequestCodeResult = { ok: true, expiresInSeconds: CODE_TTL_SECONDS_PUBLIC };
-
-  const hourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-  const email = rawEmail.trim().toLowerCase();
-
-  const recentRequests = await db.loginCode.count({
-    where: { email, createdAt: { gt: hourAgo } },
-  });
-  if (!canRequestCode(recentRequests)) return uniform;
-
-  const participants = await db.user.findMany({ select: { email: true } });
-  const decision = decideAccess(email, config.allowedDomain, participants.map((p) => p.email));
-  if (!decision.allowed) return uniform;
-
-  const code = generateCode();
-
-  await db.loginCode.create({
-    data: {
-      email: decision.email,
-      codeHash: hashCode(code, decision.email, config.sessionSecret),
-      expiresAt: codeExpiryFrom(now),
-      createdAt: now,
-    },
-  });
-
-  await createMailer(config.mailProvider).send(loginCodeLetter(decision.email, code));
-
-  return uniform;
-}
-
-export type VerifyResult =
-  | { ok: true; token: string; userId: string; needsProfile: boolean }
-  | { ok: false; reason: 'no_code' | 'expired' | 'too_many_attempts' | 'wrong_code' };
-
-/**
- * Проверка кода и выдача сессии.
- *
- * Здесь ответы уже различимы: человек ввёл код и должен понимать, что
- * произошло — код устарел, исчерпаны попытки или просто опечатка.
- */
-export async function verifyLoginCode(
-  db: PrismaClient,
-  config: AuthConfig,
-  rawEmail: string,
-  input: string,
-  now: Date = new Date(),
-): Promise<VerifyResult> {
-  const email = rawEmail.trim().toLowerCase();
-
-  const record = await db.loginCode.findFirst({
-    where: { email },
-    orderBy: { createdAt: 'desc' },
-  });
-
-  const outcome = verifyCode(input, email, config.sessionSecret, record, now);
-
-  if (!outcome.ok) {
-    // Неверный код тратит попытку. Просроченный и исчерпанный — уже нет:
-    // счётчик там ничего не защищает, а запись всё равно мертва.
-    if (outcome.reason === 'wrong_code' && record !== null) {
-      await db.loginCode.update({
-        where: { id: record.id },
-        data: { attempts: Math.min(record.attempts + 1, MAX_ATTEMPTS) },
-      });
-    }
-    return outcome;
-  }
-
-  const user = await db.user.findUnique({ where: { email } });
-  if (user === null) {
-    // Участника удалили между выпуском кода и вводом — код больше не значит ничего.
-    return { ok: false, reason: 'no_code' };
-  }
-
-  // Код одноразовый: гасим все выпущенные на этот адрес, а не только сработавший.
-  await db.loginCode.deleteMany({ where: { email } });
-
-  await db.identity.upsert({
-    where: { provider_providerId: { provider: 'email', providerId: email } },
-    create: { provider: 'email', providerId: email, userId: user.id },
-    update: {},
-  });
+  login: string,
+  password: string,
+  now: Date,
+) {
+  const link = createMagicLink(config.sessionSecret, now);
 
   return {
-    ok: true,
-    token: issueSession(user.id, config.sessionSecret, now),
-    userId: user.id,
-    needsProfile: user.firstName === null || user.lastName === null,
+    data: {
+      login,
+      passwordHash: await hashPassword(password),
+      magicLinkHash: link.hash,
+      magicLinkExpiresAt: link.expiresAt,
+      sessionsValidAfter: now,
+      failedLogins: 0,
+      lockedUntil: null,
+    },
+    credentials: {
+      login,
+      password,
+      magicLinkUrl: magicLinkUrl(config.appUrl, link.token),
+      magicLinkExpiresAt: link.expiresAt,
+    } satisfies IssuedCredentials,
   };
 }

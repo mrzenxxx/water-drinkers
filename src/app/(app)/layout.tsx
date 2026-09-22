@@ -47,6 +47,12 @@ export default async function AppLayout({
       balance={state.balanceOf(user.id)?.amount ?? 0}
       fundBalance={state.result.fundBalance}
     >
+      {user.restriction === 'MUTED' && (
+        <p role="status" className="glass mb-4 rounded-xl px-4 py-3 text-sm">
+          Администратор включил для вас режим только просмотра: добавлять взносы и отсутствия
+          сейчас нельзя. Если это ошибка, напишите ему.
+        </p>
+      )}
       {children}
     </AppShell>
   );

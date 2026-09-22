@@ -8,6 +8,7 @@ import { assistantMutations } from './assistant';
 import { authMutations } from './auth';
 import { contributionMutations } from './contribution';
 import { orderMutations } from './order';
+import { participantMutations } from './participant';
 import { receiptMutations } from './receipt';
 
 /**
@@ -25,6 +26,7 @@ export const Mutation: MutationResolvers<GraphQLContext> = {
   ...orderMutations,
   ...absenceMutations,
   ...adminMutations,
+  ...participantMutations,
   ...announcementMutations,
   ...assistantMutations,
 };

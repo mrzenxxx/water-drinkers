@@ -35,6 +35,9 @@ export type AuditAction =
   | 'participant.deactivate'
   | 'participant.reactivate'
   | 'participant.role'
+  | 'participant.update'
+  | 'participant.credentials'
+  | 'participant.restriction'
   | 'participant.settle'
   | 'fund.adjust'
   | 'fund.opening'
@@ -59,6 +62,9 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'participant.deactivate': 'Участник исключён',
   'participant.reactivate': 'Участник возвращён',
   'participant.role': 'Смена роли',
+  'participant.update': 'Данные участника изменены',
+  'participant.credentials': 'Выданы учётные данные',
+  'participant.restriction': 'Смена ограничения',
   'participant.settle': 'Выплата остатка',
   'fund.adjust': 'Корректировка',
   'fund.opening': 'Стартовое состояние фонда',

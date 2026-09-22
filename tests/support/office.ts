@@ -33,6 +33,7 @@ export function seedOffice(participants = 3): Office {
   db.tables.user.seed([
     {
       id: ADMIN_ID,
+      login: 'e.kondobarov',
       email: 'e.kondobarov@sspk.spb.ru',
       firstName: 'Евгений',
       lastName: 'Кондобаров',
@@ -48,6 +49,7 @@ export function seedOffice(participants = 3): Office {
     db.tables.user.seed([
       {
         id,
+        login: `p${index}`,
         email: `p${index}@sspk.spb.ru`,
         firstName: `Имя${index}`,
         lastName: `Фамилия${index}`,

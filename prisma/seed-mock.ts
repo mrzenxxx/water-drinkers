@@ -224,7 +224,7 @@ async function main(): Promise<void> {
   const users = [];
   for (const person of PEOPLE) {
     const user = await prisma.user.upsert({
-      where: { email: person.email },
+      where: { login: person.email.split('@')[0]! },
       update: {
         firstName: person.firstName,
         lastName: person.lastName,
@@ -233,6 +233,7 @@ async function main(): Promise<void> {
         leftAt: person.leftOffset === undefined ? null : dayFromStart(person.leftOffset),
       },
       create: {
+        login: person.email.split('@')[0]!,
         email: person.email,
         firstName: person.firstName,
         lastName: person.lastName,

@@ -44,6 +44,7 @@ export default async function AbsencesPage({
 
   const params = await searchParams;
   const today = todayIso();
+  const readOnly = user.restriction === 'MUTED';
   const requested = typeof params.month === 'string' ? params.month : undefined;
   const month = requested !== undefined && /^\d{4}-\d{2}$/.test(requested) ? requested : monthOf(today);
 
@@ -107,7 +108,13 @@ export default async function AbsencesPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <AbsenceForm today={today} />
+            {readOnly ? (
+              <p className="text-muted-foreground text-sm">
+                Отмечать отсутствия сейчас нельзя: администратор включил режим только просмотра.
+              </p>
+            ) : (
+              <AbsenceForm today={today} />
+            )}
           </CardContent>
         </Card>
 
@@ -145,7 +152,7 @@ export default async function AbsencesPage({
                       </span>
                       <span className="flex items-center gap-2">
                         <Badge variant="secondary">{ABSENCE_TYPE_LABEL[absence.type]}</Badge>
-                        {isMine && <DeleteAbsenceButton id={absence.id} />}
+                        {isMine && !readOnly && <DeleteAbsenceButton id={absence.id} />}
                       </span>
                     </li>
                   );

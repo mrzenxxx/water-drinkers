@@ -28,7 +28,6 @@ import { AbsenceType, Role } from '@/graphql/generated/graphql';
 import type {
   MutationAddAbsenceForArgs,
   MutationAddContributionForArgs,
-  MutationAddParticipantArgs,
   MutationConfirmContributionArgs,
   MutationCreateAdjustmentArgs,
   MutationDeactivateParticipantArgs,
@@ -81,7 +80,6 @@ type Call<TArgs, TResult> = (
  */
 const call = {
   setOpeningBalances: adminMutations.setOpeningBalances as Call<MutationSetOpeningBalancesArgs, unknown>,
-  addParticipant: adminMutations.addParticipant as Call<MutationAddParticipantArgs, unknown>,
   deactivateParticipant: adminMutations.deactivateParticipant as Call<MutationDeactivateParticipantArgs, unknown>,
   reactivateParticipant: adminMutations.reactivateParticipant as Call<MutationReactivateParticipantArgs, unknown>,
   setParticipantRole: adminMutations.setParticipantRole as Call<MutationSetParticipantRoleArgs, unknown>,
@@ -104,6 +102,7 @@ async function actionContext(): Promise<GraphQLContext> {
     db: prisma,
     config,
     userId: payload?.uid ?? null,
+    sessionIssuedAt: payload?.iat ?? 0,
 
     async setSessionCookie(token: string) {
       (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions(config.appUrl));
@@ -196,32 +195,6 @@ export async function rejectContributionAction(
 }
 
 // ─── Участники ─────────────────────────────────────────────────────────────
-
-export async function addParticipantAction(
-  _previous: ActionState,
-  form: FormData,
-): Promise<ActionState> {
-  try {
-    const opening = text(form, 'openingBalance');
-    const ctx = await actionContext();
-
-    await call.addParticipant(
-      null,
-      {
-        email: requiredField(form, 'email', 'рабочая почта'),
-        joinedAt: requiredField(form, 'joinedAt', 'дата вступления'),
-        openingBalance: opening === '' ? 0 : money(form, 'openingBalance', 'начальное сальдо'),
-      },
-      ctx,
-      NO_INFO,
-    );
-
-    refresh();
-    return ok('Участник добавлен. Имя и фамилию он введёт сам при первом входе.');
-  } catch (cause) {
-    return failed(cause);
-  }
-}
 
 export async function deactivateParticipantAction(
   _previous: ActionState,

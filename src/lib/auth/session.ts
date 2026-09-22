@@ -7,8 +7,10 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
  * десятка человек незачем: cookie подписана HMAC на серверном секрете,
  * подделать её нельзя, а выход — это удаление cookie.
  *
- * Плата за это одна и её стоит знать: отозвать конкретную сессию удалённо
- * нельзя, отзывается только весь набор — сменой SESSION_SECRET.
+ * Отзыв всё же возможен, но не поштучно, а для участника целиком: в cookie
+ * лежит момент выдачи (`iat`), а у участника — `sessions_valid_after`.
+ * Бан и перевыпуск учётных данных сдвигают этот момент, и все прежние
+ * cookie человека перестают действовать (`isSessionCurrent`).
  */
 
 const HMAC_LABEL = 'waterdrinkers:session:v1';
@@ -21,6 +23,12 @@ export type SessionPayload = {
   uid: string;
   /** момент истечения, unix-секунды */
   exp: number;
+  /**
+   * Момент выдачи, миллисекунды. В миллисекундах, а не в секундах: иначе
+   * cookie, выданная в ту же секунду, что и отзыв, пережила бы его.
+   * У cookie, выданных до появления поля, — 0.
+   */
+  iat: number;
 };
 
 function sign(payload: string, secret: string): string {
@@ -35,6 +43,7 @@ export function issueSession(userId: string, secret: string, now: Date): string 
   const payload: SessionPayload = {
     uid: userId,
     exp: Math.floor(now.getTime() / 1000) + SESSION_TTL_SECONDS,
+    iat: now.getTime(),
   };
 
   const encoded = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
@@ -68,13 +77,29 @@ export function readSession(token: string | undefined, secret: string, now: Date
   }
 
   if (typeof payload !== 'object' || payload === null) return null;
-  const { uid, exp } = payload as Record<string, unknown>;
+  const { uid, exp, iat } = payload as Record<string, unknown>;
   if (typeof uid !== 'string' || uid.length === 0) return null;
   if (typeof exp !== 'number' || !Number.isFinite(exp)) return null;
 
   if (exp * 1000 <= now.getTime()) return null;
 
-  return { uid, exp };
+  return { uid, exp, iat: typeof iat === 'number' && Number.isFinite(iat) ? iat : 0 };
+}
+
+/** То, что решает, действует ли ещё подписанная cookie участника. */
+export type SessionHolder = {
+  restriction: string;
+  sessionsValidAfter: Date | null;
+};
+
+/**
+ * Не отозвана ли сессия. Подпись проверяет `readSession`; здесь — то, чего
+ * подпись знать не может: бан и перевыпуск учётных данных после выдачи cookie.
+ */
+export function isSessionCurrent(user: SessionHolder, issuedAt: number): boolean {
+  if (user.restriction === 'BANNED') return false;
+  if (user.sessionsValidAfter !== null && issuedAt < user.sessionsValidAfter.getTime()) return false;
+  return true;
 }
 
 /** Атрибуты cookie. `secure` — только под https, иначе локальная разработка сломается. */

@@ -15,12 +15,26 @@ import { ADMIN_ID, seedOffice, START_DATE } from '../support/office';
 const ASOF = '2026-07-01';
 
 const ADD_PARTICIPANT = `
-  mutation ($email: String!, $joinedAt: Date!, $openingBalance: Money) {
-    addParticipant(email: $email, joinedAt: $joinedAt, openingBalance: $openingBalance) {
-      id email role joinedAt leftAt isActive openingBalance
+  mutation ($input: NewParticipantInput!) {
+    addParticipant(input: $input) {
+      user { id login email firstName middleName lastName role joinedAt leftAt isActive openingBalance }
+      credentials { login password magicLinkUrl magicLinkExpiresAt }
     }
   }
 `;
+
+/** Новый участник с минимумом полей; остальное — поверх. */
+function newParticipant(overrides: Record<string, unknown> = {}, profile: Record<string, unknown> = {}) {
+  return {
+    input: {
+      profile: { firstName: 'Иван', lastName: 'Иванов', ...profile },
+      joinedAt: START_DATE,
+      login: 'i.ivanov',
+      password: 'correct-horse',
+      ...overrides,
+    },
+  };
+}
 
 const DEACTIVATE = `mutation ($id: ID!, $leftAt: Date!) { deactivateParticipant(id: $id, leftAt: $leftAt) { id leftAt isActive } }`;
 const REACTIVATE = `mutation ($id: ID!) { reactivateParticipant(id: $id) { id leftAt isActive } }`;
@@ -79,7 +93,7 @@ describe('права на админские мутации (§3)', () => {
     {
       name: 'addParticipant',
       query: ADD_PARTICIPANT,
-      variables: { email: 'new@sspk.spb.ru', joinedAt: START_DATE },
+      variables: newParticipant(),
     },
     { name: 'deactivateParticipant', query: DEACTIVATE, variables: { id: 'u-1', leftAt: '2026-07-01' } },
     { name: 'reactivateParticipant', query: REACTIVATE, variables: { id: 'u-1' } },
@@ -121,46 +135,91 @@ describe('права на админские мутации (§3)', () => {
 });
 
 describe('состав участников (§6.7)', () => {
-  it('заводится по адресу и дате, без имени и фамилии', async () => {
+  it('заводится с ФИО и учётными данными; пароль хранится только отпечатком', async () => {
     const db = seedOffice();
 
     const data = await runOk(ADD_PARTICIPANT, {
       db: db.client,
       userId: ADMIN_ID,
       asOf: ASOF,
-      variables: { email: 'I.Ivanov@SSPK.spb.ru', joinedAt: '2026-06-15' },
+      variables: newParticipant(
+        { joinedAt: '2026-06-15', login: ' I.V.Ivanov ' },
+        { middleName: 'Васильевич', email: ' I.Ivanov@SSPK.spb.ru ' },
+      ),
     });
 
-    expect(data.addParticipant).toMatchObject({
+    const added = data.addParticipant as {
+      user: Record<string, unknown>;
+      credentials: { login: string; password: string; magicLinkUrl: string };
+    };
+    expect(added.user).toMatchObject({
+      login: 'i.v.ivanov',
       email: 'i.ivanov@sspk.spb.ru',
+      firstName: 'Иван',
+      middleName: 'Васильевич',
+      lastName: 'Иванов',
       role: 'PARTICIPANT',
       joinedAt: '2026-06-15',
-      leftAt: null,
       isActive: true,
       openingBalance: 0,
     });
+    expect(added.credentials.login).toBe('i.v.ivanov');
+    expect(added.credentials.password).toBe('correct-horse');
+    expect(added.credentials.magicLinkUrl).toMatch(/^http:\/\/localhost:3000\/l\/[\w-]{40,}$/);
 
-    const created = db.tables.user.rows.find((row) => row.email === 'i.ivanov@sspk.spb.ru');
-    expect(created).toMatchObject({ firstName: null, lastName: null });
+    const created = db.tables.user.rows.find((row) => row.login === 'i.v.ivanov');
+    expect(created?.passwordHash).toMatch(/^scrypt\$/);
+    expect(JSON.stringify(db.tables.auditEntry.rows.map((row) => [row.before, row.after]))).not.toContain(
+      'correct-horse',
+    );
     expect(db.tables.auditEntry.rows.map((row) => row.action)).toEqual(['participant.add']);
   });
 
-  it('чужой домен и повторный адрес отвергаются', async () => {
+  it('почта необязательна', async () => {
+    const db = seedOffice();
+    const data = await runOk(ADD_PARTICIPANT, { db: db.client, userId: ADMIN_ID, variables: newParticipant() });
+    expect((data.addParticipant as { user: { email: unknown } }).user.email).toBeNull();
+  });
+
+  it('занятый логин, неверный логин, короткий пароль и повторная почта отвергаются с указанием поля', async () => {
+    const db = seedOffice();
+    const cases: [Record<string, unknown>, Record<string, unknown>, string, string][] = [
+      [{ login: 'e.kondobarov' }, {}, 'CONFLICT', 'login'],
+      [{ login: 'иванов' }, {}, 'BAD_USER_INPUT', 'login'],
+      [{ password: 'short' }, {}, 'BAD_USER_INPUT', 'password'],
+      [{}, { email: 'p0@sspk.spb.ru' }, 'CONFLICT', 'email'],
+      [{}, { lastName: '  ' }, 'BAD_USER_INPUT', 'lastName'],
+    ];
+
+    for (const [overrides, profile, code, field] of cases) {
+      const result = await run(ADD_PARTICIPANT, {
+        db: db.client,
+        userId: ADMIN_ID,
+        variables: newParticipant(overrides, profile),
+      });
+      expect(errorCode(result), JSON.stringify(overrides)).toBe(code);
+      expect(result.errors?.[0]?.extensions?.field).toBe(field);
+    }
+    expect(db.tables.user.rows).toHaveLength(4);
+  });
+
+  it('новый отдел заводится один раз, одноимённый переиспользуется', async () => {
     const db = seedOffice();
 
-    const foreign = await run(ADD_PARTICIPANT, {
+    await runOk(ADD_PARTICIPANT, {
       db: db.client,
       userId: ADMIN_ID,
-      variables: { email: 'someone@gmail.com', joinedAt: START_DATE },
+      variables: newParticipant({}, { newDepartment: 'Бухгалтерия' }),
     });
-    expect(errorCode(foreign)).toBe('BAD_USER_INPUT');
+    await runOk(ADD_PARTICIPANT, {
+      db: db.client,
+      userId: ADMIN_ID,
+      variables: newParticipant({ login: 'a.petrova' }, { firstName: 'Анна', lastName: 'Петрова', newDepartment: 'Бухгалтерия' }),
+    });
 
-    const duplicate = await run(ADD_PARTICIPANT, {
-      db: db.client,
-      userId: ADMIN_ID,
-      variables: { email: 'p0@sspk.spb.ru', joinedAt: START_DATE },
-    });
-    expect(errorCode(duplicate)).toBe('CONFLICT');
+    expect(db.tables.department.rows).toHaveLength(1);
+    const departmentId = db.tables.department.rows[0]?.id;
+    expect(db.tables.user.rows.filter((row) => row.departmentId === departmentId)).toHaveLength(2);
   });
 
   it('начальное сальдо участника поднимает и начальное сальдо фонда (§4.2)', async () => {
@@ -170,7 +229,7 @@ describe('состав участников (§6.7)', () => {
       db: db.client,
       userId: ADMIN_ID,
       asOf: ASOF,
-      variables: { email: 'new@sspk.spb.ru', joinedAt: '2026-06-15', openingBalance: 12_500 },
+      variables: newParticipant({ joinedAt: '2026-06-15', openingBalance: 12_500 }),
     });
 
     const check = await expectConsistent(db, 'после добавления с сальдо');
@@ -275,7 +334,7 @@ describe('роли (§6.7)', () => {
     db.tables.user.seed([
       {
         id: 'u-gone',
-        email: 'gone@sspk.spb.ru',
+        login: 'gone',
         role: 'ADMIN',
         joinedAt: new Date('2026-06-01T00:00:00.000Z'),
         leftAt: new Date('2026-06-30T00:00:00.000Z'),
@@ -611,7 +670,7 @@ describe('инвариант §5 после каждой админской му
           },
         },
       ],
-      [ADD_PARTICIPANT, { email: 'new@sspk.spb.ru', joinedAt: '2026-06-10', openingBalance: 10_000 }],
+      [ADD_PARTICIPANT, newParticipant({ joinedAt: '2026-06-10', openingBalance: 10_000 })],
       [CONTRIBUTION_FOR, { input: { userId: 'u-0', amount: 50_000, paidAt: '2026-06-11' } }],
       [ADJUST, { userId: null, amount: 333, comment: 'неизвестные деньги' }],
       [ADJUST, { userId: 'u-1', amount: -1_000, comment: 'лишний взнос' }],
