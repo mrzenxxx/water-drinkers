@@ -299,8 +299,16 @@ export function createFakeDb(): FakeDb {
     receipt: new FakeTable('receipts', fakeUuid, () => ({
       extraction: null,
       mediaType: 'image/jpeg',
+      byteSize: 0,
       createdAt: now(),
     })),
+    // Ключ здесь — идентификатор чека, а не собственный: файл у чека один,
+    // и своего id у него нет (§11).
+    receiptFile: new FakeTable(
+      'receipt_files',
+      () => undefined,
+      () => ({ createdAt: now() }),
+    ),
     contribution: new FakeTable(
       'contributions',
       fakeUuid,
