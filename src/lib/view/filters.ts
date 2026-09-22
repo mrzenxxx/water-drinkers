@@ -36,6 +36,18 @@ export const GRANULARITY_LABEL: Record<Granularity, string> = {
   month: 'Месяц',
 };
 
+/**
+ * Типы событий, которые включаются и выключаются в фильтре.
+ *
+ * Выплат среди них нет: это редкое событие — расчёт с уходящим участником,
+ * и отдельный переключатель ради него только занимал место в панели. В ленте
+ * выплата видна всегда: спрятанная, она оставила бы в «Потрачено» сумму,
+ * которой нет ни в одной строке ниже.
+ */
+export const FILTER_KINDS: readonly EventKind[] = EVENT_KINDS.filter(
+  (kind) => kind !== 'SETTLEMENT',
+);
+
 export type DashboardFilters = {
   preset: PeriodPreset;
   from: IsoDate;
@@ -132,8 +144,11 @@ export function parseDashboardFilters(params: RawParams, context: FilterContext)
   const rawGranularity = firstValue(params, 'step');
   const granularityPinned = GRANULARITIES.includes(rawGranularity as Granularity);
 
-  const kinds = listValue(params, 'kinds').filter(isEventKind);
-  const uniqueKinds = [...new Set(kinds)];
+  const picked = new Set(
+    listValue(params, 'kinds').filter(
+      (kind) => isEventKind(kind) && FILTER_KINDS.includes(kind),
+    ),
+  );
 
   return {
     preset,
@@ -144,8 +159,11 @@ export function parseDashboardFilters(params: RawParams, context: FilterContext)
       : defaultGranularity(range.from, range.to),
     userIds: [...new Set(listValue(params, 'users'))],
     // Пустой или испорченный список типов означает «все»: пустой дашборд
-    // по кривой ссылке выглядел бы поломкой приложения.
-    kinds: uniqueKinds.length > 0 ? uniqueKinds : [...EVENT_KINDS],
+    // по кривой ссылке выглядел бы поломкой приложения. Порядок — всегда
+    // порядок `EVENT_KINDS`, а типы вне фильтра (выплаты) включены всегда.
+    kinds: EVENT_KINDS.filter(
+      (kind) => picked.size === 0 || picked.has(kind) || !FILTER_KINDS.includes(kind),
+    ),
     granularityPinned,
   };
 }
@@ -168,7 +186,8 @@ export function dashboardQuery(filters: DashboardFilters): string {
 
   if (filters.granularityPinned) params.set('step', filters.granularity);
   if (filters.userIds.length > 0) params.set('users', filters.userIds.join(','));
-  if (filters.kinds.length !== EVENT_KINDS.length) params.set('kinds', filters.kinds.join(','));
+  const kinds = filters.kinds.filter((kind) => FILTER_KINDS.includes(kind));
+  if (kinds.length !== FILTER_KINDS.length) params.set('kinds', kinds.join(','));
 
   const query = params.toString();
   return query === '' ? '' : `?${query}`;

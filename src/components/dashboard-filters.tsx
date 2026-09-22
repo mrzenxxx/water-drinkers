@@ -1,155 +1,119 @@
+'use client';
+
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 
 import { EVENT_COLOR, EVENT_LABEL_PLURAL } from '@/components/event-style';
+import { PeoplePicker, type PickerPerson } from '@/components/people-picker';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import type { PersonRow } from '@/lib/data/queries';
-import { fullName } from '@/lib/format';
-import { EVENT_KINDS } from '@/lib/view/events';
 import {
+  FILTER_KINDS,
   GRANULARITIES,
   GRANULARITY_LABEL,
   PERIOD_LABEL,
   dashboardHref,
   type DashboardFilters,
 } from '@/lib/view/filters';
-import { cn } from '@/lib/utils';
 
 /**
  * Фильтры дашборда (§6.9).
  *
  * Одна панель над всем, что она задаёт: и лента, и график, и сводка считаются
  * по одному и тому же отрезку. Состояние живёт в адресе страницы, а не в React —
- * §6.9 прямо требует, чтобы диапазоном можно было поделиться ссылкой.
+ * §6.9 прямо требует, чтобы диапазоном можно было поделиться ссылкой. Состояние
+ * здесь только черновое: включён ли ручной ввод дат и кто отмечен в списке
+ * участников до нажатия «Применить».
  *
- * Быстрые периоды и шаг сделаны ссылками: один клик, без отправки формы.
- * Произвольный диапазон, участники и типы — обычная `<form method="get">`,
- * которая работает и без JavaScript.
+ * Черновик живёт до смены адреса: страница пересоздаёт панель ключом из
+ * запроса, и после любого перехода поля снова показывают то, что в адресе.
+ *
+ * Панель в три строки: период с датами, участники, типы событий с шагом.
+ * Быстрые периоды и шаг — ссылки: один клик, без отправки формы. Всё остальное —
+ * обычная `<form method="get">`.
  */
 export function DashboardFilters({
   filters,
   people,
 }: {
   filters: DashboardFilters;
-  people: readonly PersonRow[];
+  people: readonly PickerPerson[];
 }): ReactNode {
-  const pill = (active: boolean): string =>
-    cn(
-      'focus-visible:ring-ring inline-flex h-8 items-center rounded-md px-3 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none',
-      active
-        ? 'bg-primary text-primary-foreground font-medium'
-        : 'bg-secondary text-secondary-foreground hover:bg-secondary/70',
-    );
+  const [manual, setManual] = useState(filters.preset === 'custom');
+  const peopleLabelId = useId();
 
   return (
-    <div className="glass flex flex-col gap-4 rounded-lg p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-muted-foreground w-full text-xs sm:w-auto">Период</span>
-        {(['month', 'quarter', 'year', 'all'] as const).map((preset) => (
-          <Link
-            key={preset}
-            href={dashboardHref(filters, { preset })}
-            aria-current={filters.preset === preset ? 'true' : undefined}
-            className={pill(filters.preset === preset)}
-          >
-            {PERIOD_LABEL[preset]}
-          </Link>
-        ))}
-        {filters.preset === 'custom' && (
-          <span className={pill(true)}>{PERIOD_LABEL.custom}</span>
-        )}
-      </div>
+    <form method="get" className="flex flex-col gap-3">
+      {/* Ярлык периода едет вместе с формой, пока даты не введены руками:
+          иначе «Применить» после смены участников сбрасывал бы период. */}
+      {!manual && <input type="hidden" name="period" value={filters.preset} />}
+      {filters.granularityPinned && (
+        <input type="hidden" name="step" value={filters.granularity} />
+      )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-muted-foreground w-full text-xs sm:w-auto">Шаг</span>
-        {GRANULARITIES.map((step) => (
-          <Link
-            key={step}
-            href={dashboardHref(filters, { granularity: step, granularityPinned: true })}
-            aria-current={filters.granularity === step ? 'true' : undefined}
-            className={pill(filters.granularity === step)}
+      <Row label="Период">
+        <div className="segmented">
+          {(['month', 'quarter', 'year', 'all'] as const).map((preset) => {
+            const active = !manual && filters.preset === preset;
+            return (
+              <Link
+                key={preset}
+                href={dashboardHref(filters, { preset })}
+                aria-current={active ? 'true' : undefined}
+                className="segment"
+                onClick={() => setManual(false)}
+              >
+                {PERIOD_LABEL[preset]}
+              </Link>
+            );
+          })}
+          <button
+            type="button"
+            aria-pressed={manual}
+            className="segment"
+            onClick={() => setManual(true)}
           >
-            {GRANULARITY_LABEL[step]}
-          </Link>
-        ))}
-        {filters.granularityPinned && (
-          <Link
-            href={dashboardHref(filters, { granularityPinned: false })}
-            className="text-muted-foreground text-xs underline underline-offset-4"
-          >
-            подобрать по длине периода
-          </Link>
-        )}
-      </div>
-
-      <form method="get" className="grid gap-4 lg:grid-cols-4">
-        {/* Ярлык периода едет вместе с формой: без него произвольные даты,
-            стёртые пользователем, вернули бы период по умолчанию. */}
-        {filters.preset !== 'custom' && (
-          <input type="hidden" name="period" value={filters.preset} />
-        )}
-        {filters.granularityPinned && (
-          <input type="hidden" name="step" value={filters.granularity} />
-        )}
-
-        <div className="space-y-2">
-          <Label htmlFor="from">Произвольный период: с</Label>
-          <Input
-            id="from"
-            name="from"
-            type="date"
-            defaultValue={filters.preset === 'custom' ? filters.from : ''}
-          />
+            Ручной ввод
+          </button>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="to">по</Label>
-          <Input
-            id="to"
-            name="to"
-            type="date"
-            defaultValue={filters.preset === 'custom' ? filters.to : ''}
-          />
+        {/* Выключенные поля не уходят с формой — ровно то, что нужно: даты
+            едут в адрес только при ручном вводе. Показывают они при этом
+            границы текущего периода. */}
+        <div className="flex items-center gap-1.5">
+          <DateField name="from" label="Начало периода" value={filters.from} enabled={manual} />
+          <span aria-hidden className="text-muted-foreground">
+            —
+          </span>
+          <DateField name="to" label="Конец периода" value={filters.to} enabled={manual} />
         </div>
+      </Row>
 
-        <div className="space-y-2">
-          <Label htmlFor="users">Участники</Label>
-          <select
-            id="users"
+      <Row label="Участники" labelId={peopleLabelId}>
+        <div className="min-w-0 flex-1">
+          <PeoplePicker
             name="users"
-            multiple
-            size={4}
+            people={people}
             defaultValue={filters.userIds}
-            className="field-surface focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-sm transition-[color,box-shadow,border-color] focus-visible:ring-2 focus-visible:outline-none"
-          >
-            {people.map((person) => (
-              <option key={person.id} value={person.id}>
-                {fullName(person)}
-              </option>
-            ))}
-          </select>
-          <p className="text-muted-foreground text-xs">
-            Ничего не выбрано — показываем всех. Заказы и общие корректировки касаются всех
-            и остаются в ленте всегда.
-          </p>
+            labelId={peopleLabelId}
+          />
         </div>
+      </Row>
 
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">Типы событий</legend>
-          {EVENT_KINDS.map((kind) => (
-            <label key={kind} className="flex items-center gap-2 text-sm">
+      <Row label="События">
+        <fieldset className="segmented">
+          <legend className="sr-only">Типы событий</legend>
+          {FILTER_KINDS.map((kind) => (
+            <label key={kind} className="segment">
               <input
                 type="checkbox"
                 name="kinds"
                 value={kind}
                 defaultChecked={filters.kinds.includes(kind)}
-                className="accent-primary size-4"
+                className="sr-only"
               />
               <span
                 aria-hidden
-                className="inline-block size-2.5 rounded-full"
+                className="inline-block size-2 rounded-full"
                 style={{ background: EVENT_COLOR[kind] }}
               />
               {EVENT_LABEL_PLURAL[kind]}
@@ -157,13 +121,85 @@ export function DashboardFilters({
           ))}
         </fieldset>
 
-        <div className="flex items-end gap-2 lg:col-span-4">
-          <Button type="submit">Применить</Button>
-          <Button asChild variant="ghost">
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground text-xs">Шаг</span>
+          <nav aria-label="Шаг сетки" className="segmented">
+            <Link
+              href={dashboardHref(filters, { granularityPinned: false })}
+              aria-current={filters.granularityPinned ? undefined : 'true'}
+              title="Подобрать шаг по длине периода"
+              className="segment"
+            >
+              Авто
+            </Link>
+            {GRANULARITIES.map((step) => (
+              <Link
+                key={step}
+                href={dashboardHref(filters, { granularity: step, granularityPinned: true })}
+                aria-current={
+                  filters.granularityPinned && filters.granularity === step ? 'true' : undefined
+                }
+                className="segment"
+              >
+                {GRANULARITY_LABEL[step]}
+              </Link>
+            ))}
+          </nav>
+        </div>
+
+        <div className="ml-auto flex items-center gap-1">
+          <Button asChild variant="ghost" size="sm">
             <Link href="/dashboard">Сбросить</Link>
           </Button>
+          <Button type="submit" size="sm">
+            Применить
+          </Button>
         </div>
-      </form>
+      </Row>
+    </form>
+  );
+}
+
+/** Строка панели: подпись слева фиксированной ширины, содержимое справа. */
+function Row({
+  label,
+  labelId,
+  children,
+}: {
+  label: string;
+  labelId?: string;
+  children: ReactNode;
+}): ReactNode {
+  return (
+    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+      <span id={labelId} className="text-muted-foreground w-20 shrink-0 text-xs">
+        {label}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2">{children}</div>
     </div>
+  );
+}
+
+function DateField({
+  name,
+  label,
+  value,
+  enabled,
+}: {
+  name: string;
+  label: string;
+  value: string;
+  enabled: boolean;
+}): ReactNode {
+  return (
+    <input
+      type="date"
+      name={name}
+      aria-label={label}
+      defaultValue={value}
+      disabled={!enabled}
+      required={enabled}
+      className="field-surface focus-visible:border-ring focus-visible:ring-ring/50 h-8 w-36 rounded-md border px-2 text-sm transition-[opacity,border-color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50"
+    />
   );
 }

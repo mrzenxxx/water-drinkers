@@ -6,6 +6,7 @@ import {
   dashboardHref,
   dashboardQuery,
   defaultGranularity,
+  FILTER_KINDS,
   hasContributionFilters,
   parseContributionFilters,
   parseDashboardFilters,
@@ -72,8 +73,24 @@ describe('разбор адреса дашборда', () => {
       { kinds: 'ORDER,CONTRIBUTION,ORDER', users: ['a', 'b,c'] },
       CONTEXT,
     );
-    expect(filters.kinds).toEqual(['ORDER', 'CONTRIBUTION']);
+    expect(filters.kinds).toEqual(['CONTRIBUTION', 'ORDER', 'SETTLEMENT']);
     expect(filters.userIds).toEqual(['a', 'b', 'c']);
+  });
+
+  it('выплаты в фильтре не выбираются и показываются всегда', () => {
+    expect(FILTER_KINDS).not.toContain('SETTLEMENT');
+
+    const narrowed = parseDashboardFilters({ kinds: 'ABSENCE' }, CONTEXT);
+    expect(narrowed.kinds).toEqual(['ABSENCE', 'SETTLEMENT']);
+
+    // Старая ссылка «только выплаты» — это ничего не выбрано, то есть всё.
+    const legacy = parseDashboardFilters({ kinds: 'SETTLEMENT' }, CONTEXT);
+    expect(legacy.kinds).toEqual([...EVENT_KINDS]);
+  });
+
+  it('все типы фильтра, выбранные явно, в адрес не пишутся', () => {
+    const all = parseDashboardFilters({ kinds: FILTER_KINDS.join(',') }, CONTEXT);
+    expect(dashboardQuery(all)).toBe('');
   });
 
   it('подбирает шаг по длине периода, пока его не задали', () => {
@@ -116,7 +133,7 @@ describe('сборка адреса', () => {
     expect(again.preset).toBe('year');
     expect(again.granularity).toBe('week');
     expect(again.userIds).toEqual(['u-1', 'u-2']);
-    expect(again.kinds).toEqual(['ORDER', 'ABSENCE']);
+    expect(again.kinds).toEqual(['ORDER', 'ABSENCE', 'SETTLEMENT']);
   });
 
   it('меняет одну часть фильтров, сохраняя остальные', () => {

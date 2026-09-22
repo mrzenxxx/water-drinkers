@@ -14,6 +14,8 @@ import type { ReactNode } from 'react';
 import { ActivityFeed } from '@/components/activity-feed';
 import { Amount } from '@/components/amount';
 import { DashboardFilters } from '@/components/dashboard-filters';
+import { EVENT_LABEL_PLURAL } from '@/components/event-style';
+import { FoldCard } from '@/components/fold-card';
 import { FundBalanceChart } from '@/components/charts/fund-balance-chart';
 import { TimelineLanes } from '@/components/charts/timeline-lanes';
 import { IconChip } from '@/components/icon-chip';
@@ -32,7 +34,9 @@ import {
   formatDate,
   formatDateRange,
   formatMonth,
+  fullName,
   monthOf,
+  PARTICIPANTS,
   shiftMonth,
   withCount,
 } from '@/lib/format';
@@ -41,6 +45,9 @@ import { buildEvents, filterEvents, groupEvents } from '@/lib/view/events';
 import { toFeedItems } from '@/lib/view/feed';
 import {
   bucketKeyOf,
+  dashboardQuery,
+  FILTER_KINDS,
+  PERIOD_LABEL,
   parseDashboardFilters,
   type Granularity,
   type RawParams,
@@ -124,6 +131,18 @@ export default async function DashboardPage({
 
   const groups = groupEvents(visible, bucketKeyOf(filters.granularity)).reverse();
 
+  // Выжимка фильтров для свёрнутой панели: что выбрано, без разворачивания.
+  const pickedKinds = FILTER_KINDS.filter((kind) => filters.kinds.includes(kind));
+  const filtersMeta = [
+    filters.preset === 'custom' ? 'Ручной ввод' : PERIOD_LABEL[filters.preset],
+    filters.userIds.length === 0
+      ? 'все участники'
+      : withCount(filters.userIds.length, PARTICIPANTS),
+    pickedKinds.length === FILTER_KINDS.length
+      ? 'все события'
+      : pickedKinds.map((kind) => EVENT_LABEL_PLURAL[kind].toLowerCase()).join(', '),
+  ].join(' · ');
+
   const bucketTitle = (key: IsoDate): string => {
     if (filters.granularity === 'month') return formatMonth(monthOf(key));
     if (filters.granularity === 'week') return `Неделя с ${formatDate(key)}`;
@@ -145,77 +164,78 @@ export default async function DashboardPage({
         </div>
       </header>
 
-      <DashboardFilters filters={filters} people={people} />
+      <FoldCard title="Фильтры" meta={filtersMeta}>
+        <DashboardFilters
+          key={dashboardQuery(filters)}
+          filters={filters}
+          people={people.map((person) => ({ id: person.id, name: fullName(person) }))}
+        />
+      </FoldCard>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Сводка за период</CardTitle>
-          <CardDescription>
-            {formatDateRange(range.from, range.to)} · {withCount(summary.days, DAYS)}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <StatTile
-              label="Поступило"
-              icon={ArrowDownToLine}
-              value={formatKopecks(summary.received)}
-              tone="credit"
-              hint="Подтверждённые взносы и положительные корректировки"
-            />
-            <StatTile
-              label="Потрачено"
-              icon={ArrowUpFromLine}
-              value={formatKopecks(summary.spent)}
-              tone="owes"
-              hint="Заказы, выплаты и отрицательные корректировки"
-            />
-            <StatTile
-              label="Изменение остатка"
-              icon={Scale}
-              value={<Amount value={summary.netChange} tone="auto" signed />}
-              hint="Поступило минус потрачено"
-            />
-            <StatTile
-              label="Средний расход в день"
-              icon={CalendarDays}
-              value={formatKopecks(summary.averageDailySpend)}
-              hint="Справочная величина: потрачено, делённое на длину периода"
-            />
-            <StatTile label="Заказов" icon={Package} value={String(summary.orderCount)} />
-            <StatTile
-              label="Человеко-дней"
-              icon={Users}
-              value={String(summary.personDays)}
-              hint="Дни присутствия всех участников за период"
-            />
-            <StatTile
-              label="Самый дорогой заказ"
-              icon={Coins}
-              value={
-                summary.largestOrder === null ? '—' : formatKopecks(summary.largestOrder.amount)
-              }
-              hint={
-                summary.largestOrder === null
-                  ? 'Заказов за период не было'
-                  : formatDate(summary.largestOrder.date)
-              }
-            />
-            <StatTile
-              label="Дольше всего без закупок"
-              icon={Clock}
-              value={
-                summary.longestGap === null ? '—' : withCount(summary.longestGap.days, DAYS)
-              }
-              hint={
-                summary.longestGap === null
-                  ? undefined
-                  : formatDateRange(summary.longestGap.from, summary.longestGap.to)
-              }
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <FoldCard
+        title="Сводка за период"
+        meta={`${formatDateRange(range.from, range.to)} · ${withCount(summary.days, DAYS)}`}
+      >
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <StatTile
+            label="Поступило"
+            icon={ArrowDownToLine}
+            value={formatKopecks(summary.received)}
+            tone="credit"
+            hint="Подтверждённые взносы и положительные корректировки"
+          />
+          <StatTile
+            label="Потрачено"
+            icon={ArrowUpFromLine}
+            value={formatKopecks(summary.spent)}
+            tone="owes"
+            hint="Заказы, выплаты и отрицательные корректировки"
+          />
+          <StatTile
+            label="Изменение остатка"
+            icon={Scale}
+            value={<Amount value={summary.netChange} tone="auto" signed />}
+            hint="Поступило минус потрачено"
+          />
+          <StatTile
+            label="Средний расход в день"
+            icon={CalendarDays}
+            value={formatKopecks(summary.averageDailySpend)}
+            hint="Справочная величина: потрачено, делённое на длину периода"
+          />
+          <StatTile label="Заказов" icon={Package} value={String(summary.orderCount)} />
+          <StatTile
+            label="Человеко-дней"
+            icon={Users}
+            value={String(summary.personDays)}
+            hint="Дни присутствия всех участников за период"
+          />
+          <StatTile
+            label="Самый дорогой заказ"
+            icon={Coins}
+            value={
+              summary.largestOrder === null ? '—' : formatKopecks(summary.largestOrder.amount)
+            }
+            hint={
+              summary.largestOrder === null
+                ? 'Заказов за период не было'
+                : formatDate(summary.largestOrder.date)
+            }
+          />
+          <StatTile
+            label="Дольше всего без закупок"
+            icon={Clock}
+            value={
+              summary.longestGap === null ? '—' : withCount(summary.longestGap.days, DAYS)
+            }
+            hint={
+              summary.longestGap === null
+                ? undefined
+                : formatDateRange(summary.longestGap.from, summary.longestGap.to)
+            }
+          />
+        </div>
+      </FoldCard>
 
       <Card>
         <CardHeader>
