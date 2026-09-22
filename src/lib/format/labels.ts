@@ -77,9 +77,15 @@ export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} Б`;
 
   const kb = bytes / 1024;
-  if (kb < 1024) return `${round(kb)} КБ`;
+  // Переключаемся на МБ, когда KB приближается к 1024 (до округления),
+  // чтобы не появилось «1024 КБ» рядом со строками вроде «1,5 МБ».
+  if (kb < 1023.5) return `${round(kb)} КБ`;
 
-  return `${round(kb / 1024)} МБ`;
+  const mb = kb / 1024;
+  // Симметрично для МБ→ГБ: предотвращаем «1024 МБ».
+  if (mb < 1023.5) return `${round(mb)} МБ`;
+
+  return `${round(mb / 1024)} ГБ`;
 }
 
 /** До десяти — с одним знаком после запятой, дальше он только мешает. */
