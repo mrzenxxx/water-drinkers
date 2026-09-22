@@ -137,7 +137,10 @@ describe('внесение заказа', () => {
 
   it('без чека не проходит: поставка отмечается только с подтверждением (§6.5)', async () => {
     const db = seedOffice();
-    const { receiptFileId: _dropped, ...withoutReceipt } = ORDER_INPUT;
+    // `delete`, а не деструктуризация с отбрасыванием: последняя оставляет
+    // неиспользуемую переменную и линтер на неё справедливо ругается.
+    const withoutReceipt: Record<string, unknown> = { ...ORDER_INPUT };
+    delete withoutReceipt.receiptFileId;
 
     const result = await run(CREATE, {
       db: db.client,
