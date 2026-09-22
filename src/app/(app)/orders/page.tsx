@@ -2,7 +2,9 @@ import { Package } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { Amount } from '@/components/amount';
+import { OrderForm } from '@/components/order-form';
 import { PageHeader } from '@/components/page-header';
+import { ReceiptPreview } from '@/components/receipt-preview';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { addDays } from '@/lib/calc';
@@ -15,6 +17,7 @@ import {
   ORDERS,
   PERSON_DAYS,
   formatDate,
+  formatFileSize,
   fullName,
   withCount,
 } from '@/lib/format';
@@ -44,6 +47,8 @@ export default async function OrdersPage(): Promise<ReactNode> {
         Вода, купленная в день заказа, выпивается до следующей закупки — по этому
         периоду и раскладывается её стоимость.
       </PageHeader>
+
+      {currentUser.role === 'ADMIN' && <OrderForm today={today} />}
 
       <Card>
         <CardHeader>
@@ -108,6 +113,21 @@ export default async function OrdersPage(): Promise<ReactNode> {
                           {order.note !== null && <> Примечание: {order.note}.</>}{' '}
                           Оформил {creator === undefined ? '—' : fullName(creator)}.
                         </p>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          {order.receipt === null ? (
+                            <p className="text-muted-foreground text-xs">
+                              Чек не приложен: заказ заведён до того, как чек стал обязательным.
+                            </p>
+                          ) : (
+                            <ReceiptPreview
+                              src={`/api/receipts/${order.receipt.id}`}
+                              mediaType={order.receipt.mediaType}
+                              title={`Чек заказа от ${formatDate(order.orderedAt)}`}
+                              label={`Чек · ${formatFileSize(order.receipt.byteSize)}`}
+                            />
+                          )}
+                        </div>
 
                         {period !== null && period.shares.length > 0 && (
                           <div className="overflow-x-auto">
