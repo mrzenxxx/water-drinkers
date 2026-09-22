@@ -42,7 +42,8 @@ export type AuditAction =
   | 'announcement.update'
   | 'announcement.archive'
   | 'announcement.restore'
-  | 'announcement.image';
+  | 'announcement.image'
+  | 'receipt.upload';
 
 /** Подписи действий по-русски — журнал §6.7 читают люди, а не машины. */
 export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
@@ -66,6 +67,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'announcement.archive': 'Объявление убрано в архив',
   'announcement.restore': 'Объявление возвращено из архива',
   'announcement.image': 'Картинка объявления',
+  'receipt.upload': 'Чек загружен',
 };
 
 /** Все известные действия — для выпадающего фильтра журнала. */

@@ -242,6 +242,7 @@ export type Mutation = {
   submitContribution: Contribution;
   updateAnnouncement: Announcement;
   updateProfile: User;
+  uploadReceipt: Receipt;
   verifyLoginCode: AuthResult;
 };
 
@@ -379,6 +380,11 @@ export type MutationUpdateProfileArgs = {
 };
 
 
+export type MutationUploadReceiptArgs = {
+  file: ReceiptFileInput;
+};
+
+
 export type MutationVerifyLoginCodeArgs = {
   code: Scalars['String']['input'];
   email: Scalars['String']['input'];
@@ -463,8 +469,12 @@ export type QueryWaterOrdersArgs = {
 
 export type Receipt = {
   __typename?: 'Receipt';
+  /** Размер файла в байтах: для подписи кнопки «PDF · 1,2 МБ» */
+  byteSize: Scalars['Int']['output'];
   extraction?: Maybe<ReceiptExtraction>;
   id: Scalars['ID']['output'];
+  mediaType: Scalars['String']['output'];
+  /** /api/receipts/:id — ссылка на приложение, а не на хранилище (§8.4) */
   url: Scalars['String']['output'];
 };
 
@@ -476,6 +486,19 @@ export type ReceiptExtraction = {
   paidAt?: Maybe<Scalars['Date']['output']>;
   payerHint?: Maybe<Scalars['String']['output']>;
   provider: Scalars['String']['output'];
+};
+
+/**
+ * Файл чека на загрузку (§8.4).
+ *
+ * Байты приходят в base64: у GraphQL нет своего способа передать файл. Тип
+ * определяется по сигнатуре файла — `mediaType` лишь сверяется.
+ */
+export type ReceiptFileInput = {
+  /** У GraphQL нет своего способа передать файл */
+  base64: Scalars['String']['input'];
+  /** Только сверяется: решает сигнатура файла (§8.4) */
+  mediaType?: InputMaybe<Scalars['String']['input']>;
 };
 
 /**
@@ -647,6 +670,7 @@ export type ResolversTypes = {
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   Receipt: ResolverTypeWrapper<PrismaReceipt>;
   ReceiptExtraction: ResolverTypeWrapper<ReceiptExtraction>;
+  ReceiptFileInput: ReceiptFileInput;
   RequestCodeResult: ResolverTypeWrapper<RequestCodeResult>;
   Role: Role;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
@@ -687,6 +711,7 @@ export type ResolversParentTypes = {
   Query: Record<PropertyKey, never>;
   Receipt: PrismaReceipt;
   ReceiptExtraction: ReceiptExtraction;
+  ReceiptFileInput: ReceiptFileInput;
   RequestCodeResult: RequestCodeResult;
   String: Scalars['String']['output'];
   Subscription: Record<PropertyKey, never>;
@@ -837,6 +862,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   submitContribution?: Resolver<ResolversTypes['Contribution'], ParentType, ContextType, RequireFields<MutationSubmitContributionArgs, 'amount' | 'paidAt'>>;
   updateAnnouncement?: Resolver<ResolversTypes['Announcement'], ParentType, ContextType, RequireFields<MutationUpdateAnnouncementArgs, 'id' | 'input'>>;
   updateProfile?: Resolver<ResolversTypes['User'], ParentType, ContextType, RequireFields<MutationUpdateProfileArgs, 'firstName' | 'lastName'>>;
+  uploadReceipt?: Resolver<ResolversTypes['Receipt'], ParentType, ContextType, RequireFields<MutationUploadReceiptArgs, 'file'>>;
   verifyLoginCode?: Resolver<ResolversTypes['AuthResult'], ParentType, ContextType, RequireFields<MutationVerifyLoginCodeArgs, 'code' | 'email'>>;
 };
 
@@ -863,8 +889,10 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
 };
 
 export type ReceiptResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Receipt'] = ResolversParentTypes['Receipt']> = {
+  byteSize?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   extraction?: Resolver<Maybe<ResolversTypes['ReceiptExtraction']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  mediaType?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   url?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
 

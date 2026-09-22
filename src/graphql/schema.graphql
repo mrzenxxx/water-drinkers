@@ -110,7 +110,11 @@ type Contribution {
 
 type Receipt {
   id: ID!
+  "/api/receipts/:id — ссылка на приложение, а не на хранилище (§8.4)"
   url: String!
+  mediaType: String!
+  "Размер файла в байтах: для подписи кнопки «PDF · 1,2 МБ»"
+  byteSize: Int!
   extraction: ReceiptExtraction
 }
 
@@ -203,6 +207,19 @@ input AnnouncementImageInput {
   alt: String!
 }
 
+"""
+Файл чека на загрузку (§8.4).
+
+Байты приходят в base64: у GraphQL нет своего способа передать файл. Тип
+определяется по сигнатуре файла — `mediaType` лишь сверяется.
+"""
+input ReceiptFileInput {
+  "У GraphQL нет своего способа передать файл"
+  base64: String!
+  "Только сверяется: решает сигнатура файла (§8.4)"
+  mediaType: String
+}
+
 input AnnouncementInput {
   title: String!
   body: String!
@@ -283,6 +300,9 @@ type Mutation {
   verifyLoginCode(email: String!, code: String!): AuthResult!
   logout: Boolean!
   updateProfile(firstName: String!, lastName: String!): User!
+
+  # Чеки (§8.4)
+  uploadReceipt(file: ReceiptFileInput!): Receipt!
 
   # Взносы
   extractReceipt(fileId: ID!): ReceiptExtraction!
