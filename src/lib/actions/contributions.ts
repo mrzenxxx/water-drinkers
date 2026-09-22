@@ -56,8 +56,9 @@ export async function submitContributionAction(
     const context = await actionContext();
     await callResolver<SubmitArgs, unknown>(
       contributionMutations.submitContribution,
-      // Чеков пока нет: загрузка файлов — этап 6 (§8, открытый вопрос №6).
-      // Подставлять сюда выдуманный `fileId` нельзя, поэтому его просто нет.
+      // Чек к взносу — этап 6 (§8): прикрепление появится вместе с
+      // распознаванием. Подставлять сюда выдуманный `fileId` нельзя, поэтому
+      // его просто нет.
       { amount, paidAt },
       context,
     );
