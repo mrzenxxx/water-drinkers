@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { Amount } from '@/components/amount';
+import { ContributionStatusIcon } from '@/components/contribution-status';
 import { Badge } from '@/components/ui/badge';
 import {
   Table,
@@ -47,6 +48,10 @@ function ReceiptCell({ receiptId }: { receiptId: string | null }): ReactNode {
   );
 }
 
+/**
+ * Статус словами — для карточек узкого экрана: подсказки по наведению там нет,
+ * а касание её не открывает. В таблице статус показывает значок с подсказкой.
+ */
 function StatusBadge({ row }: { row: ContributionRow }): ReactNode {
   return (
     <Badge variant={CONTRIBUTION_STATUS_VARIANT[row.status]}>
@@ -113,7 +118,7 @@ export function ContributionsList({
               <TableHead className="text-right">Сумма</TableHead>
               <TableHead>Дата платежа</TableHead>
               <TableHead>Подан</TableHead>
-              <TableHead>Статус</TableHead>
+              <TableHead className="w-16">Статус</TableHead>
               <TableHead>Рассмотрел</TableHead>
               <TableHead>Чек</TableHead>
             </TableRow>
@@ -130,10 +135,7 @@ export function ContributionsList({
                   {formatDateTime(row.submittedAt)}
                 </TableCell>
                 <TableCell>
-                  <StatusBadge row={row} />
-                  {row.status === 'REJECTED' && row.reviewComment !== null && (
-                    <span className="text-owes mt-1 block text-xs">{row.reviewComment}</span>
-                  )}
+                  <ContributionStatusIcon status={row.status} comment={row.reviewComment} />
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {row.reviewedBy === null ? '—' : nameOf(row.reviewedBy)}
