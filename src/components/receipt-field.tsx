@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useFormStatus } from 'react-dom';
 
 import { ReceiptPreview } from '@/components/receipt-preview';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,18 @@ import { MAX_RECEIPT_BYTES, RECEIPT_ACCEPT } from '@/lib/receipts/file';
  *
  * Адрес объекта освобождается при смене файла и при уходе компонента: иначе
  * браузер держит выбранные файлы в памяти до перезагрузки страницы.
+ *
+ * После завершения действия React 19 сбрасывает неконтролируемую форму
+ * (`requestFormReset`) — независимо от того, успешно оно завершилось или
+ * отказало: и то и другое одинаково означает «действие с этим файлом
+ * закончено». Само `<input type="file">` от этого пустеет, а `picked` —
+ * состояние этого компонента, а не поля, — само по себе не заметило бы
+ * сброса. Ловим момент через `useFormStatus`: `pending` живёт в контексте
+ * ближайшей формы, значит хук работает и здесь, хотя поле — не сама форма;
+ * переход `true → false` — это и есть завершение отправки. Альтернатива —
+ * пересоздавать поле по `key` из родителя — работает так же, но заставила
+ * бы владеть ключом состояние формы целиком там, где сейчас достаточно этого
+ * компонента.
  */
 export function ReceiptField({
   name = 'receipt',
@@ -28,6 +41,18 @@ export function ReceiptField({
   const [picked, setPicked] = useState<{ url: string; type: string; name: string; size: number } | null>(
     null,
   );
+
+  const { pending } = useFormStatus();
+  const wasPending = useRef(false);
+
+  useEffect(() => {
+    if (wasPending.current && !pending) {
+      // Отправка только что завершилась, и поле уже сброшено формой —
+      // плашка выбранного файла обязана исчезнуть вместе с ним.
+      setPicked(null);
+    }
+    wasPending.current = pending;
+  }, [pending]);
 
   useEffect(() => {
     if (picked === null) return;

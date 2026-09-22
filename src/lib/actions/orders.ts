@@ -20,6 +20,7 @@ import { GraphQLError } from 'graphql';
 import { revalidatePath } from 'next/cache';
 
 import type { ActionState } from '@/components/admin/action-state';
+import { requireAdmin } from '@/graphql/context';
 import type { GraphQLContext } from '@/graphql/context';
 import type {
   MutationCreateWaterOrderArgs,
@@ -109,6 +110,18 @@ export async function createWaterOrderAction(
   form: FormData,
 ): Promise<ActionState> {
   try {
+    const context = await actionContext();
+
+    // Роль проверяется первым делом, до чтения и загрузки файла. Адрес
+    // серверного действия уходит в разметку и остаётся публичной точкой
+    // входа: без этой проверки вошедший участник (не администратор) успевал
+    // бы положить в базу файл чека через `uploadReceipt` — она открыта
+    // любому вошедшему (§8.4) — и только потом получал бы отказ от
+    // `createWaterOrder`, уже после записи. Это не замена проверке в
+    // резолвере — та проверка остаётся ровно там, где была; здесь та же
+    // самая проверка вызывается раньше, чтобы отказ случился раньше траты.
+    await requireAdmin(context);
+
     const file = pickedFile(form, 'receipt');
     if (file === null) {
       throw new RangeError('Приложите чек: поставка без подтверждения оплаты не отмечается.');
@@ -124,8 +137,6 @@ export async function createWaterOrderAction(
     const amount = parseRubles(required(form, 'amount', 'сумма'));
     const orderedAt = required(form, 'orderedAt', 'дата поставки');
     const bottlesCount = bottles(form);
-
-    const context = await actionContext();
 
     const receipt = (await call.upload(
       null,

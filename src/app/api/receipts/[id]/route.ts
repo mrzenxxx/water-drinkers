@@ -18,6 +18,15 @@ import { canViewReceipt } from '@/lib/receipts/access';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+/**
+ * `Receipt.id` в базе — `UUID` (`prisma/schema.prisma`). Адрес вида
+ * `/api/receipts/foo` до колонки такого типа не проверяется Prisma — она
+ * бросает ошибку разбора значения, и без проверки формата здесь это выглядело
+ * бы как 500, хотя по смыслу это тот же самый «не найдено», что и у чужого
+ * или отсутствующего чека.
+ */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /** Расширение для имени файла при сохранении. */
 const EXTENSION: Record<string, string> = {
   'application/pdf': 'pdf',
@@ -41,6 +50,15 @@ export async function GET(
 
   const { id } = await params;
 
+  // Тот же ответ и у несуществующего, и у чужого, и у неправильно оформленного
+  // адреса: «есть, но не для тебя» — лишнее знание о чужих взносах.
+  const missing = NextResponse.json(
+    { error: { code: 'NOT_FOUND', message: 'Чек не найден.' } },
+    { status: 404 },
+  );
+
+  if (!UUID.test(id)) return missing;
+
   const receipt = await prisma.receipt.findUnique({
     where: { id },
     select: {
@@ -51,13 +69,6 @@ export async function GET(
       contributions: { select: { userId: true } },
     },
   });
-
-  // Тот же ответ и у несуществующего, и у чужого: «есть, но не для тебя» —
-  // лишнее знание о чужих взносах.
-  const missing = NextResponse.json(
-    { error: { code: 'NOT_FOUND', message: 'Чек не найден.' } },
-    { status: 404 },
-  );
 
   const bytes = receipt?.file?.bytes;
   if (receipt == null || bytes == null) return missing;
