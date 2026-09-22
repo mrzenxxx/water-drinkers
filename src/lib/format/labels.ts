@@ -66,3 +66,23 @@ export const ROLE_LABEL: Record<string, string> = {
   PARTICIPANT: 'Участник',
   ADMIN: 'Администратор',
 };
+
+/**
+ * Размер файла человеческим языком: `1536` → `1,5 КБ` (§6.5).
+ *
+ * Дробная часть здесь допустима: это не деньги, а подпись кнопки, и правило
+ * «только целые копейки» к ней не относится.
+ */
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} Б`;
+
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${round(kb)} КБ`;
+
+  return `${round(kb / 1024)} МБ`;
+}
+
+/** До десяти — с одним знаком после запятой, дальше он только мешает. */
+function round(value: number): string {
+  return value.toFixed(value < 10 ? 1 : 0).replace('.0', '').replace('.', ',');
+}

@@ -15,7 +15,7 @@ import {
   startOfWeek,
   weekdayIndex,
 } from '@/lib/format/dates';
-import { fullName, initials, shortName } from '@/lib/format/labels';
+import { formatFileSize, fullName, initials, shortName } from '@/lib/format/labels';
 import { DAYS, pluralize, withCount } from '@/lib/format/plural';
 
 describe('даты для экрана', () => {
@@ -104,5 +104,24 @@ describe('имена участников', () => {
     expect(shortName({ email: 'i@x', lastName: 'Петров' })).toBe('Петров');
     expect(initials({ email: 'iv@x', firstName: 'Иван', lastName: 'Петров' })).toBe('ИП');
     expect(initials({ email: 'iv@x' })).toBe('IV');
+  });
+});
+
+describe('размер файла', () => {
+  it('до килобайта считает в байтах', () => {
+    expect(formatFileSize(512)).toBe('512 Б');
+  });
+
+  it('килобайты — с одним знаком, пока их мало', () => {
+    expect(formatFileSize(1536)).toBe('1,5 КБ');
+    expect(formatFileSize(64 * 1024)).toBe('64 КБ');
+  });
+
+  it('мегабайты — так же', () => {
+    expect(formatFileSize(1024 * 1024 + 512 * 1024)).toBe('1,5 МБ');
+  });
+
+  it('десятичный разделитель — запятая, как во всех числах интерфейса', () => {
+    expect(formatFileSize(2560)).toContain(',');
   });
 });
