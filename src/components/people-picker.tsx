@@ -73,7 +73,7 @@ export function PeoplePicker({
         <div
           ref={fieldRef}
           className={cn(
-            'field-surface flex min-h-8 w-full min-w-0 flex-wrap items-center gap-1 rounded-md border py-0.5 pr-1 pl-1 text-sm transition-[border-color,box-shadow]',
+            'field-surface flex min-h-8 w-full min-w-0 flex-wrap items-center gap-1 rounded-md border p-[4px] text-sm transition-[border-color,box-shadow]',
             open && 'border-ring ring-ring/50 ring-[3px]',
           )}
           // Всё поле раскрывает список, кроме кнопок: у крестика и стрелки своя работа.
@@ -105,11 +105,11 @@ export function PeoplePicker({
           <PopoverPrimitive.Trigger
             aria-labelledby={labelId}
             aria-controls={open ? listId : undefined}
-            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring ml-auto grid h-6 min-w-6 flex-1 justify-items-end rounded-sm px-1 focus-visible:ring-2 focus-visible:outline-none"
+            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring ml-auto flex h-[1.375rem] min-w-6 flex-1 items-center justify-end rounded-sm px-1 focus-visible:ring-2 focus-visible:outline-none"
           >
             <ChevronDown
               aria-hidden
-              className={cn('size-4 self-center transition-transform', open && 'rotate-180')}
+              className={cn('size-4 transition-transform', open && 'rotate-180')}
             />
           </PopoverPrimitive.Trigger>
         </div>

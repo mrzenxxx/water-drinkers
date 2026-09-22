@@ -14,7 +14,6 @@ import type { ReactNode } from 'react';
 import { ActivityFeed } from '@/components/activity-feed';
 import { Amount } from '@/components/amount';
 import { DashboardFilters } from '@/components/dashboard-filters';
-import { EVENT_LABEL_PLURAL } from '@/components/event-style';
 import { FoldCard } from '@/components/fold-card';
 import { FundBalanceChart } from '@/components/charts/fund-balance-chart';
 import { TimelineLanes } from '@/components/charts/timeline-lanes';
@@ -36,7 +35,6 @@ import {
   formatMonth,
   fullName,
   monthOf,
-  PARTICIPANTS,
   shiftMonth,
   withCount,
 } from '@/lib/format';
@@ -46,8 +44,6 @@ import { toFeedItems } from '@/lib/view/feed';
 import {
   bucketKeyOf,
   dashboardQuery,
-  FILTER_KINDS,
-  PERIOD_LABEL,
   parseDashboardFilters,
   type Granularity,
   type RawParams,
@@ -131,18 +127,6 @@ export default async function DashboardPage({
 
   const groups = groupEvents(visible, bucketKeyOf(filters.granularity)).reverse();
 
-  // Выжимка фильтров для свёрнутой панели: что выбрано, без разворачивания.
-  const pickedKinds = FILTER_KINDS.filter((kind) => filters.kinds.includes(kind));
-  const filtersMeta = [
-    filters.preset === 'custom' ? 'Ручной ввод' : PERIOD_LABEL[filters.preset],
-    filters.userIds.length === 0
-      ? 'все участники'
-      : withCount(filters.userIds.length, PARTICIPANTS),
-    pickedKinds.length === FILTER_KINDS.length
-      ? 'все события'
-      : pickedKinds.map((kind) => EVENT_LABEL_PLURAL[kind].toLowerCase()).join(', '),
-  ].join(' · ');
-
   const bucketTitle = (key: IsoDate): string => {
     if (filters.granularity === 'month') return formatMonth(monthOf(key));
     if (filters.granularity === 'week') return `Неделя с ${formatDate(key)}`;
@@ -164,7 +148,7 @@ export default async function DashboardPage({
         </div>
       </header>
 
-      <FoldCard title="Фильтры" meta={filtersMeta}>
+      <FoldCard title="Фильтры">
         <DashboardFilters
           key={dashboardQuery(filters)}
           filters={filters}

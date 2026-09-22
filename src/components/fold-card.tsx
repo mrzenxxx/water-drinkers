@@ -8,8 +8,8 @@ import { cn } from '@/lib/utils';
  *
  * Сделана на `<details>`, а не на состоянии React: сворачивание работает без
  * JavaScript, с клавиатуры и в читалке экрана из коробки, а компонент остаётся
- * серверным. В свёрнутом виде заголовок несёт `meta` — короткую выжимку
- * содержимого, чтобы не разворачивать карточку ради одного взгляда.
+ * серверным. Рядом с заголовком может стоять `meta` — например, границы
+ * периода у сводки.
  */
 export function FoldCard({
   title,
@@ -34,7 +34,7 @@ export function FoldCard({
         )}
       >
         <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-0.5">
-          <h2 className="text-base font-semibold tracking-tight">{title}</h2>
+          <h2 className="text-lg leading-tight font-semibold">{title}</h2>
           {meta !== undefined && (
             <span className="text-muted-foreground min-w-0 text-sm">{meta}</span>
           )}

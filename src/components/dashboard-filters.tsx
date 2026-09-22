@@ -27,7 +27,8 @@ import {
  * Черновик живёт до смены адреса: страница пересоздаёт панель ключом из
  * запроса, и после любого перехода поля снова показывают то, что в адресе.
  *
- * Панель в три строки: период с датами, участники, типы событий с шагом.
+ * Панель в три строки: период с датами; участники с кнопками; типы событий
+ * с шагом. Все элементы управления одной высоты — 2rem, как поле ввода.
  * Быстрые периоды и шаг — ссылки: один клик, без отправки формы. Всё остальное —
  * обычная `<form method="get">`.
  */
@@ -97,6 +98,14 @@ export function DashboardFilters({
             labelId={peopleLabelId}
           />
         </div>
+        <div className="flex items-center gap-1">
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/dashboard">Сбросить</Link>
+          </Button>
+          <Button type="submit" size="sm">
+            Применить
+          </Button>
+        </div>
       </Row>
 
       <Row label="События">
@@ -147,20 +156,16 @@ export function DashboardFilters({
           </nav>
         </div>
 
-        <div className="ml-auto flex items-center gap-1">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/dashboard">Сбросить</Link>
-          </Button>
-          <Button type="submit" size="sm">
-            Применить
-          </Button>
-        </div>
       </Row>
     </form>
   );
 }
 
-/** Строка панели: подпись слева фиксированной ширины, содержимое справа. */
+/**
+ * Строка панели: подпись слева фиксированной ширины, содержимое справа.
+ * Подпись стоит по первой строке содержимого, а не по середине: когда
+ * содержимое переносится, подпись по центру повисла бы между строк.
+ */
 function Row({
   label,
   labelId,
@@ -171,8 +176,11 @@ function Row({
   children: ReactNode;
 }): ReactNode {
   return (
-    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-      <span id={labelId} className="text-muted-foreground w-20 shrink-0 text-xs">
+    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-3">
+      <span
+        id={labelId}
+        className="text-muted-foreground flex w-20 shrink-0 items-center text-xs sm:h-8"
+      >
         {label}
       </span>
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2">{children}</div>

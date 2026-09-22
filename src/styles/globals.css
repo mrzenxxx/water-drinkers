@@ -463,9 +463,15 @@
     заливки перекрикивали бы данные под ними. Текст выбранного сегмента —
     `--foreground` на почти карточной подложке, контраст как у основного текста.
   */
+  /*
+    Высота переключателя — ровно высота поля ввода (2rem): рядом стоят поля
+    дат, и кромки должны идти одной линией. Сегмент — это 2rem минус рамка
+    и внутренний зазор.
+  */
   .segmented {
     display: inline-flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 2px;
     padding: 2px;
     border-radius: var(--radius-lg);
@@ -477,7 +483,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
-    height: 1.75rem;
+    height: calc(2rem - 6px);
     padding-inline: 0.625rem;
     border-radius: calc(var(--radius-lg) - 2px);
     font-size: 0.8125rem;
@@ -522,7 +528,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    height: 1.5rem;
+    height: 1.375rem;
     padding-inline: 0.5rem;
     border-radius: calc(var(--radius-md) - 1px);
     font-size: 0.8125rem;
