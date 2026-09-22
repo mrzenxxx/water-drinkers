@@ -10,6 +10,7 @@ import { todayIso } from '@/lib/data';
 import { fundState, listContributions, listPeople } from '@/lib/data/queries';
 import { CONTRIBUTIONS, withCount } from '@/lib/format';
 import { toRublesString } from '@/lib/money';
+import { pageTitle } from '@/lib/view/app';
 
 /**
  * Мои взносы (§6.2).
@@ -33,7 +34,7 @@ export default async function MyContributionsPage(): Promise<ReactNode> {
 
   return (
     <div className="flex flex-col gap-6">
-      <title>Мои взносы — WaterDrinkers</title>
+      <title>{pageTitle('Мои взносы')}</title>
 
       <PageHeader icon={Wallet} title="Мои взносы">
         Взнос влияет на баланс только после подтверждения администратором.

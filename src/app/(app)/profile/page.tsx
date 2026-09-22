@@ -12,6 +12,7 @@ import { requirePageUser } from '@/lib/auth/current-user';
 import { toIsoDate } from '@/lib/data';
 import { fundState } from '@/lib/data/queries';
 import { ROLE_LABEL, formatLongDate } from '@/lib/format';
+import { pageTitle } from '@/lib/view/app';
 
 /**
  * Профиль участника.
@@ -41,7 +42,7 @@ export default async function ProfilePage(): Promise<ReactNode> {
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
-      <title>Профиль — WaterDrinkers</title>
+      <title>{pageTitle('Профиль')}</title>
 
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Профиль</h1>

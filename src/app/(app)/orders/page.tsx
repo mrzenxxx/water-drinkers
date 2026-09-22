@@ -22,6 +22,7 @@ import {
   withCount,
 } from '@/lib/format';
 import { formatKopecks } from '@/lib/money';
+import { pageTitle } from '@/lib/view/app';
 
 /**
  * Заказы воды (§6.5).
@@ -41,7 +42,7 @@ export default async function OrdersPage(): Promise<ReactNode> {
 
   return (
     <div className="flex flex-col gap-6">
-      <title>Заказы воды — WaterDrinkers</title>
+      <title>{pageTitle('Заказы воды')}</title>
 
       <PageHeader icon={Package} title="Заказы воды">
         Вода, купленная в день заказа, выпивается до следующей закупки — по этому

@@ -1,7 +1,7 @@
 import {
   CalendarOff,
   ChartLine,
-  Droplets,
+  Coins,
   House,
   Inbox,
   Megaphone,
@@ -27,7 +27,7 @@ export const NAV_ICONS: Record<NavIcon, LucideIcon> = {
   home: House,
   wallet: Wallet,
   people: Users,
-  fund: Droplets,
+  fund: Coins,
   orders: Package,
   absences: CalendarOff,
   dashboard: ChartLine,

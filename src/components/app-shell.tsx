@@ -1,40 +1,40 @@
-import { Droplets, UserRound, Wallet, type LucideIcon } from 'lucide-react';
+import { Droplets, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-import { Amount, type AmountTone } from '@/components/amount';
-import { AppSidebar } from '@/components/app-sidebar';
-import { NavLayoutToggle } from '@/components/nav-layout-toggle';
-import { NavTabs, SectionTabs } from '@/components/nav-tabs';
-import { SidebarToggle } from '@/components/sidebar-toggle';
+import { BottomNav, MainNav } from '@/components/main-nav';
+import { SectionTabs } from '@/components/nav-tabs';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ROLE_LABEL, fullName, type NamedUser } from '@/lib/format';
-import type { Kopecks } from '@/lib/money';
-import { cn } from '@/lib/utils';
+import { APP_NAME } from '@/lib/view/app';
 import { APP_SECTIONS, ADMIN_SECTION, type NavSection } from '@/lib/view/nav';
 
 /**
- * Оболочка приложения: боковая панель, верхняя полоса, вкладки раздела.
+ * Оболочка приложения: верхняя полоса, разделы, вкладки раздела.
  *
- * Серверный компонент: ничего интерактивного здесь нет — подсветка раздела,
- * сворачивание панели и выбор её формы живут в `AppSidebar`, `NavTabs` и
- * `NavLayoutToggle`, переключатель темы в `ThemeToggle`. Оболочка в бандл
- * не едет.
+ * Серверный компонент: ничего интерактивного здесь нет — подсветка текущего
+ * раздела живёт в `MainNav`, `BottomNav` и `NavTabs`, переключатель темы в
+ * `ThemeToggle`. Оболочка в бандл не едет.
  *
- * Почему разделы уехали влево. В строку их было девять, и шапка вырастала в
- * два ряда: половина высоты первого экрана уходила на навигацию. Вертикальный
- * список места по высоте не занимает вовсе, а свёрнутый — ещё и по ширине.
- * Строка вкладок при этом никуда не делась: она осталась как выбор (кнопка
- * рядом с темой), а не как единственный вариант.
+ * **Навигация одна.** Раньше форм было две — боковая панель и строка вкладок,
+ * — и человек выбирал между ними кнопкой. Выбор стоил трёх компонентов,
+ * хранилища, скрипта в `<head>` и полусотни строк CSS, а сам вопрос «каким
+ * меню вы предпочитаете пользоваться» интерфейс задавать не должен. Осталась
+ * одна форма: разделы в верхней полосе, а на узком экране — полосой значков у
+ * нижнего края. Её три размера описаны в `main-nav.tsx`.
  *
- * Верхняя полоса тянется во всю ширину и проходит **над** боковой панелью,
- * а не рядом с ней. Знак приложения стоит в ней, в той же колонке, что и
- * значки разделов: панель начинается под полосой, поэтому шва между ними нет
- * ни в одном состоянии, и знак не уезжает вместе со сворачиванием. Там же
- * кнопки формы навигации — они про панель и стоят рядом с ней.
+ * **Полоса всегда в один ряд.** Второй ряд — это ровно та высота шапки, от
+ * которой мы уходили: на узкой ширине подписи уходят под значки и мельчают,
+ * а не переносятся.
  *
- * В полосе, кроме того, две цифры, ради которых сюда заходят, и справа тема
- * с участником. Выхода среди них больше нет: выйти — редкое и необратимое
+ * **Цифр в полосе больше нет.** Баланс и остаток фонда стояли здесь ради
+ * ответа «должен или нет» с любого экрана, но занимали середину полосы —
+ * именно то место, куда теперь встали разделы. Обе цифры встречают человека
+ * на главной, крупно и с объяснением, и повторять их в каждой строке шапки
+ * незачем.
+ *
+ * В полосе остались знак приложения слева, разделы посередине и тема с
+ * участником справа. Выхода среди них нет: выйти — редкое и необратимое
  * действие, ему место в профиле, а не в одном ряду с ежедневной навигацией
  * (§6.10).
  *
@@ -47,57 +47,10 @@ type AppShellProps = {
   user: NamedUser & { role: string };
   /** Непрочитанные объявления (§6.12) — число на значке раздела. */
   unreadNotices?: number;
-  /** Баланс участника и остаток фонда — две цифры верхней полосы. */
-  balance: Kopecks;
-  fundBalance: Kopecks;
   children: ReactNode;
 };
 
-/**
- * Цифра в верхней полосе: значок, подпись, сумма.
- *
- * Подпись стоит всегда — цвет и знак числа лишь подхватывают то, что уже
- * сказано словом (§12). На узких экранах плитки уходят: там та же цифра
- * встречает человека на главной, крупно и с объяснением.
- */
-function Stat({
-  icon: Icon,
-  label,
-  value,
-  tone,
-  className,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: Kopecks;
-  tone: AmountTone;
-  className?: string;
-}): ReactNode {
-  return (
-    <div className={cn('glass-soft flex items-center gap-2 rounded-full py-1 pr-3 pl-1.5', className)}>
-      <span className="droplet-mark flex size-7 shrink-0 items-center justify-center rounded-full">
-        <Icon aria-hidden className="size-3.5" />
-      </span>
-      <span className="flex flex-col leading-none">
-        <span className="text-muted-foreground text-xs">{label}</span>
-        <Amount
-          value={value}
-          tone={tone}
-          signed={tone === 'auto'}
-          className="mt-0.5 text-sm font-semibold"
-        />
-      </span>
-    </div>
-  );
-}
-
-export function AppShell({
-  user,
-  unreadNotices = 0,
-  balance,
-  fundBalance,
-  children,
-}: AppShellProps): ReactNode {
+export function AppShell({ user, unreadNotices = 0, children }: AppShellProps): ReactNode {
   // Раздел «Админ-панель» видит только администратор (§3, §6.7). Скрытие —
   // удобство, а не защита: сами страницы закрыты `requirePageAdmin`.
   const withAdmin: NavSection[] =
@@ -109,62 +62,61 @@ export function AppShell({
 
   return (
     <div className="flex min-h-dvh flex-col">
-      {/*
-        Полоса лежит выше панели (`z-40` против `z-30`) и во всю ширину:
-        раскрытая панель уезжает под неё, а не наползает сверху. Иначе на
-        стыке знака приложения и полосы читался бы шов, а сквозь стекло
-        панели просвечивало бы содержимое полосы.
-      */}
       <header className="glass-strong sticky top-0 z-40 rounded-none border-x-0 border-t-0">
-        <div className="flex h-16 w-full items-center gap-2 px-4">
-          {/* Бургер и сама панель делят одно состояние, поэтому живут в одном компоненте. */}
-          <AppSidebar items={sections} />
-
+        {/*
+          Шапка идёт во всю ширину — стекло здесь край экрана, — но её
+          содержимое стоит в том же контейнере, что и содержимое страницы
+          (`max-w-6xl`, тот же боковой отступ). Иначе знак приложения и
+          участник висят снаружи колонки, по которой выровнено всё остальное,
+          и глазу не на что опереться.
+        */}
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-2 px-4 sm:gap-3">
+          {/*
+            Название рядом с каплей уступает место разделам и возвращается
+            только там, где оно им не мешает (`lg`). Повод отдать место
+            именно ему: слово повторяет стоящий рядом знак, а подпись раздела
+            не повторяет ничего. На телефоне разделы живут внизу, полоса
+            пустая — название возвращается и там.
+          */}
           <Link
             href="/"
-            className="focus-visible:ring-ring flex items-center gap-2.5 rounded-lg focus-visible:ring-2 focus-visible:outline-none"
+            aria-label={`${APP_NAME}, на главную`}
+            className="focus-visible:ring-ring flex shrink-0 items-center gap-2.5 rounded-lg focus-visible:ring-2 focus-visible:outline-none"
           >
             {/* Капля — знак приложения. Подпись рядом, поэтому значок декоративен. */}
             <span className="droplet-mark flex size-9 shrink-0 items-center justify-center rounded-xl">
               <Droplets aria-hidden className="size-5" />
             </span>
-            <span className="text-gradient-water text-lg font-semibold tracking-tight">
-              WaterDrinkers
+            {/*
+              Подпись — только видимая: название ссылки читалке сказано
+              `aria-label`, и оно не пропадает вместе со словом.
+            */}
+            <span
+              aria-hidden
+              className="text-gradient-water text-lg font-semibold tracking-tight md:hidden lg:inline"
+            >
+              {APP_NAME}
             </span>
           </Link>
 
-          <SidebarToggle />
-          <NavLayoutToggle />
+          <MainNav items={sections} />
 
-          <Stat
-            icon={Wallet}
-            label="Ваш баланс"
-            value={balance}
-            tone="auto"
-            className="ml-1 hidden sm:flex"
-          />
-          <Stat
-            icon={Droplets}
-            label="В кассе"
-            value={fundBalance}
-            tone="neutral"
-            className="hidden lg:flex"
-          />
-
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex shrink-0 items-center gap-1">
             <ThemeToggle />
 
             {/*
-              Имя и значок — одна ссылка на профиль: на узком экране подпись
-              уходит, но нажимать всё равно есть куда. Подпись для чтения с
-              экрана появляется ровно там, где исчезает видимая.
+              Имя и значок — одна ссылка на профиль: там, где подпись не
+              помещается, нажимать всё равно есть куда. Имя уступает место
+              разделам по той же причине, что и название приложения: значок
+              рядом уже говорит «это вы». Подпись для чтения с экрана
+              появляется ровно там, где исчезает видимая.
             */}
             <Link
               href="/profile"
               title="Профиль"
               className="hover:bg-secondary/70 focus-visible:ring-ring flex items-center gap-2 rounded-full px-1.5 py-1 transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none"
             >
-              <span className="hidden text-right text-sm sm:block">
+              <span className="hidden text-right text-sm xl:block">
                 <span className="block leading-tight font-medium">{fullName(user)}</span>
                 <span className="text-muted-foreground block text-xs leading-tight">
                   {ROLE_LABEL[user.role] ?? 'Участник'}
@@ -173,23 +125,18 @@ export function AppShell({
               <span className="droplet-mark flex size-8 shrink-0 items-center justify-center rounded-full">
                 <UserRound aria-hidden className="size-4" />
               </span>
-              <span className="sr-only sm:hidden">Профиль</span>
+              <span className="sr-only xl:hidden">Профиль</span>
             </Link>
           </div>
-        </div>
-
-        {/* Разделы строкой — только в режиме вкладок; показом заведует CSS. */}
-        <div className="w-full px-4">
-          <NavTabs items={sections} />
         </div>
       </header>
 
       {/*
-        Место под панель держит отступ, а не колонка сетки: панель отрисована
-        `position: fixed` и в потоке не участвует. Обе величины берутся из
-        одной переменной, поэтому вёрстка подстраивается сама.
+        Отступ снизу держит место под нижнюю полосу разделов узкого экрана:
+        она отрисована `fixed` и в потоке не участвует, поэтому последняя
+        строка страницы иначе ушла бы под стекло.
       */}
-      <div className="sidebar-gutter flex flex-1 flex-col">
+      <div className="nav-bottom-gutter flex flex-1 flex-col">
         <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:py-8">
           <SectionTabs items={sections} />
           {children}
@@ -207,6 +154,8 @@ export function AppShell({
           </p>
         </footer>
       </div>
+
+      <BottomNav items={sections} />
     </div>
   );
 }

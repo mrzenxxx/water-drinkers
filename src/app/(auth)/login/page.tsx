@@ -3,13 +3,17 @@ import type { ReactNode } from 'react';
 
 import { LoginForm } from '@/components/login-form';
 import { Button } from '@/components/ui/button';
+import { adminTelegramHref } from '@/lib/view/admin-contact';
+import { APP_NAME, pageTitle } from '@/lib/view/app';
 
 /**
  * Вход (§7, ADR-0004): логин и пароль, выданные администратором.
  *
  * Своей регистрации нет — учётные данные заводит администратор. Кнопка
- * «Получить у администратора» ведёт к нему в Telegram; адрес задаётся
- * `ADMIN_TELEGRAM_URL`, без него кнопки нет.
+ * «Присоединиться к водопою» ведёт к нему в Telegram; адрес задаётся
+ * `ADMIN_TELEGRAM_URL`, без него кнопки нет. Схему адреса дописывает
+ * `adminTelegramHref`: `t.me/ivanov` без неё браузер считает путём внутри
+ * сайта, и кнопка открывает свою же страницу 404.
  */
 export const dynamic = 'force-dynamic';
 
@@ -19,11 +23,11 @@ export default async function LoginPage({
   searchParams: Promise<{ link?: string }>;
 }): Promise<ReactNode> {
   const { link } = await searchParams;
-  const telegramUrl = process.env.ADMIN_TELEGRAM_URL?.trim() || null;
+  const telegramUrl = adminTelegramHref(process.env.ADMIN_TELEGRAM_URL);
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-6 py-12">
-      <title>Вход — WaterDrinkers</title>
+      <title>{pageTitle('Вход')}</title>
 
       {/*
         Вход — первое, что человек видит. Карточка стоит стеклом на воде, и это
@@ -35,10 +39,10 @@ export default async function LoginPage({
             <Droplets aria-hidden className="size-7" />
           </span>
           <h1 className="text-gradient-water text-3xl font-semibold tracking-tight">
-            WaterDrinkers
+            {APP_NAME}
           </h1>
           <p className="text-muted-foreground text-sm">
-            Логин и пароль выдаёт администратор.
+            Фонд воды в офисе серьёзной организации
           </p>
         </header>
 
@@ -55,11 +59,13 @@ export default async function LoginPage({
 
         {telegramUrl !== null && (
           <div className="mt-6 flex flex-col items-center gap-2 border-t pt-6 text-center">
-            <p className="text-muted-foreground text-sm">Нет логина или забыли пароль?</p>
+            <p className="text-muted-foreground text-sm">
+              Логин и пароль предоставляются администратором по запросу
+            </p>
             <Button asChild variant="outline" className="w-full">
               <a href={telegramUrl} target="_blank" rel="noopener noreferrer">
                 <Send aria-hidden />
-                Получить у администратора
+                Присоединиться к водопою
               </a>
             </Button>
           </div>

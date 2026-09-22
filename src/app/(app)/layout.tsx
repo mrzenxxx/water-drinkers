@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 
 import { AppShell } from '@/components/app-shell';
 import { hasProfile, requirePageUser } from '@/lib/auth/current-user';
-import { countUnreadAnnouncements, fundState } from '@/lib/data/queries';
+import { countUnreadAnnouncements } from '@/lib/data/queries';
 
 /**
  * Закрытая часть приложения.
@@ -31,22 +31,14 @@ export default async function AppLayout({
   const user = await requirePageUser();
   if (!hasProfile(user)) redirect('/welcome');
 
-  // Счётчик и цифры шапки считаются здесь, а не в оболочке: `AppShell`
-  // получает готовые значения и остаётся тонким, а к базе за одно и то же
-  // ходят из одного места. Пересчёт фонда мемоизирован `cache()`, поэтому
-  // страница, которой он нужен тоже, второго запроса не делает.
-  const [unreadNotices, state] = await Promise.all([
-    countUnreadAnnouncements(user.announcementsSeenAt?.toISOString() ?? null),
-    fundState(),
-  ]);
+  // Счётчик непрочитанного считается здесь, а не в оболочке: `AppShell`
+  // получает готовое число и остаётся тонким.
+  const unreadNotices = await countUnreadAnnouncements(
+    user.announcementsSeenAt?.toISOString() ?? null,
+  );
 
   return (
-    <AppShell
-      user={user}
-      unreadNotices={unreadNotices}
-      balance={state.balanceOf(user.id)?.amount ?? 0}
-      fundBalance={state.result.fundBalance}
-    >
+    <AppShell user={user} unreadNotices={unreadNotices}>
       {user.restriction === 'MUTED' && (
         <p role="status" className="glass mb-4 rounded-xl px-4 py-3 text-sm">
           Администратор включил для вас режим только просмотра: добавлять взносы и отсутствия

@@ -6,9 +6,10 @@ import { IconChip } from '@/components/icon-chip';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { requirePageAdmin } from '@/lib/auth/current-user';
 import { loadFundOverview } from '@/lib/data/admin';
-import { countUnreadAnnouncements, fundState } from '@/lib/data/queries';
+import { countUnreadAnnouncements } from '@/lib/data/queries';
 import { prisma } from '@/lib/db';
 import { formatKopecks } from '@/lib/money';
+import { pageTitle } from '@/lib/view/app';
 
 /**
  * Оболочка админ-панели (§6.7): проверка роли и предупреждение об инварианте.
@@ -38,22 +39,16 @@ export const dynamic = 'force-dynamic';
 export default async function AdminLayout({ children }: { children: ReactNode }): Promise<ReactNode> {
   const user = await requirePageAdmin();
 
-  // Пересчёт фонда мемоизирован `cache()`: и обзор, и цифры шапки, и сами
-  // страницы панели читают одно и то же состояние за один запрос к базе.
-  const [fund, state, unreadNotices] = await Promise.all([
+  // Пересчёт фонда мемоизирован `cache()`: и обзор, и сами страницы панели
+  // читают одно и то же состояние за один запрос к базе.
+  const [fund, unreadNotices] = await Promise.all([
     loadFundOverview(prisma),
-    fundState(),
     countUnreadAnnouncements(user.announcementsSeenAt?.toISOString() ?? null),
   ]);
 
   return (
-    <AppShell
-      user={user}
-      unreadNotices={unreadNotices}
-      balance={state.balanceOf(user.id)?.amount ?? 0}
-      fundBalance={state.result.fundBalance}
-    >
-      <title>Админ-панель — WaterDrinkers</title>
+    <AppShell user={user} unreadNotices={unreadNotices}>
+      <title>{pageTitle('Админ-панель')}</title>
 
       <header className="flex items-start gap-3">
         <IconChip icon={ShieldCheck} />

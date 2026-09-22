@@ -2,12 +2,12 @@ import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 
 import { ThemeProvider } from '@/components/theme-provider';
-import { NAV_INIT_SCRIPT } from '@/lib/nav-mode';
 import { THEME_INIT_SCRIPT } from '@/lib/theme';
+import { APP_NAME } from '@/lib/view/app';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
-  title: 'WaterDrinkers',
+  title: APP_NAME,
   description: 'Учёт офисной кассы на бутилированную воду',
 };
 
@@ -20,13 +20,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }): ReactNode {
   return (
-    // suppressHydrationWarning: data-theme, data-nav и data-sidebar на <html>
-    // ставят скрипты ниже, до гидратации, поэтому разметка сервера и клиента
-    // здесь заведомо разная.
+    // suppressHydrationWarning: data-theme на <html> ставит скрипт ниже, до
+    // гидратации, поэтому разметка сервера и клиента здесь заведомо разная.
     <html lang="ru" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
-        <script dangerouslySetInnerHTML={{ __html: NAV_INIT_SCRIPT }} />
       </head>
       <body className="min-h-dvh antialiased">
         <ThemeProvider>{children}</ThemeProvider>

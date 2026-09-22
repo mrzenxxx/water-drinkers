@@ -74,17 +74,6 @@
   --radius: 0.75rem;
 
   /*
-    ── Боковая панель ─────────────────────────────────────────────────────
-    Одна величина двигает и панель, и отступ содержимого под неё, поэтому
-    вёрстка подстраивается под любое состояние сама, без второго размера
-    в разметке. Свёрнутая ширина подобрана так, чтобы значок раздела встал
-    ровно по центру полосы: 4.25rem = 68px, центр значка — 34px.
-  */
-  --sidebar-full: 16rem;
-  --sidebar-rail: 4.25rem;
-  --sidebar-w: var(--sidebar-full);
-
-  /*
     ── Вода ───────────────────────────────────────────────────────────────
     Фон приложения — не плоская заливка, а толща воды: три размытых пятна
     света на базовом цвете. Пятна намеренно бледные и низкой цветности.
@@ -122,6 +111,33 @@
   --glass-shadow-lifted:
     0 2px 4px oklch(0.45 0.07 245 / 0.08), 0 26px 56px -20px oklch(0.45 0.09 245 / 0.32);
   --glass-blur: 18px;
+
+  /*
+    Выбранный раздел — линза, лежащая на полосе.
+
+    Блик симметричен: светлый по верхней и нижней кромке, прозрачный
+    посередине. Так стекло читается толщиной, а не пятном светлее фона, —
+    свет ловят оба скруглённых края, а середина остаётся чистой, и текст
+    стоит на ровной подложке, а не на градиенте.
+
+    Самый светлый упор равен упору `--glass-sheen`: выше него подниматься
+    нельзя, иначе проверка контраста `check:contrast` перестаёт описывать
+    эту поверхность.
+
+    Тень под плиткой мягкая и почти без цвета: на светлой воде плотная
+    синяя тень выглядит грязью, а не глубиной.
+  */
+  --nav-pill-sheen: linear-gradient(
+    180deg,
+    oklch(1 0 0 / 0.6) 0%,
+    oklch(1 0 0 / 0) 50%,
+    oklch(1 0 0 / 0.55) 100%
+  );
+  --nav-pill-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.9),
+    inset 0 -1px 0 color-mix(in oklab, var(--primary) 20%, transparent),
+    0 1px 1px oklch(0.45 0.07 245 / 0.08),
+    0 6px 14px -8px oklch(0.45 0.09 245 / 0.28);
 
   /*
     Градиенты. Оба конца каждого градиента, на котором стоит текст, проверены
@@ -204,26 +220,22 @@
   );
   --glass-shadow: 0 1px 2px oklch(0 0 0 / 0.35), 0 16px 38px -16px oklch(0 0 0 / 0.6);
   --glass-shadow-lifted: 0 2px 6px oklch(0 0 0 / 0.4), 0 28px 60px -22px oklch(0 0 0 / 0.7);
+  --nav-pill-sheen: linear-gradient(
+    180deg,
+    oklch(1 0 0 / 0.07) 0%,
+    oklch(1 0 0 / 0) 50%,
+    oklch(1 0 0 / 0.065) 100%
+  );
+  --nav-pill-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.2),
+    inset 0 -1px 0 color-mix(in oklab, var(--primary) 28%, transparent),
+    0 1px 2px oklch(0 0 0 / 0.4),
+    0 10px 22px -12px oklch(0 0 0 / 0.68);
 
   --gradient-water: linear-gradient(135deg, oklch(0.7 0.13 240), oklch(0.76 0.11 195));
   --gradient-primary: linear-gradient(135deg, oklch(0.74 0.12 235), oklch(0.68 0.12 210));
   --gradient-wordmark: linear-gradient(100deg, oklch(0.85 0.09 225), oklch(0.87 0.1 190));
   --gradient-rail: linear-gradient(180deg, oklch(0.66 0.13 235), oklch(0.7 0.12 195));
-}
-
-/*
-  Форму навигации ставит скрипт в <head> до первой отрисовки — так же, как
-  тему, и по той же причине: ширина панели участвует в вёрстке, и без неё
-  содержимое прыгало бы влево уже после гидратации. Без JavaScript атрибутов
-  нет вовсе, и остаётся развёрнутая боковая панель.
-*/
-[data-sidebar='collapsed'] {
-  --sidebar-w: var(--sidebar-rail);
-}
-
-/* Вкладки вместо панели: места слева не нужно вовсе. */
-[data-nav='tabs'] {
-  --sidebar-w: 0rem;
 }
 
 @theme inline {
@@ -377,6 +389,74 @@
   }
 
   /*
+    ── Выбранный раздел ───────────────────────────────────────────────────
+
+    Плитка `glass-soft` на светлой теме почти не отличается от шапки: обе
+    светлые, и `shadow-sm` поверх стекла не читается вовсе. Вес добавлен не
+    подложкой — её контраст проверен `check:contrast`, и подкрасить её значит
+    вывести проверку из-под ног, — а кромкой и тенью. Текст остаётся на той
+    же проверенной поверхности, а плитка выглядит поднятой над полосой.
+
+    Граница берётся обычная, а не `--glass-border-soft` плитки: именно
+    очерченный край отличает «линзу на полосе» от «пятна светлее фона».
+  */
+  .nav-pill {
+    border-color: var(--glass-border);
+    box-shadow: var(--nav-pill-shadow);
+  }
+
+  /*
+    Блик плитки заменяет блик стекла, а не ложится поверх него: два светлых
+    слоя друг на друге подняли бы поверхность выше проверенной.
+  */
+  .nav-pill::before {
+    background-image: var(--nav-pill-sheen);
+  }
+
+  /*
+    ── Подпись поля ───────────────────────────────────────────────────────
+
+    Подпись — маленькое стёклышко над полем. Приём тот же, что отмечает
+    выбранный раздел в шапке (`.nav-pill` рядом): одна идея на два места, а
+    не два похожих приёма, поэтому и блик, и кромка, и тень здесь общие.
+
+    Поля подпись не касается. Наползающая плашка закрывает кусок рамки и
+    спорит с ней за внимание: рамка говорит «сюда пишут», плашка — «вот как
+    это называется», и накладывать одно на другое незачем.
+
+    Блочный `flex` шириной по содержимому, а не строчный элемент: у строчного
+    высота считается межстрочным интервалом родителя, а не собственным, — и
+    подписи разъезжаются по высоте при одинаковой разметке. Ровно это и
+    случилось с «Логином» и «Паролем».
+  */
+  .field-chip-host {
+    position: relative;
+  }
+
+  .field-chip {
+    display: flex;
+    width: fit-content;
+    align-items: center;
+    height: 1.625rem;
+    margin-bottom: 0.5rem;
+    padding-inline: 0.6875rem;
+    border-radius: 999px;
+    color: var(--card-foreground);
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  /*
+    Поле в фокусе — подпись подхватывает его кольцо. Состояние «в это поле
+    сейчас пишут» знает `:focus-within`, и знает точнее любого значения в
+    React: оно переживает перерисовку и не требует обработчиков.
+  */
+  .field-chip-host:focus-within .field-chip {
+    border-color: var(--ring);
+  }
+
+  /*
     Поле ввода. Стекло здесь тише, чем на карточке, а граница остаётся
     цветом `--input` (не менее 3:1 к фону): именно граница говорит, что сюда
     можно писать, и растворять её в блике нельзя.
@@ -441,6 +521,8 @@
     .glass,
     .glass-strong,
     .glass-soft,
+    .nav-pill,
+    .field-chip,
     .field-surface {
       background-color: Canvas;
       border-color: CanvasText;
@@ -625,11 +707,7 @@
       transform: none;
     }
 
-    /* Раскрытие панели — тоже движение: состояние меняется, анимации нет. */
-    .sidebar-panel,
-    .sidebar-gutter,
-    .sidebar-collapsible,
-    .sidebar-dot {
+    .field-chip {
       transition-duration: 0.01ms;
     }
 
@@ -669,157 +747,30 @@
   }
 
   /*
-    ── Боковая панель ─────────────────────────────────────────────────────
+    ── Нижняя полоса разделов ─────────────────────────────────────────────
 
-    Панель отрисована `position: fixed`, а место под неё держит отступ
-    `.sidebar-gutter`. Обе величины берутся из одной переменной `--sidebar-w`:
-    свернули панель — содержимое разъехалось на освободившееся место, и ни
-    одного размера не пришлось повторять в разметке.
+    На узком экране разделы прижаты к нижнему краю и закреплены там
+    (`position: fixed`): уход в другой раздел не должен требовать сначала
+    пролистать страницу до конца. Большой палец достаёт туда не тянясь, чего
+    не скажешь о верхнем крае телефона.
 
-    Содержимое панели всегда развёрнутой ширины (`.sidebar-inner`): при
-    сворачивании оно не пересобирается, а уезжает под край панели. Иначе
-    подписи переносились бы по словам ровно в момент анимации.
+    Обе величины ниже считаются от одного `env(safe-area-inset-bottom)`: на
+    телефонах с жестовой полосой значки без него упираются в неё, а последняя
+    строка страницы — в значки. Место под полосу держит отступ, потому что
+    сама полоса отрисована `fixed` и в потоке не участвует.
   */
-  .sidebar-panel {
-    width: var(--sidebar-full);
-    overflow: hidden;
-    transform: translateX(-100%);
-    visibility: hidden;
-    transition:
-      transform 220ms cubic-bezier(0.2, 0, 0.2, 1),
-      width 220ms cubic-bezier(0.2, 0, 0.2, 1),
-      background-color 220ms ease,
-      box-shadow 220ms ease,
-      visibility 0s linear 220ms;
+  .nav-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
-  /*
-    Закрытый ящик убран и из порядка обхода клавиатурой: `visibility`, а не
-    один только сдвиг за край, — иначе Tab уходит на невидимые ссылки.
-  */
-  .sidebar-panel[data-open='true'] {
-    transform: none;
-    visibility: visible;
-    transition:
-      transform 220ms cubic-bezier(0.2, 0, 0.2, 1),
-      width 220ms cubic-bezier(0.2, 0, 0.2, 1),
-      background-color 220ms ease,
-      box-shadow 220ms ease,
-      visibility 0s;
-  }
-
-  .sidebar-inner {
-    width: var(--sidebar-full);
-  }
-
-  .sidebar-collapsible {
-    transition: opacity 160ms cubic-bezier(0.2, 0, 0.2, 1);
-  }
-
-  /*
-    Точка вместо числа. В свёрнутой полосе счётчику непрочитанного не хватает
-    места, но прятать сам факт нельзя: число уступает место точке, а смысл
-    остаётся сказанным словами для чтения с экрана.
-  */
-  .sidebar-dot {
-    opacity: 0;
-    transition: opacity 160ms ease;
-  }
-
-  /* Текущий раздел виден и без цвета: рант слева повторяет заливку (§12). */
-  .sidebar-link[aria-current='page']::before {
-    content: '';
-    position: absolute;
-    inset-block: 0.5rem;
-    inset-inline-start: -0.375rem;
-    width: 3px;
-    border-radius: 999px;
-    background-image: var(--gradient-rail);
-  }
-
-  /*
-    Кнопка сворачивания и подсказка про Ctrl + B — только на широком экране
-    и только там, где панель вообще есть. Показ задан здесь, а не утилитами
-    Tailwind: правило зависит от `data-nav` на `<html>`, а утилиты лежат слоем
-    выше компонентов и перекрыли бы его.
-  */
-  .sidebar-toggle,
-  .sidebar-hint,
-  .nav-tabs-row {
-    display: none;
+  .nav-bottom-gutter {
+    padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
   }
 
   @media (min-width: 48rem) {
-    .sidebar-panel {
-      width: var(--sidebar-w);
-      transform: none;
-      visibility: visible;
-    }
-
-    .sidebar-gutter {
-      padding-inline-start: var(--sidebar-w);
-      transition: padding-inline-start 220ms cubic-bezier(0.2, 0, 0.2, 1);
-    }
-
-    /*
-      Пристыкованная панель стоит на воде, а не на стекле: она ничего не
-      перекрывает, а контраст текста на фоне приложения проверен так же, как
-      на карточке (15.3:1 в светлой теме, 16.5:1 в тёмной). Стекло появляется
-      ровно тогда, когда панель ложится поверх страницы, — при подсматривании
-      и в ящике узкого экрана.
-    */
-    [data-sidebar='expanded'] .sidebar-panel,
-    .sidebar-panel:not(:hover):not(:focus-within) {
-      background-color: transparent;
-      border-color: transparent;
-      box-shadow: none;
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
-    }
-
-    [data-sidebar='expanded'] .sidebar-panel::before,
-    .sidebar-panel:not(:hover):not(:focus-within)::before {
-      background-image: none;
-    }
-
-    /*
-      Подсматривание: свёрнутая панель раскрывается поверх содержимого, не
-      сдвигая его. Состояние «сейчас на панель смотрят» не нужно держать в
-      React — `:hover` и `:focus-within` знают его точнее и переживают любую
-      перерисовку. Выбрал раздел, увёл курсор — полоса вернулась сама.
-    */
-    [data-sidebar='collapsed'] .sidebar-panel:hover,
-    [data-sidebar='collapsed'] .sidebar-panel:focus-within {
-      width: var(--sidebar-full);
-    }
-
-    [data-sidebar='collapsed']
-      .sidebar-panel:not(:hover):not(:focus-within)
-      .sidebar-collapsible {
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    [data-sidebar='collapsed'] .sidebar-panel:not(:hover):not(:focus-within) .sidebar-dot {
-      opacity: 1;
-    }
-
-    .sidebar-toggle {
-      display: inline-flex;
-    }
-
-    .sidebar-hint {
-      display: block;
-    }
-
-    /* Вкладки: панели нет вовсе, разделы уходят строкой под верхнюю полосу. */
-    [data-nav='tabs'] .sidebar-panel,
-    [data-nav='tabs'] .sidebar-toggle {
-      display: none;
-    }
-
-    [data-nav='tabs'] .nav-tabs-row {
-      display: block;
+    /* Полосы здесь нет — и места под неё держать не нужно. */
+    .nav-bottom-gutter {
+      padding-bottom: 0;
     }
   }
 }

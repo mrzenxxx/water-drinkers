@@ -9,26 +9,18 @@ import { cn } from '@/lib/utils';
 import {
   isSectionActive,
   navHrefs,
-  sectionHrefs,
   sectionTabs,
   type NavItem,
   type NavSection,
 } from '@/lib/view/nav';
 
 /**
- * Вкладки: один и тот же список разделов, показанный строкой.
+ * Вкладки внутри открытого раздела — полосой над содержимым.
  *
- * Два места, где это нужно, и оба здесь:
- *
- * - `NavTabs` — сами разделы под шапкой. Видны только в режиме «вкладки»
- *   (`data-nav='tabs'` на `<html>`) и только на широком экране; переключение
- *   режима — чистый CSS, поэтому разметка одна на оба и гидратации нечего
- *   рассогласовывать.
- * - `SectionTabs` — вкладки внутри открытого раздела, полосой над содержимым.
- *   Они есть в обоих режимах: боковая панель отвечает на вопрос «где я»,
- *   вкладки — «что здесь ещё есть». Дублировать их в панели вложенным списком
- *   не нужно: тогда одно и то же место было бы названо дважды, а панель из
- *   короткого списка мест превратилась бы в дерево.
+ * Разделы и вкладки отвечают на разные вопросы: полоса разделов (`main-nav.tsx`)
+ * говорит «где я», вкладки — «что здесь ещё есть». Поэтому вкладки не
+ * дублируются в списке разделов: иначе одно и то же место было бы названо
+ * дважды, а короткий список мест превратился бы в дерево.
  *
  * Вкладки — настоящие маршруты, а не состояние: ссылкой на «Все взносы» можно
  * поделиться, и она откроется всеми взносами. Клиентский компонент здесь
@@ -76,56 +68,16 @@ function TabLink({ item, active }: { item: NavItem; active: boolean }): ReactNod
 
 /**
  * Полоса вкладок. Уезжает по горизонтали, а не переносится на второй ряд:
- * второй ряд — это ровно та лишняя высота шапки, от которой мы уходили.
+ * второй ряд — это ровно та лишняя высота, от которой мы уходили.
  */
-function TabRow({
-  label,
-  className,
-  flush = false,
-  children,
-}: {
-  label: string;
-  className?: string;
-  /** Полоса стоит вплотную к границе шапки — своя черта была бы второй. */
-  flush?: boolean;
-  children: ReactNode;
-}): ReactNode {
+function TabRow({ label, children }: { label: string; children: ReactNode }): ReactNode {
   return (
     <nav
       aria-label={label}
-      className={cn(
-        '-mx-4 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-        className,
-      )}
+      className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
-      <ul
-        className={cn(
-          'flex min-w-max gap-1',
-          !flush && 'border-border/70 border-b pb-px',
-        )}
-      >
-        {children}
-      </ul>
+      <ul className="border-border/70 flex min-w-max gap-1 border-b pb-px">{children}</ul>
     </nav>
-  );
-}
-
-/** Разделы строкой — вместо боковой панели, по выбору человека. */
-export function NavTabs({ items }: { items: readonly NavSection[] }): ReactNode {
-  const pathname = usePathname();
-  const hrefs = navHrefs(items);
-
-  return (
-    <TabRow label="Разделы приложения" className="nav-tabs-row" flush>
-      {items.map((item) => (
-        <li key={item.href}>
-          <TabLink
-            item={item}
-            active={sectionHrefs(item).some((href) => isSectionActive(pathname, href, hrefs))}
-          />
-        </li>
-      ))}
-    </TabRow>
   );
 }
 

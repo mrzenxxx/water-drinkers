@@ -1,4 +1,4 @@
-import { Droplets } from 'lucide-react';
+import { Coins } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { Amount, HeroAmount } from '@/components/amount';
@@ -11,6 +11,7 @@ import { monthlyStats } from '@/lib/data';
 import { fundState, listContributions, listOrders, peopleById } from '@/lib/data/queries';
 import { formatDate, formatMonth, fullName } from '@/lib/format';
 import { formatKopecks } from '@/lib/money';
+import { pageTitle } from '@/lib/view/app';
 
 /**
  * Фонд (§6.4).
@@ -44,9 +45,9 @@ export default async function FundPage(): Promise<ReactNode> {
 
   return (
     <div className="flex flex-col gap-6">
-      <title>Фонд — WaterDrinkers</title>
+      <title>{pageTitle('Фонд')}</title>
 
-      <PageHeader icon={Droplets} title="Фонд">
+      <PageHeader icon={Coins} title="Фонд">
         Сколько денег в кассе, откуда они взялись и на кого разложены.
       </PageHeader>
 

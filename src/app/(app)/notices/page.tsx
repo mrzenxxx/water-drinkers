@@ -8,6 +8,7 @@ import { markAnnouncementsSeen } from '@/lib/data';
 import { prisma } from '@/lib/db';
 import { listAnnouncements, peopleById } from '@/lib/data/queries';
 import { isUnread } from '@/lib/view/announcements';
+import { pageTitle } from '@/lib/view/app';
 
 /**
  * Объявления (§6.12).
@@ -44,7 +45,7 @@ export default async function NoticesPage(): Promise<ReactNode> {
 
   return (
     <div className="flex flex-col gap-6">
-      <title>Объявления — WaterDrinkers</title>
+      <title>{pageTitle('Объявления')}</title>
 
       <PageHeader icon={Megaphone} title="Объявления">
         Сообщения администратора: как пользоваться кассой и что в ней происходит.

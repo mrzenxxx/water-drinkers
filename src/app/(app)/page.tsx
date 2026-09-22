@@ -1,4 +1,4 @@
-import { Droplets, TrendingDown, Users, Waves } from 'lucide-react';
+import { Coins, TrendingDown, Users, Waves } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
@@ -15,6 +15,7 @@ import { formatKopecks } from '@/lib/money';
 import { buildEvents } from '@/lib/view/events';
 import { buildFeed } from '@/lib/view/feed';
 import { cn } from '@/lib/utils';
+import { pageTitle } from '@/lib/view/app';
 
 /**
  * Главная (§6.1).
@@ -86,7 +87,7 @@ export default async function HomePage(): Promise<ReactNode> {
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6">
-      <title>Главная — WaterDrinkers</title>
+      <title>{pageTitle('Главная')}</title>
 
       {/*
         Две колонки, а не сетка плиток. Слева — состояние кассы сверху вниз в
@@ -163,7 +164,7 @@ export default async function HomePage(): Promise<ReactNode> {
                     />
                   </CardTitle>
                 </div>
-                <IconChip icon={Droplets} />
+                <IconChip icon={Coins} />
               </div>
             </CardHeader>
             <CardContent className={cn(BODY, 'space-y-2 sm:space-y-3')}>

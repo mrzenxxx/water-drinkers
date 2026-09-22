@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 import { ProfileForm } from '@/components/profile-form';
 import { hasProfile, requirePageUser } from '@/lib/auth/current-user';
+import { pageTitle } from '@/lib/view/app';
 
 /**
  * Знакомство после первого входа (§7): имя и фамилия. Нужно только тем, кого
@@ -26,7 +27,7 @@ export default async function WelcomePage(): Promise<ReactNode> {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-6 py-12">
-      <title>Знакомство — WaterDrinkers</title>
+      <title>{pageTitle('Знакомство')}</title>
 
       {/* Тот же стеклянный вход, что и на форме входа: экран знакомства — его продолжение. */}
       <div className="glass rounded-2xl p-6 sm:p-8">

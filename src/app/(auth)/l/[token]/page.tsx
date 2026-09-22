@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 
 import { SubmitButton } from '@/components/submit-button';
 import { magicLinkLoginAction } from '@/lib/actions/session';
+import { APP_NAME, pageTitle } from '@/lib/view/app';
 
 /**
  * Вход по магической ссылке (ADR-0004).
@@ -23,14 +24,14 @@ export default async function MagicLinkPage({
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-6 py-12">
-      <title>Вход по ссылке — WaterDrinkers</title>
+      <title>{pageTitle('Вход по ссылке')}</title>
       <meta name="robots" content="noindex" />
 
       <div className="glass rounded-2xl p-6 text-center sm:p-8">
         <span className="droplet-mark mx-auto flex size-14 items-center justify-center rounded-2xl">
           <Droplets aria-hidden className="size-7" />
         </span>
-        <h1 className="mt-4 text-2xl font-semibold tracking-tight">Вход в WaterDrinkers</h1>
+        <h1 className="mt-4 text-2xl font-semibold tracking-tight">Вход в «{APP_NAME}»</h1>
         <p className="text-muted-foreground mt-2 text-sm">
           Ссылку прислал администратор. Нажмите кнопку, чтобы войти на этом устройстве.
         </p>

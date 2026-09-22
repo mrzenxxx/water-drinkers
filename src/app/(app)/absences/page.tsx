@@ -26,6 +26,7 @@ import {
 import { addDays, toEpochDay } from '@/lib/calc';
 import { absencesOfMonth, buildMonthGrid } from '@/lib/view/calendar';
 import type { RawParams } from '@/lib/view/filters';
+import { pageTitle } from '@/lib/view/app';
 
 /**
  * Отсутствия (§6.6).
@@ -62,7 +63,7 @@ export default async function AbsencesPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <title>Отсутствия — WaterDrinkers</title>
+      <title>{pageTitle('Отсутствия')}</title>
 
       <PageHeader icon={CalendarOff} title="Отсутствия">
         Дни, когда человека нет в офисе, не входят в его долю за воду.

@@ -50,6 +50,7 @@ import {
 } from '@/lib/view/filters';
 import { buildBalanceSeries, bucketKeys, fundDeltas } from '@/lib/view/series';
 import { summarizePeriod } from '@/lib/view/summary';
+import { pageTitle } from '@/lib/view/app';
 
 /**
  * Дашборд с таймлайном (§6.9).
@@ -135,7 +136,7 @@ export default async function DashboardPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <title>Дашборд — WaterDrinkers</title>
+      <title>{pageTitle('Дашборд')}</title>
 
       <header className="flex items-start gap-3">
         <IconChip icon={ChartLine} />

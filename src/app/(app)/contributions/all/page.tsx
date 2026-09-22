@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { requirePageUser } from '@/lib/auth/current-user';
 import { listContributions, listPeople, peopleById } from '@/lib/data/queries';
 import { CONTRIBUTION_STATUS_LABEL, CONTRIBUTIONS, fullName, withCount } from '@/lib/format';
+import { pageTitle } from '@/lib/view/app';
 import {
   hasContributionFilters,
   parseContributionFilters,
@@ -54,7 +55,7 @@ export default async function AllContributionsPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <title>Все взносы — WaterDrinkers</title>
+      <title>{pageTitle('Все взносы')}</title>
 
       <PageHeader icon={Users} title="Все взносы">
         Приложение прозрачно: участник видит то же, что администратор.
