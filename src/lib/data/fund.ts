@@ -153,68 +153,80 @@ export type MonthlyStat = {
   endBalance: Kopecks;
 };
 
-/** Пятьдесят лет помесячно — больше на графике смысла не имеет. */
-const MAX_MONTHS = 600;
+/** Пятьдесят лет помесячно или десять лет понедельно — больше на графике смысла нет. */
+const MAX_BUCKETS = 600;
 
-function monthOf(date: IsoDate): string {
-  return date.slice(0, 7);
-}
-
-function nextMonth(month: string): string {
-  const [year, index] = month.split('-').map(Number) as [number, number];
-  return index === 12
-    ? `${String(year + 1).padStart(4, '0')}-01`
-    : `${String(year).padStart(4, '0')}-${String(index + 1).padStart(2, '0')}`;
-}
+/** Движение фонда за один шаг сетки — месяц или неделю. */
+export type FundFlowStat = {
+  /** Первый день шага: `YYYY-MM-01` у месяца, понедельник у недели. */
+  start: IsoDate;
+  contributions: Kopecks;
+  /** Отрицательная величина: деньги ушли из фонда (§2.3). */
+  orders: Kopecks;
+  /** Остаток фонда на конец шага. */
+  endBalance: Kopecks;
+};
 
 /**
- * Динамика фонда по месяцам для графика §6.4.
+ * Динамика фонда по шагам сетки для графика §6.4.
  *
  * Считается из того же отфильтрованного набора, что и балансы: последний
  * `endBalance` обязан совпасть с `CalcResult.fundBalance`, иначе график и
  * таблица рассказывали бы разные истории (§6.9, «статистика только показывает»).
+ *
+ * `keyOf` сводит дату к первому дню её шага, `next` даёт первый день
+ * следующего. Шаги идут сплошным рядом, пустые тоже: пропуск превратил бы
+ * равномерную ось в неравномерную.
  */
-export function monthlyStats(input: CalcInput, result: CalcResult): MonthlyStat[] {
-  const byMonth = new Map<string, { contributions: Kopecks; orders: Kopecks; other: Kopecks }>();
+export function fundFlowStats(
+  input: CalcInput,
+  result: CalcResult,
+  keyOf: (date: IsoDate) => IsoDate,
+  next: (key: IsoDate) => IsoDate,
+): FundFlowStat[] {
+  const byKey = new Map<IsoDate, { contributions: Kopecks; orders: Kopecks; other: Kopecks }>();
 
-  const bucket = (month: string) => {
-    const existing = byMonth.get(month);
+  const bucket = (date: IsoDate) => {
+    const key = keyOf(date);
+    const existing = byKey.get(key);
     if (existing) return existing;
     const created = { contributions: 0, orders: 0, other: 0 };
-    byMonth.set(month, created);
+    byKey.set(key, created);
     return created;
   };
 
   // Берутся ровно те записи, что учло ядро (§4.2): свои фильтры разошлись бы
   // с остатком фонда, а сводка обязана сходиться с ним до копейки.
   for (const contribution of countableContributions(input.contributions, input.fund)) {
-    bucket(monthOf(contribution.paidAt)).contributions += contribution.amount;
+    bucket(contribution.paidAt).contributions += contribution.amount;
   }
   // `orderPeriods` — уже отфильтрованные заказы; знак меняем здесь, потому что
   // в ядре сумма заказа положительная, а в журнале и на графике она расход.
   for (const period of result.orderPeriods) {
-    bucket(monthOf(period.orderedAt)).orders -= period.amount;
+    bucket(period.orderedAt).orders -= period.amount;
   }
   for (const transaction of countableTransactions(input.transactions ?? [], input.fund)) {
-    bucket(monthOf(transaction.occurredOn)).other += transaction.amount;
+    bucket(transaction.occurredOn).other += transaction.amount;
   }
 
-  const months = [...byMonth.keys()].sort();
-  const first = input.fund.startDate === null ? months[0] : monthOf(input.fund.startDate);
+  const keys = [...byKey.keys()].sort();
+  const first = input.fund.startDate === null ? keys[0] : keyOf(input.fund.startDate);
   if (first === undefined) return [];
 
-  const last = [months[months.length - 1] ?? first, monthOf(input.asOf)].sort()[1] as string;
+  const lastData = keys[keys.length - 1] ?? first;
+  const today = keyOf(input.asOf);
+  const last = lastData > today ? lastData : today;
 
-  const stats: MonthlyStat[] = [];
+  const stats: FundFlowStat[] = [];
   let running = input.fund.openingBalance;
 
   // Страховка: дату начала учёта задаёт администратор, и опечатка в годе
   // не должна превращать график в десятки тысяч строк.
-  for (let month = first; month <= last && stats.length < MAX_MONTHS; month = nextMonth(month)) {
-    const totals = byMonth.get(month) ?? { contributions: 0, orders: 0, other: 0 };
+  for (let key = first; key <= last && stats.length < MAX_BUCKETS; key = next(key)) {
+    const totals = byKey.get(key) ?? { contributions: 0, orders: 0, other: 0 };
     running += totals.contributions + totals.orders + totals.other;
     stats.push({
-      month,
+      start: key,
       contributions: totals.contributions,
       orders: totals.orders,
       endBalance: running,
@@ -222,4 +234,19 @@ export function monthlyStats(input: CalcInput, result: CalcResult): MonthlyStat[
   }
 
   return stats;
+}
+
+/** Первое число следующего месяца. */
+function nextMonthStart(key: IsoDate): IsoDate {
+  const [year, month] = key.split('-').map(Number) as [number, number];
+  return month === 12
+    ? `${String(year + 1).padStart(4, '0')}-01-01`
+    : `${String(year).padStart(4, '0')}-${String(month + 1).padStart(2, '0')}-01`;
+}
+
+/** Динамика фонда по месяцам — форма GraphQL `MonthlyStat`. */
+export function monthlyStats(input: CalcInput, result: CalcResult): MonthlyStat[] {
+  return fundFlowStats(input, result, (date) => `${date.slice(0, 7)}-01`, nextMonthStart).map(
+    ({ start, ...totals }) => ({ month: start.slice(0, 7), ...totals }),
+  );
 }

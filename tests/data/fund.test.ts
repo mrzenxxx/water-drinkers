@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { loadCalcInput, loadFundState, monthlyStats } from '@/lib/data/fund';
+import { addDays } from '@/lib/calc';
+import { fundFlowStats, loadCalcInput, loadFundState, monthlyStats } from '@/lib/data/fund';
+import { startOfWeek } from '@/lib/format/dates';
 import { createFakeDb, dateColumn, type FakeDb } from '../support/fake-prisma';
 
 const RUB = 100;
@@ -173,5 +175,24 @@ describe('помесячная сводка', () => {
   it('на пустом фонде без истории сводки нет', async () => {
     const state = await loadFundState(createFakeDb().client, '2026-08-14');
     expect(monthlyStats(state.input, state.result)).toEqual([]);
+  });
+});
+
+describe('понедельная сводка', () => {
+  it('идёт сплошными неделями с понедельника и сходится с остатком фонда', async () => {
+    const db = seedSpecExample();
+    db.tables.waterOrder.seed([
+      { id: 'o2', amount: BigInt(2400 * RUB), orderedAt: dateColumn('2026-07-06'), createdBy: 'u0' },
+    ]);
+
+    const state = await loadFundState(db.client, '2026-08-14');
+    const stats = fundFlowStats(state.input, state.result, startOfWeek, (key) => addDays(key, 7));
+
+    // 01.06.2026 — понедельник; 10.08 — понедельник недели, в которую входит 14.08.
+    expect(stats[0]?.start).toBe('2026-06-01');
+    expect(stats[stats.length - 1]?.start).toBe('2026-08-10');
+    expect(stats).toHaveLength(11);
+    expect(stats.find((stat) => stat.start === '2026-07-06')?.orders).toBe(-2400 * RUB);
+    expect(stats[stats.length - 1]?.endBalance).toBe(state.result.fundBalance);
   });
 });

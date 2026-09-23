@@ -28,8 +28,8 @@ export {
   toIsoDateTimeOrNull,
 } from './dates';
 
-export type { FundState, MonthlyStat } from './fund';
-export { getFundState, loadCalcInput, loadFundState, monthlyStats } from './fund';
+export type { FundFlowStat, FundState, MonthlyStat } from './fund';
+export { fundFlowStats, getFundState, loadCalcInput, loadFundState, monthlyStats } from './fund';
 
 export {
   DEFAULT_FUND_SETTINGS,

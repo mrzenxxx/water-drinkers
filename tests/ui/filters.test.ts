@@ -22,7 +22,16 @@ describe('быстрые периоды', () => {
   it('кончаются сегодняшним днём и не съезжают на длине месяца', () => {
     expect(presetRange('month', CONTEXT)).toEqual({ from: '2026-07-15', to: '2026-08-14' });
     expect(presetRange('quarter', CONTEXT)).toEqual({ from: '2026-05-15', to: '2026-08-14' });
-    expect(presetRange('year', CONTEXT)).toEqual({ from: '2025-08-15', to: '2026-08-14' });
+    expect(presetRange('year', { ...CONTEXT, earliest: '2024-01-01' })).toEqual({
+      from: '2025-08-15',
+      to: '2026-08-14',
+    });
+  });
+
+  it('не начинаются раньше первой известной даты: год молодого фонда — его возраст', () => {
+    expect(presetRange('year', CONTEXT)).toEqual({ from: '2026-01-15', to: '2026-08-14' });
+    // Квартал целиком внутри истории — обрезать нечего.
+    expect(presetRange('quarter', CONTEXT)).toEqual({ from: '2026-05-15', to: '2026-08-14' });
   });
 
   it('«всё время» начинается с самой ранней известной даты', () => {

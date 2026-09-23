@@ -11,6 +11,7 @@ import {
   buildBalanceSeries,
   daysBetween,
   fundDeltas,
+  participantBalanceSeries,
   zeroCrossings,
 } from '@/lib/view/series';
 
@@ -200,5 +201,83 @@ describe('события ступеней графика', () => {
       '2026-06-08',
     ]);
     expect(buckets[0]!.map((event) => event.id)).toEqual(['order:o1']);
+  });
+});
+
+describe('балансы участников во времени', () => {
+  const INPUT: CalcInput = {
+    participants: [
+      { id: 'u-1', joinedAt: '2026-06-01', leftAt: null, openingBalance: 25_000 },
+      { id: 'u-2', joinedAt: '2026-06-01', leftAt: null, openingBalance: 25_000 },
+      { id: 'u-3', joinedAt: '2026-06-15', leftAt: null, openingBalance: 0 },
+    ],
+    absences: [
+      { id: 'a1', userId: 'u-1', type: 'SICK_LEAVE', startsOn: '2026-06-12', endsOn: '2026-06-14' },
+    ],
+    orders: [
+      { id: 'o1', amount: 300_000, orderedAt: '2026-06-10' },
+      { id: 'o2', amount: 120_000, orderedAt: '2026-06-24' },
+    ],
+    contributions: SOURCE.contributions.map((row) => ({ ...row })),
+    transactions: [
+      { id: 't1', type: 'ADJUSTMENT', amount: -1_500, userId: null, occurredOn: '2026-06-18' },
+    ],
+    fund: { openingBalance: 50_000, startDate: '2026-06-01', defaultContribution: 50_000 },
+    asOf: '2026-06-30',
+  };
+  const range = { from: '2026-06-01', to: '2026-06-30' };
+
+  it('последняя точка — текущий баланс из ядра, до копейки, при любом шаге', () => {
+    const today = computeBalances(INPUT);
+    for (const step of ['day', 'week', 'month'] as const) {
+      const next =
+        step === 'day'
+          ? (key: string) => addDays(key, 1)
+          : step === 'week'
+            ? (key: string) => addDays(key, 7)
+            : () => '2026-07-01';
+      const keys = bucketKeys(range, bucketKeyOf(step), next);
+      const series = participantBalanceSeries(INPUT, ['u-1', 'u-2', 'u-3'], range, keys);
+
+      for (const line of series) {
+        const expected = today.balances.find((balance) => balance.userId === line.userId)!;
+        expect(line.points[line.points.length - 1]?.balance).toBe(expected.amount);
+        expect(line.points).toHaveLength(keys.length);
+      }
+    }
+  });
+
+  it('точка на день — то, что ядро показало бы в тот день', () => {
+    const keys = bucketKeys(range, bucketKeyOf('day'), (key) => addDays(key, 1));
+    const [line] = participantBalanceSeries(INPUT, ['u-2'], range, keys);
+    const day = '2026-06-16';
+    const snapshot = computeBalances({
+      ...INPUT,
+      orders: INPUT.orders.filter((order) => order.orderedAt <= day),
+      contributions: INPUT.contributions.filter((row) => row.paidAt <= day),
+      transactions: (INPUT.transactions ?? []).filter((row) => row.occurredOn <= day),
+      asOf: day,
+    });
+    const point = line!.points.find((candidate) => candidate.date === day)!;
+    expect(point.balance).toBe(snapshot.balances.find((b) => b.userId === 'u-2')!.amount);
+  });
+
+  it('разбирает изменение шага на взносы и расход', () => {
+    const keys = bucketKeys(range, bucketKeyOf('day'), (key) => addDays(key, 1));
+    const [line] = participantBalanceSeries(INPUT, ['u-1'], range, keys);
+    expect(line!.startBalance).toBe(25_000);
+    const contributionDay = line!.points.find((point) => point.date === '2026-06-02')!;
+    expect(contributionDay.contributed).toBe(100_000);
+    // Отклонённый взнос 20.06 баланс не двигает (правило 6).
+    expect(line!.points.find((point) => point.date === '2026-06-20')!.contributed).toBe(0);
+    const total = line!.points.reduce((sum, point) => sum + point.contributed, 0);
+    expect(total).toBe(100_000);
+    expect(line!.points.every((point) => Number.isInteger(point.balance))).toBe(true);
+  });
+
+  it('молча пропускает неизвестных и не считает ничего без выбора', () => {
+    const keys = bucketKeys(range, bucketKeyOf('week'), (key) => addDays(key, 7));
+    expect(participantBalanceSeries(INPUT, [], range, keys)).toEqual([]);
+    expect(participantBalanceSeries(INPUT, ['nobody'], range, keys)).toEqual([]);
   });
 });

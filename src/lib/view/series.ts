@@ -12,8 +12,8 @@
  * Ни базы, ни часов: вход → выход.
  */
 
-import { compareDates, isCountedStatus, toEpochDay } from '@/lib/calc';
-import type { IsoDate } from '@/lib/calc/types';
+import { addDays, compareDates, computeBalances, isCountedStatus, minDate, toEpochDay } from '@/lib/calc';
+import type { CalcInput, IsoDate } from '@/lib/calc/types';
 import type { Kopecks } from '@/lib/money';
 
 import type { TimelineEvent } from './events';
@@ -204,4 +204,107 @@ export function zeroCrossings(points: readonly BalancePoint[]): number[] {
 /** Сколько дней прошло между двумя датами. Отрицательных не бывает. */
 export function daysBetween(from: IsoDate, to: IsoDate): number {
   return Math.max(0, toEpochDay(to) - toEpochDay(from));
+}
+
+// ─── Балансы участников во времени ─────────────────────────────────────────
+
+/** Точка ряда участника: баланс на конец шага и из чего сложилось изменение. */
+export type ParticipantPoint = {
+  /** Первый день шага. */
+  date: IsoDate;
+  balance: Kopecks;
+  /** Сколько участник внёс за шаг (засчитанные взносы). */
+  contributed: Kopecks;
+  /** Насколько выросла его доля в заказах за шаг. Положительная величина. */
+  spent: Kopecks;
+};
+
+export type ParticipantSeries = {
+  userId: string;
+  /** Баланс накануне периода — от него идёт первая ступень. */
+  startBalance: Kopecks;
+  points: ParticipantPoint[];
+};
+
+type Snapshot = { balance: Kopecks; contributed: Kopecks; spent: Kopecks };
+
+/**
+ * Балансы выбранных участников на конец каждого шага (§6.9).
+ *
+ * Своей арифметики здесь нет: на последний день каждого шага ядро
+ * пересчитывается целиком — с записями по этот день и `asOf`, равным ему.
+ * Так точка графика — ровно тот баланс, который приложение показало бы
+ * в тот день, со всеми тонкостями долей: открытый период последнего заказа,
+ * отсутствия, корректировки фонда, разложенные по участникам. Последняя
+ * точка периода, кончающегося сегодня, совпадает с текущим балансом до
+ * копейки — это проверяет тест.
+ *
+ * Пересчёт на каждом шаге дороже накопления, но данных у кассы одного
+ * офиса мало, а шагов не больше, чем корзин у `bucketKeys`.
+ */
+export function participantBalanceSeries(
+  input: CalcInput,
+  userIds: readonly string[],
+  range: { from: IsoDate; to: IsoDate },
+  bucketKeys: readonly IsoDate[],
+): ParticipantSeries[] {
+  const known = new Set(input.participants.map((participant) => participant.id));
+  const wanted = userIds.filter((id) => known.has(id));
+  if (wanted.length === 0) return [];
+
+  const snapshotOn = (day: IsoDate): Map<string, Snapshot> => {
+    const result = computeBalances({
+      ...input,
+      orders: input.orders.filter((order) => compareDates(order.orderedAt, day) <= 0),
+      contributions: input.contributions.filter(
+        (contribution) => compareDates(contribution.paidAt, day) <= 0,
+      ),
+      transactions: (input.transactions ?? []).filter(
+        (transaction) => compareDates(transaction.occurredOn, day) <= 0,
+      ),
+      asOf: day,
+    });
+
+    return new Map(
+      result.balances.map((balance) => [
+        balance.userId,
+        {
+          balance: balance.amount,
+          contributed: balance.breakdown.contributionsTotal,
+          spent: balance.breakdown.expensesTotal,
+        },
+      ]),
+    );
+  };
+
+  const empty: Snapshot = { balance: 0, contributed: 0, spent: 0 };
+  let previous = snapshotOn(addDays(range.from, -1));
+  const starts = new Map(wanted.map((id) => [id, (previous.get(id) ?? empty).balance]));
+  const points = new Map<string, ParticipantPoint[]>(wanted.map((id) => [id, []]));
+
+  for (let index = 0; index < bucketKeys.length; index += 1) {
+    const nextKey = bucketKeys[index + 1];
+    // Шаг кончается накануне следующего или концом периода — что раньше.
+    const lastDay =
+      nextKey === undefined ? range.to : minDate(addDays(nextKey, -1), range.to);
+    const current = snapshotOn(lastDay);
+
+    for (const id of wanted) {
+      const now = current.get(id) ?? empty;
+      const before = previous.get(id) ?? empty;
+      points.get(id)!.push({
+        date: bucketKeys[index]!,
+        balance: now.balance,
+        contributed: now.contributed - before.contributed,
+        spent: now.spent - before.spent,
+      });
+    }
+    previous = current;
+  }
+
+  return wanted.map((id) => ({
+    userId: id,
+    startBalance: starts.get(id)!,
+    points: points.get(id)!,
+  }));
 }

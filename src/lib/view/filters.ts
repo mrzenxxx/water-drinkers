@@ -92,20 +92,28 @@ function readDate(params: RawParams, key: string): IsoDate | null {
   return value !== undefined && isIsoDate(value) ? value : null;
 }
 
-/** Границы быстрого периода. Все они кончаются сегодняшним днём. */
+/**
+ * Границы быстрого периода. Все они кончаются сегодняшним днём.
+ *
+ * Начало не уходит раньше самой ранней известной даты: «год» у фонда,
+ * которому четыре месяца, — это четыре месяца. Иначе график растягивался бы
+ * на двенадцать месяцев, из которых восемь пустые, данные жались бы к
+ * правому краю, а «средний расход в день» делился бы на дни, когда фонда
+ * ещё не было.
+ */
 export function presetRange(
   preset: Exclude<PeriodPreset, 'custom'>,
   context: FilterContext,
 ): { from: IsoDate; to: IsoDate } {
-  if (preset === 'all') {
-    // Даже на пустой базе период не должен схлопнуться в отрицательный.
-    return { from: minDate(context.earliest, context.today), to: context.today };
-  }
+  // Даже на пустой базе период не должен схлопнуться в отрицательный.
+  const floor = minDate(context.earliest, context.today);
+  if (preset === 'all') return { from: floor, to: context.today };
 
   const months = preset === 'month' ? 1 : preset === 'quarter' ? 3 : 12;
   // Полуоткрытость здесь ни при чём: обе границы статистики включительные,
   // поэтому «месяц» — это день, следующий за сдвигом, и по сегодня.
-  return { from: addDays(shiftDateByMonths(context.today, -months), 1), to: context.today };
+  const from = addDays(shiftDateByMonths(context.today, -months), 1);
+  return { from: maxDate(from, floor), to: context.today };
 }
 
 /**
