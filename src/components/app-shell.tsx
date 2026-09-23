@@ -171,9 +171,16 @@ export function AppShell({ user, unreadNotices = 0, children }: AppShellProps): 
           */}
           <Link
             href="/guide"
-            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring flex items-center gap-2 rounded-lg transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none"
+            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring focus-visible:ring-offset-background flex items-center gap-2.5 rounded-xl transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
-            <BookHelp aria-hidden className="text-primary size-5 shrink-0" />
+            {/*
+              Плитка того же размера, что знаки мессенджеров справа (40 px), и
+              в той же «капле», что значок профиля в шапке: подвал держится на
+              двух одинаковых по весу краях, а не на значке с одной стороны.
+            */}
+            <span className="droplet-mark press flex size-10 shrink-0 items-center justify-center rounded-xl">
+              <BookHelp aria-hidden className="size-5" />
+            </span>
             <span>Как всё устроено и считается</span>
           </Link>
 
