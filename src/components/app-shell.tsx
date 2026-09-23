@@ -1,11 +1,13 @@
-import { Droplets, UserRound } from 'lucide-react';
+import { Droplets, Send, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { BottomNav, MainNav } from '@/components/main-nav';
 import { SectionTabs } from '@/components/nav-tabs';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { Button } from '@/components/ui/button';
 import { ROLE_LABEL, fullName, type NamedUser } from '@/lib/format';
+import { adminTelegramHref } from '@/lib/view/admin-contact';
 import { APP_NAME } from '@/lib/view/app';
 import { APP_SECTIONS, ADMIN_SECTION, type NavSection } from '@/lib/view/nav';
 
@@ -41,6 +43,12 @@ import { APP_SECTIONS, ADMIN_SECTION, type NavSection } from '@/lib/view/nav';
  * Полоса стеклянная и плотнее карточек (`glass-strong`): она висит над
  * содержимым, и сквозь неё не должен читаться уезжающий под неё текст.
  * Рамка остаётся только снизу — стекло здесь край экрана, а не карточка.
+ *
+ * В подвале — напоминание об инварианте слева и связь с администратором
+ * справа, в одну строку. Адрес тот же, что на экране входа
+ * (`ADMIN_TELEGRAM_URL`), и добывается той же функцией: два разных способа
+ * дописать схему однажды разошлись бы. Без переменной кнопки нет — вести
+ * в никуда хуже, чем не звать.
  */
 
 type AppShellProps = {
@@ -59,6 +67,8 @@ export function AppShell({ user, unreadNotices = 0, children }: AppShellProps): 
   const sections: NavSection[] = withAdmin.map((item) =>
     item.href === '/notices' && unreadNotices > 0 ? { ...item, badge: unreadNotices } : item,
   );
+
+  const telegramUrl = adminTelegramHref(process.env.ADMIN_TELEGRAM_URL);
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -142,16 +152,31 @@ export function AppShell({ user, unreadNotices = 0, children }: AppShellProps): 
           {children}
         </main>
 
-        <footer className="text-muted-foreground border-border mx-auto mt-4 flex w-full max-w-6xl items-start gap-2 border-t px-4 py-6 text-xs">
-          <Droplets aria-hidden className="text-primary mt-0.5 size-4 shrink-0 opacity-70" />
-          <p>
-            Σ балансов всех участников всегда равна остатку фонда. Расхождение видно
-            в разделе{' '}
-            <Link href="/fund" className="underline underline-offset-2">
-              «Фонд»
-            </Link>
-            .
+        {/*
+          Одна строка на широком экране, две — на узком: связь с
+          администратором уходит под напоминание, а не жмётся к нему сбоку.
+        */}
+        <footer className="border-border mx-auto mt-4 flex w-full max-w-6xl flex-col items-start gap-3 border-t px-4 py-6 text-xs sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+          <p className="text-muted-foreground flex items-start gap-2">
+            <Droplets aria-hidden className="text-primary mt-0.5 size-4 shrink-0 opacity-70" />
+            <span>
+              Σ балансов всех участников всегда равна остатку фонда. Расхождение видно
+              в разделе{' '}
+              <Link href="/fund" className="underline underline-offset-2">
+                «Фонд»
+              </Link>
+              .
+            </span>
           </p>
+
+          {telegramUrl !== null && (
+            <Button asChild variant="outline" size="sm" className="shrink-0">
+              <a href={telegramUrl} target="_blank" rel="noopener noreferrer">
+                Связаться с администратором
+                <Send aria-hidden />
+              </a>
+            </Button>
+          )}
         </footer>
       </div>
 
