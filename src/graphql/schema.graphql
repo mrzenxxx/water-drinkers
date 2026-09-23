@@ -375,6 +375,8 @@ type Mutation {
   createAnnouncement(input: AnnouncementInput!): Announcement! # ADMIN
   updateAnnouncement(id: ID!, input: AnnouncementInput!): Announcement! # ADMIN
   setAnnouncementArchived(id: ID!, archived: Boolean!): Announcement! # ADMIN
+  "Закрепить или открепить. Закреплённых не больше трёх. Только ADMIN."
+  setAnnouncementPinned(id: ID!, pinned: Boolean!): Announcement!
   "Приложить картинку или убрать её (null). Только ADMIN."
   setAnnouncementImage(id: ID!, image: AnnouncementImageInput): Announcement!
   """

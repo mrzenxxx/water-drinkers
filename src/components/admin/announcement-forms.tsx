@@ -9,11 +9,12 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   createAnnouncementAction,
   setAnnouncementArchivedAction,
+  setAnnouncementPinnedAction,
   updateAnnouncementAction,
 } from '@/lib/actions/announcements';
 import { formatDateTime } from '@/lib/format';
 import { MAX_IMAGE_BYTES, SUPPORTED_IMAGE_TYPES } from '@/lib/images';
-import type { AnnouncementView } from '@/lib/view/announcements';
+import { MAX_PINNED_ANNOUNCEMENTS, type AnnouncementView } from '@/lib/view/announcements';
 
 /**
  * Формы объявлений в админ-панели (§6.12).
@@ -183,6 +184,7 @@ export function AnnouncementComposer(): ReactNode {
         <CardTitle>Новое объявление</CardTitle>
         <CardDescription>
           Закреплённое не тонет в списке — так живут инструкции по пользованию системой.
+          Закрепить можно не больше {MAX_PINNED_ANNOUNCEMENTS} объявлений.
           Снятая галочка «Опубликовать» сохраняет черновик: участникам он не виден.
         </CardDescription>
       </CardHeader>
@@ -242,19 +244,38 @@ export function AnnouncementEditor({ item }: { item: AnnouncementView }): ReactN
           </div>
         </details>
 
-        {/*
-          Архив, а не удаление: сообщение уходит с глаз, но остаётся в истории.
-          Удалить строку значило бы стереть и то, на что ссылается журнал аудита.
-        */}
-        <ActionForm
-          action={setAnnouncementArchivedAction}
-          submitLabel={archived ? 'Вернуть в список' : 'Убрать в архив'}
-          variant="outline"
-          size="sm"
-        >
-          <input type="hidden" name="id" value={item.id} />
-          <input type="hidden" name="archived" value={archived ? 'false' : 'true'} />
-        </ActionForm>
+        <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
+          {/*
+            Закрепление — отдельной кнопкой, без правки текста. Кнопка не
+            гаснет и при полном наборе закреплённых: нажав её, администратор
+            получает объяснение, какое из них открепить, а не немую серую кнопку.
+          */}
+          {!archived && (
+            <ActionForm
+              action={setAnnouncementPinnedAction}
+              submitLabel={item.pinned ? 'Открепить' : 'Закрепить'}
+              variant="outline"
+              size="sm"
+            >
+              <input type="hidden" name="id" value={item.id} />
+              <input type="hidden" name="pinned" value={item.pinned ? 'false' : 'true'} />
+            </ActionForm>
+          )}
+
+          {/*
+            Архив, а не удаление: сообщение уходит с глаз, но остаётся в истории.
+            Удалить строку значило бы стереть и то, на что ссылается журнал аудита.
+          */}
+          <ActionForm
+            action={setAnnouncementArchivedAction}
+            submitLabel={archived ? 'Вернуть в список' : 'Убрать в архив'}
+            variant="outline"
+            size="sm"
+          >
+            <input type="hidden" name="id" value={item.id} />
+            <input type="hidden" name="archived" value={archived ? 'false' : 'true'} />
+          </ActionForm>
+        </div>
       </CardContent>
     </Card>
   );

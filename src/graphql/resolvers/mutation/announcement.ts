@@ -1,10 +1,11 @@
 import type { Prisma } from '@/generated/prisma/client';
 import type { GraphQLContext } from '@/graphql/context';
 import { requireAdmin, requireUser } from '@/graphql/context';
-import { badInput, notFound, requireText } from '@/graphql/errors';
+import { badInput, conflict, notFound, requireText } from '@/graphql/errors';
 import type { MutationResolvers } from '@/graphql/generated/graphql';
 import { markAnnouncementsSeen, writeAudit } from '@/lib/data';
 import { ImageError, inspectImage } from '@/lib/images';
+import { MAX_PINNED_ANNOUNCEMENTS } from '@/lib/view/announcements';
 
 /**
  * Объявления администратора (§6.12): инструкции и сообщения всем участникам.
@@ -63,6 +64,35 @@ function snapshot(row: {
   };
 }
 
+type Tx = Parameters<Parameters<GraphQLContext['db']['$transaction']>[0]>[0];
+
+/**
+ * Есть ли место ещё для одного закреплённого (§6.12).
+ *
+ * Считаются объявления вне архива, черновики включительно: опубликованный
+ * позже черновик не должен молча превышать предел. Проверка идёт внутри той же
+ * транзакции, что и запись. В отказе перечислены заголовки закреплённых,
+ * чтобы администратор сразу видел, какое из них открепить.
+ */
+async function ensurePinSlot(tx: Tx, exceptId?: string): Promise<void> {
+  const pinned = await tx.announcement.findMany({
+    where: {
+      pinned: true,
+      archivedAt: null,
+      ...(exceptId === undefined ? {} : { id: { not: exceptId } }),
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+  if (pinned.length < MAX_PINNED_ANNOUNCEMENTS) return;
+
+  const titles = pinned.map((row) => `«${row.title}»`).join(', ');
+  throw conflict(
+    `Закрепить можно не больше ${MAX_PINNED_ANNOUNCEMENTS} объявлений. ` +
+      `Сначала открепите одно из закреплённых: ${titles}.`,
+    { field: 'pinned' },
+  );
+}
+
 /** Верхняя граница подписи к картинке: это описание, а не второй текст. */
 const MAX_ALT = 300;
 
@@ -71,6 +101,7 @@ export const announcementMutations: Pick<
   | 'createAnnouncement'
   | 'updateAnnouncement'
   | 'setAnnouncementArchived'
+  | 'setAnnouncementPinned'
   | 'setAnnouncementImage'
   | 'markAnnouncementsSeen'
 > = {
@@ -85,6 +116,8 @@ export const announcementMutations: Pick<
     const publishedAt = (input.published ?? true) ? new Date() : null;
 
     return ctx.db.$transaction(async (tx) => {
+      if (pinned) await ensurePinSlot(tx);
+
       const row = await tx.announcement.create({
         data: { title, body, pinned, publishedAt, createdBy: admin.id },
       });
@@ -122,6 +155,8 @@ export const announcementMutations: Pick<
     const publishedAt = published ? (existing.publishedAt ?? new Date()) : null;
 
     return ctx.db.$transaction(async (tx) => {
+      if (pinned && !existing.pinned) await ensurePinSlot(tx, id);
+
       const row = await tx.announcement.update({
         where: { id },
         data: { title, body, pinned, publishedAt },
@@ -143,6 +178,9 @@ export const announcementMutations: Pick<
   /**
    * Архив вместо удаления: сообщение уходит с глаз, но остаётся в истории.
    * Удалить строку значило бы стереть и то, на что ссылается журнал аудита.
+   *
+   * Уходя в архив, объявление открепляется: иначе возврат из архива поставил
+   * бы его закреплённым в обход предела §6.12.
    */
   setAnnouncementArchived: async (_parent, { id, archived }, ctx) => {
     const admin = await requireAdmin(ctx);
@@ -158,12 +196,51 @@ export const announcementMutations: Pick<
     return ctx.db.$transaction(async (tx) => {
       const row = await tx.announcement.update({
         where: { id },
-        data: { archivedAt: archived ? new Date() : null },
+        data: archived ? { archivedAt: new Date(), pinned: false } : { archivedAt: null },
       });
 
       await writeAudit(tx, {
         actorId: admin.id,
         action: archived ? 'announcement.archive' : 'announcement.restore',
+        entity: 'announcement',
+        entityId: id,
+        before: snapshot(existing),
+        after: snapshot(row),
+      });
+
+      return row;
+    });
+  },
+
+  /**
+   * Закрепить или открепить — отдельно от правки текста, одной кнопкой
+   * на карточке. Закреплённых не больше трёх (§6.12).
+   */
+  setAnnouncementPinned: async (_parent, { id, pinned }, ctx) => {
+    const admin = await requireAdmin(ctx);
+
+    const existing = await ctx.db.announcement.findUnique({ where: { id } });
+    if (existing === null) {
+      throw notFound('Объявление не найдено.', { id });
+    }
+
+    // Повторное нажатие ничего не меняет и ошибкой не является.
+    if (existing.pinned === pinned) return existing;
+
+    if (pinned && existing.archivedAt !== null) {
+      throw badInput('Объявление в архиве. Чтобы закрепить, сначала верните его в список.', {
+        field: 'pinned',
+      });
+    }
+
+    return ctx.db.$transaction(async (tx) => {
+      if (pinned) await ensurePinSlot(tx, id);
+
+      const row = await tx.announcement.update({ where: { id }, data: { pinned } });
+
+      await writeAudit(tx, {
+        actorId: admin.id,
+        action: pinned ? 'announcement.pin' : 'announcement.unpin',
         entity: 'announcement',
         entityId: id,
         before: snapshot(existing),

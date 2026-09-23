@@ -24,6 +24,7 @@ import type {
   MutationCreateAnnouncementArgs,
   MutationSetAnnouncementArchivedArgs,
   MutationSetAnnouncementImageArgs,
+  MutationSetAnnouncementPinnedArgs,
   MutationUpdateAnnouncementArgs,
 } from '@/graphql/generated/graphql';
 import { announcementMutations } from '@/graphql/resolvers/mutation/announcement';
@@ -63,6 +64,7 @@ const call = {
   create: announcementMutations.createAnnouncement as Call<MutationCreateAnnouncementArgs>,
   update: announcementMutations.updateAnnouncement as Call<MutationUpdateAnnouncementArgs>,
   archive: announcementMutations.setAnnouncementArchived as Call<MutationSetAnnouncementArchivedArgs>,
+  pin: announcementMutations.setAnnouncementPinned as Call<MutationSetAnnouncementPinnedArgs>,
   image: announcementMutations.setAnnouncementImage as Call<MutationSetAnnouncementImageArgs>,
 };
 
@@ -231,4 +233,21 @@ export async function setAnnouncementArchivedAction(
 
   revalidateEverywhere();
   return ok(archived ? 'Объявление убрано в архив.' : 'Объявление возвращено в список.');
+}
+
+export async function setAnnouncementPinnedAction(
+  _previous: ActionState,
+  form: FormData,
+): Promise<ActionState> {
+  const pinned = text(form, 'pinned') === 'true';
+
+  try {
+    const context = await actionContext();
+    await call.pin(undefined, { id: text(form, 'id'), pinned }, context, NO_INFO);
+  } catch (cause) {
+    return failed(cause);
+  }
+
+  revalidateEverywhere();
+  return ok(pinned ? 'Объявление закреплено.' : 'Объявление откреплено.');
 }

@@ -269,6 +269,8 @@ export type Mutation = {
   setAnnouncementArchived: Announcement;
   /** Приложить картинку или убрать её (null). Только ADMIN. */
   setAnnouncementImage: Announcement;
+  /** Закрепить или открепить. Закреплённых не больше трёх. Только ADMIN. */
+  setAnnouncementPinned: Announcement;
   setOpeningBalances: Fund;
   setParticipantRestriction: User;
   setParticipantRole: User;
@@ -380,6 +382,12 @@ export type MutationSetAnnouncementArchivedArgs = {
 export type MutationSetAnnouncementImageArgs = {
   id: Scalars['ID']['input'];
   image?: InputMaybe<AnnouncementImageInput>;
+};
+
+
+export type MutationSetAnnouncementPinnedArgs = {
+  id: Scalars['ID']['input'];
+  pinned: Scalars['Boolean']['input'];
 };
 
 
@@ -973,6 +981,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   rejectContribution?: Resolver<ResolversTypes['Contribution'], ParentType, ContextType, RequireFields<MutationRejectContributionArgs, 'comment' | 'id'>>;
   setAnnouncementArchived?: Resolver<ResolversTypes['Announcement'], ParentType, ContextType, RequireFields<MutationSetAnnouncementArchivedArgs, 'archived' | 'id'>>;
   setAnnouncementImage?: Resolver<ResolversTypes['Announcement'], ParentType, ContextType, RequireFields<MutationSetAnnouncementImageArgs, 'id'>>;
+  setAnnouncementPinned?: Resolver<ResolversTypes['Announcement'], ParentType, ContextType, RequireFields<MutationSetAnnouncementPinnedArgs, 'id' | 'pinned'>>;
   setOpeningBalances?: Resolver<ResolversTypes['Fund'], ParentType, ContextType, RequireFields<MutationSetOpeningBalancesArgs, 'input'>>;
   setParticipantRestriction?: Resolver<ResolversTypes['User'], ParentType, ContextType, RequireFields<MutationSetParticipantRestrictionArgs, 'id' | 'restriction'>>;
   setParticipantRole?: Resolver<ResolversTypes['User'], ParentType, ContextType, RequireFields<MutationSetParticipantRoleArgs, 'id' | 'role'>>;

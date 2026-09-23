@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 
 import { AnnouncementComposer, AnnouncementEditor } from '@/components/admin/announcement-forms';
 import { listAnnouncements } from '@/lib/data/queries';
+import { MAX_PINNED_ANNOUNCEMENTS } from '@/lib/view/announcements';
 
 /**
  * Объявления в админ-панели (§6.12).
@@ -16,6 +17,7 @@ export default async function AdminNoticesPage(): Promise<ReactNode> {
 
   const live = items.filter((item) => item.archivedAt === null);
   const archived = items.filter((item) => item.archivedAt !== null);
+  const pinnedCount = live.filter((item) => item.pinned).length;
 
   return (
     <section className="flex flex-col gap-6">
@@ -31,7 +33,12 @@ export default async function AdminNoticesPage(): Promise<ReactNode> {
 
       {live.length > 0 && (
         <div className="flex flex-col gap-4">
-          <h3 className="text-sm font-semibold">В списке участника</h3>
+          <div>
+            <h3 className="text-sm font-semibold">В списке участника</h3>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Закреплено {pinnedCount} из {MAX_PINNED_ANNOUNCEMENTS}
+            </p>
+          </div>
           {live.map((item) => (
             <AnnouncementEditor key={item.id} item={item} />
           ))}

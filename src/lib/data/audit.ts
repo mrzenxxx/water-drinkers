@@ -45,6 +45,8 @@ export type AuditAction =
   | 'announcement.update'
   | 'announcement.archive'
   | 'announcement.restore'
+  | 'announcement.pin'
+  | 'announcement.unpin'
   | 'announcement.image'
   | 'receipt.upload';
 
@@ -72,6 +74,8 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'announcement.update': 'Объявление изменено',
   'announcement.archive': 'Объявление убрано в архив',
   'announcement.restore': 'Объявление возвращено из архива',
+  'announcement.pin': 'Объявление закреплено',
+  'announcement.unpin': 'Объявление откреплено',
   'announcement.image': 'Картинка объявления',
   'receipt.upload': 'Чек загружен',
 };

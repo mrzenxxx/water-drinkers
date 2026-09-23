@@ -267,6 +267,120 @@ describe('архив', () => {
   });
 });
 
+const PIN = `
+  mutation ($id: ID!, $pinned: Boolean!) {
+    setAnnouncementPinned(id: $id, pinned: $pinned) { id pinned }
+  }
+`;
+
+describe('закрепление', () => {
+  async function pin(db: ReturnType<typeof seedOffice>, id: string, pinned = true) {
+    return run(PIN, { db: db.client, userId: ADMIN_ID, variables: { id, pinned } });
+  }
+
+  it('закрепляет и открепляет уже созданное объявление, с записью в журнал', async () => {
+    const db = seedOffice();
+    const id = await publish(db);
+
+    expect((await pin(db, id)).data?.setAnnouncementPinned).toEqual({ id, pinned: true });
+    expect((await pin(db, id, false)).data?.setAnnouncementPinned).toEqual({ id, pinned: false });
+
+    expect(db.tables.auditEntry.rows.map((row) => row.action)).toEqual([
+      'announcement.create',
+      'announcement.pin',
+      'announcement.unpin',
+    ]);
+  });
+
+  it('участнику запрещено, несуществующее даёт NOT_FOUND', async () => {
+    const db = seedOffice();
+    const id = await publish(db);
+
+    const participant = await run(PIN, {
+      db: db.client,
+      userId: 'u-0',
+      variables: { id, pinned: true },
+    });
+    expect(errorCode(participant)).toBe('FORBIDDEN');
+    expect(errorCode(await pin(db, '00000000-0000-0000-0000-000000000000'))).toBe('NOT_FOUND');
+  });
+
+  it('четвёртое не закрепляется: отказ называет, что открепить', async () => {
+    const db = seedOffice();
+    for (const title of ['Первое', 'Второе', 'Третье']) {
+      await publish(db, { ...NOTICE, title, pinned: true });
+    }
+    const fourth = await publish(db, { ...NOTICE, title: 'Четвёртое' });
+
+    const refused = await pin(db, fourth);
+    expect(errorCode(refused)).toBe('CONFLICT');
+    expect(refused.errors?.[0]?.message).toContain('Сначала открепите');
+    expect(refused.errors?.[0]?.message).toContain('«Первое», «Второе», «Третье»');
+
+    // Тот же предел — у создания и у правки, а не только у кнопки.
+    const created = await run(CREATE, {
+      db: db.client,
+      userId: ADMIN_ID,
+      variables: { input: { ...NOTICE, pinned: true } },
+    });
+    expect(errorCode(created)).toBe('CONFLICT');
+    const updated = await run(UPDATE, {
+      db: db.client,
+      userId: ADMIN_ID,
+      variables: { id: fourth, input: { ...NOTICE, pinned: true } },
+    });
+    expect(errorCode(updated)).toBe('CONFLICT');
+    expect(db.tables.announcement.rows.filter((row) => row.pinned)).toHaveLength(3);
+
+    // Открепили одно — место освободилось.
+    const first = db.tables.announcement.rows.find((row) => row.title === 'Первое')!;
+    await pin(db, first.id as string, false);
+    expect(errorCode(await pin(db, fourth))).toBeUndefined();
+  });
+
+  it('правка уже закреплённого при полном наборе не упирается в предел', async () => {
+    const db = seedOffice();
+    const ids: string[] = [];
+    for (const title of ['Первое', 'Второе', 'Третье']) {
+      ids.push(await publish(db, { ...NOTICE, title, pinned: true }));
+    }
+
+    const data = await runOk(UPDATE, {
+      db: db.client,
+      userId: ADMIN_ID,
+      variables: { id: ids[0], input: { ...NOTICE, title: 'Первое, исправлено', pinned: true } },
+    });
+    expect(data.updateAnnouncement).toMatchObject({ pinned: true });
+  });
+
+  it('архив открепляет и освобождает место; архивное не закрепить', async () => {
+    const db = seedOffice();
+    const ids: string[] = [];
+    for (const title of ['Первое', 'Второе', 'Третье']) {
+      ids.push(await publish(db, { ...NOTICE, title, pinned: true }));
+    }
+    const fourth = await publish(db, { ...NOTICE, title: 'Четвёртое' });
+
+    await runOk(ARCHIVE, {
+      db: db.client,
+      userId: ADMIN_ID,
+      variables: { id: ids[0], archived: true },
+    });
+    expect(errorCode(await pin(db, ids[0]))).toBe('BAD_USER_INPUT');
+    expect(errorCode(await pin(db, fourth))).toBeUndefined();
+
+    // Возврат из архива не превышает предел: объявление возвращается откреплённым.
+    await runOk(ARCHIVE, {
+      db: db.client,
+      userId: ADMIN_ID,
+      variables: { id: ids[0], archived: false },
+    });
+    expect(
+      db.tables.announcement.rows.filter((row) => row.pinned && row.archivedAt === null),
+    ).toHaveLength(3);
+  });
+});
+
 describe('непрочитанное', () => {
   it('считается от последнего захода участника', async () => {
     const db = seedOffice();
