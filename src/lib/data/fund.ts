@@ -172,7 +172,7 @@ function nextMonth(month: string): string {
  *
  * Считается из того же отфильтрованного набора, что и балансы: последний
  * `endBalance` обязан совпасть с `CalcResult.fundBalance`, иначе график и
- * таблица рассказывали бы разные истории (§6.9, «дашборд только показывает»).
+ * таблица рассказывали бы разные истории (§6.9, «статистика только показывает»).
  */
 export function monthlyStats(input: CalcInput, result: CalcResult): MonthlyStat[] {
   const byMonth = new Map<string, { contributions: Kopecks; orders: Kopecks; other: Kopecks }>();

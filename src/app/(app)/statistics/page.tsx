@@ -13,7 +13,7 @@ import type { ReactNode } from 'react';
 
 import { ActivityFeed } from '@/components/activity-feed';
 import { Amount } from '@/components/amount';
-import { DashboardFilters } from '@/components/dashboard-filters';
+import { StatisticsFilters } from '@/components/statistics-filters';
 import { FoldCard } from '@/components/fold-card';
 import { FundBalanceChart } from '@/components/charts/fund-balance-chart';
 import { TimelineLanes } from '@/components/charts/timeline-lanes';
@@ -43,7 +43,7 @@ import { buildEvents, filterEvents, groupEvents } from '@/lib/view/events';
 import { toFeedItems } from '@/lib/view/feed';
 import {
   bucketKeyOf,
-  parseDashboardFilters,
+  parseStatisticsFilters,
   type Granularity,
   type RawParams,
 } from '@/lib/view/filters';
@@ -52,7 +52,7 @@ import { summarizePeriod } from '@/lib/view/summary';
 import { pageTitle } from '@/lib/view/app';
 
 /**
- * Дашборд с таймлайном (§6.9).
+ * Статистика с таймлайном (§6.9).
  *
  * Экран **только показывает**. Ни одна цифра здесь не источник истины:
  * источник — таблицы §6.3–§6.5 и инвариант §5. Поэтому всё считается из
@@ -69,7 +69,7 @@ function nextBucket(granularity: Granularity): (key: IsoDate) => IsoDate {
   return (key) => `${shiftMonth(monthOf(key), 1)}-01`;
 }
 
-export default async function DashboardPage({
+export default async function StatisticsPage({
   searchParams,
 }: {
   searchParams: Promise<RawParams>;
@@ -86,7 +86,7 @@ export default async function DashboardPage({
   ]);
 
   const today = todayIso();
-  const filters = parseDashboardFilters(params, { today, earliest });
+  const filters = parseStatisticsFilters(params, { today, earliest });
   const range = { from: filters.from, to: filters.to };
 
   const allEvents = buildEvents(source);
@@ -135,12 +135,12 @@ export default async function DashboardPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <title>{pageTitle('Дашборд')}</title>
+      <title>{pageTitle('Статистика')}</title>
 
       <header className="flex items-start gap-3">
         <IconChip icon={ChartLine} />
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Дашборд</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Статистика</h1>
           <p className="text-muted-foreground mt-1 text-sm">
             Как фонд жил во времени
           </p>
@@ -148,7 +148,7 @@ export default async function DashboardPage({
       </header>
 
       <FoldCard title="Фильтры">
-        <DashboardFilters
+        <StatisticsFilters
           filters={filters}
           people={people.map((person) => ({ id: person.id, name: fullName(person) }))}
         />
@@ -286,8 +286,8 @@ export default async function DashboardPage({
 
       <p className="text-muted-foreground text-xs">
         Заказов за период: {withCount(summary.orderCount, ORDERS)}. Человеко-дней:{' '}
-        {withCount(summary.personDays, PERSON_DAYS)}. Расхождение между дашбордом и
-        таблицами — баг дашборда, а не повод пересчитывать балансы.
+        {withCount(summary.personDays, PERSON_DAYS)}. Расхождение между статистикой и
+        таблицами — баг статистики, а не повод пересчитывать балансы.
       </p>
     </div>
   );

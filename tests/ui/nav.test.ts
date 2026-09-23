@@ -23,7 +23,7 @@ describe('isInternalPath', () => {
   it('принимает путь от корня', () => {
     expect(isInternalPath('/')).toBe(true);
     expect(isInternalPath('/profile')).toBe(true);
-    expect(isInternalPath('/dashboard?period=quarter')).toBe(true);
+    expect(isInternalPath('/statistics?period=quarter')).toBe(true);
   });
 
   it('отвергает уход на чужой сайт', () => {
@@ -42,8 +42,8 @@ describe('isInternalPath', () => {
 
 describe('sectionHrefs', () => {
   it('у раздела без вкладок — один адрес', () => {
-    expect(sectionHrefs({ href: '/dashboard', label: 'Дашборд', icon: 'dashboard' })).toEqual([
-      '/dashboard',
+    expect(sectionHrefs({ href: '/statistics', label: 'Статистика', icon: 'statistics' })).toEqual([
+      '/statistics',
     ]);
   });
 
@@ -81,7 +81,7 @@ describe('activeSection', () => {
 describe('sectionTabs', () => {
   it('раздел без вкладок не рисует полосу', () => {
     expect(sectionTabs('/', SECTIONS)).toEqual([]);
-    expect(sectionTabs('/dashboard', SECTIONS)).toEqual([]);
+    expect(sectionTabs('/statistics', SECTIONS)).toEqual([]);
     expect(sectionTabs('/notices', SECTIONS)).toEqual([]);
   });
 

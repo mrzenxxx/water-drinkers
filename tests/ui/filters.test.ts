@@ -3,17 +3,17 @@ import { describe, expect, it } from 'vitest';
 import { EVENT_KINDS } from '@/lib/view/events';
 import {
   bucketKeyOf,
-  dashboardHref,
-  dashboardQuery,
+  statisticsHref,
+  statisticsQuery,
   defaultGranularity,
   FILTER_KINDS,
   hasContributionFilters,
   parseContributionFilters,
-  parseDashboardFilters,
+  parseStatisticsFilters,
   periodDays,
   presetRange,
   withinPeriod,
-  type DashboardFilters,
+  type StatisticsFilters,
 } from '@/lib/view/filters';
 
 const CONTEXT = { today: '2026-08-14', earliest: '2026-01-15' };
@@ -35,9 +35,9 @@ describe('быстрые периоды', () => {
   });
 });
 
-describe('разбор адреса дашборда', () => {
+describe('разбор адреса статистики', () => {
   it('по умолчанию берёт квартал и все типы событий', () => {
-    const filters = parseDashboardFilters({}, CONTEXT);
+    const filters = parseStatisticsFilters({}, CONTEXT);
     expect(filters.preset).toBe('quarter');
     expect(filters.kinds).toEqual([...EVENT_KINDS]);
     expect(filters.userIds).toEqual([]);
@@ -45,7 +45,7 @@ describe('разбор адреса дашборда', () => {
   });
 
   it('пара дат сильнее ярлыка периода', () => {
-    const filters = parseDashboardFilters(
+    const filters = parseStatisticsFilters(
       { period: 'year', from: '2026-03-01', to: '2026-03-31' },
       CONTEXT,
     );
@@ -54,12 +54,12 @@ describe('разбор адреса дашборда', () => {
   });
 
   it('меняет местами перепутанные даты', () => {
-    const filters = parseDashboardFilters({ from: '2026-03-31', to: '2026-03-01' }, CONTEXT);
+    const filters = parseStatisticsFilters({ from: '2026-03-31', to: '2026-03-01' }, CONTEXT);
     expect(filters).toMatchObject({ from: '2026-03-01', to: '2026-03-31' });
   });
 
   it('не падает на мусоре и не оставляет экран пустым', () => {
-    const filters = parseDashboardFilters(
+    const filters = parseStatisticsFilters(
       { period: 'вчера', from: '31.03.2026', step: 'час', kinds: 'ЧТО-ТО', users: '' },
       CONTEXT,
     );
@@ -69,7 +69,7 @@ describe('разбор адреса дашборда', () => {
   });
 
   it('принимает типы и участников списком и повторённым параметром', () => {
-    const filters = parseDashboardFilters(
+    const filters = parseStatisticsFilters(
       { kinds: 'ORDER,CONTRIBUTION,ORDER', users: ['a', 'b,c'] },
       CONTEXT,
     );
@@ -80,17 +80,17 @@ describe('разбор адреса дашборда', () => {
   it('выплаты в фильтре не выбираются и показываются всегда', () => {
     expect(FILTER_KINDS).not.toContain('SETTLEMENT');
 
-    const narrowed = parseDashboardFilters({ kinds: 'ABSENCE' }, CONTEXT);
+    const narrowed = parseStatisticsFilters({ kinds: 'ABSENCE' }, CONTEXT);
     expect(narrowed.kinds).toEqual(['ABSENCE', 'SETTLEMENT']);
 
     // Старая ссылка «только выплаты» — это ничего не выбрано, то есть всё.
-    const legacy = parseDashboardFilters({ kinds: 'SETTLEMENT' }, CONTEXT);
+    const legacy = parseStatisticsFilters({ kinds: 'SETTLEMENT' }, CONTEXT);
     expect(legacy.kinds).toEqual([...EVENT_KINDS]);
   });
 
   it('все типы фильтра, выбранные явно, в адрес не пишутся', () => {
-    const all = parseDashboardFilters({ kinds: FILTER_KINDS.join(',') }, CONTEXT);
-    expect(dashboardQuery(all)).toBe('');
+    const all = parseStatisticsFilters({ kinds: FILTER_KINDS.join(',') }, CONTEXT);
+    expect(statisticsQuery(all)).toBe('');
   });
 
   it('подбирает шаг по длине периода, пока его не задали', () => {
@@ -98,26 +98,26 @@ describe('разбор адреса дашборда', () => {
     expect(defaultGranularity('2026-01-01', '2026-06-30')).toBe('week');
     expect(defaultGranularity('2020-01-01', '2026-06-30')).toBe('month');
 
-    const pinned = parseDashboardFilters({ period: 'year', step: 'day' }, CONTEXT);
+    const pinned = parseStatisticsFilters({ period: 'year', step: 'day' }, CONTEXT);
     expect(pinned.granularity).toBe('day');
     expect(pinned.granularityPinned).toBe(true);
   });
 });
 
 describe('сборка адреса', () => {
-  const base = parseDashboardFilters({}, CONTEXT);
+  const base = parseStatisticsFilters({}, CONTEXT);
 
   it('умолчания в адрес не пишет', () => {
-    expect(dashboardQuery(base)).toBe('');
+    expect(statisticsQuery(base)).toBe('');
   });
 
   it('произвольный период уходит в адрес датами', () => {
-    const custom = parseDashboardFilters({ from: '2026-03-01', to: '2026-03-31' }, CONTEXT);
-    expect(dashboardQuery(custom)).toBe('?from=2026-03-01&to=2026-03-31');
+    const custom = parseStatisticsFilters({ from: '2026-03-01', to: '2026-03-31' }, CONTEXT);
+    expect(statisticsQuery(custom)).toBe('?from=2026-03-01&to=2026-03-31');
   });
 
   it('переживает круг «разобрать → собрать → разобрать»', () => {
-    const filters: DashboardFilters = {
+    const filters: StatisticsFilters = {
       ...base,
       preset: 'year',
       granularity: 'week',
@@ -126,9 +126,9 @@ describe('сборка адреса', () => {
       kinds: ['ORDER', 'ABSENCE'],
     };
 
-    const query = dashboardQuery(filters);
+    const query = statisticsQuery(filters);
     const params = Object.fromEntries(new URLSearchParams(query.slice(1)));
-    const again = parseDashboardFilters(params, CONTEXT);
+    const again = parseStatisticsFilters(params, CONTEXT);
 
     expect(again.preset).toBe('year');
     expect(again.granularity).toBe('week');
@@ -137,8 +137,8 @@ describe('сборка адреса', () => {
   });
 
   it('меняет одну часть фильтров, сохраняя остальные', () => {
-    const filters: DashboardFilters = { ...base, userIds: ['u-1'] };
-    expect(dashboardHref(filters, { preset: 'month' })).toBe('/dashboard?period=month&users=u-1');
+    const filters: StatisticsFilters = { ...base, userIds: ['u-1'] };
+    expect(statisticsHref(filters, { preset: 'month' })).toBe('/statistics?period=month&users=u-1');
   });
 });
 

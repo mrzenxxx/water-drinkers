@@ -248,7 +248,7 @@ export const listManualTransactions = cache(async (): Promise<ManualTransactionR
   }));
 });
 
-/** Всё, из чего строится лента событий дашборда (§6.9). */
+/** Всё, из чего строится лента событий статистики (§6.9). */
 export const timelineSource = cache(async (): Promise<EventSource> => {
   const [contributions, orders, absences, transactions] = await Promise.all([
     listContributions(),

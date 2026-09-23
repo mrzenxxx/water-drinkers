@@ -25,7 +25,7 @@ export type NavIcon =
   | 'fund'
   | 'orders'
   | 'absences'
-  | 'dashboard'
+  | 'statistics'
   | 'notices'
   | 'admin'
   | 'queue'
@@ -85,7 +85,7 @@ export const APP_SECTIONS: readonly NavSection[] = [
       { href: '/absences', label: 'Отсутствия', icon: 'absences', hint: 'Дни вне офиса' },
     ],
   },
-  { href: '/dashboard', label: 'Дашборд', icon: 'dashboard', hint: 'Графики и сводка за период' },
+  { href: '/statistics', label: 'Статистика', icon: 'statistics', hint: 'Графики и сводка за период' },
 ];
 
 /** Вкладки админ-панели (§6.7) и объявлений админа (§6.12). */

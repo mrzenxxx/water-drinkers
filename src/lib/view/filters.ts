@@ -1,5 +1,5 @@
 /**
- * Состояние дашборда (§6.9) — в адресе страницы.
+ * Состояние статистики (§6.9) — в адресе страницы.
  *
  * «Диапазон отражается в адресе, чтобы состоянием экрана можно было
  * поделиться ссылкой» — прямое требование §6.9. Отсюда правило: разбор и
@@ -7,7 +7,7 @@
  * не хранит фильтры в состоянии вовсе: источник правды — адрес.
  *
  * Разбор недоверчивый и никогда не бросает: ссылку могли поправить руками,
- * и мусор в параметре не повод показать вместо дашборда ошибку.
+ * и мусор в параметре не повод показать вместо статистики ошибку.
  */
 
 import { addDays, compareDates, isIsoDate, maxDate, minDate, toEpochDay } from '@/lib/calc';
@@ -48,7 +48,7 @@ export const FILTER_KINDS: readonly EventKind[] = EVENT_KINDS.filter(
   (kind) => kind !== 'SETTLEMENT',
 );
 
-export type DashboardFilters = {
+export type StatisticsFilters = {
   preset: PeriodPreset;
   from: IsoDate;
   to: IsoDate;
@@ -103,7 +103,7 @@ export function presetRange(
   }
 
   const months = preset === 'month' ? 1 : preset === 'quarter' ? 3 : 12;
-  // Полуоткрытость здесь ни при чём: обе границы дашборда включительные,
+  // Полуоткрытость здесь ни при чём: обе границы статистики включительные,
   // поэтому «месяц» — это день, следующий за сдвигом, и по сегодня.
   return { from: addDays(shiftDateByMonths(context.today, -months), 1), to: context.today };
 }
@@ -123,7 +123,7 @@ export function defaultGranularity(from: IsoDate, to: IsoDate): Granularity {
 }
 
 /** Разбор адреса в фильтры. Никогда не бросает — см. шапку файла. */
-export function parseDashboardFilters(params: RawParams, context: FilterContext): DashboardFilters {
+export function parseStatisticsFilters(params: RawParams, context: FilterContext): StatisticsFilters {
   const rawPreset = firstValue(params, 'period');
   const from = readDate(params, 'from');
   const to = readDate(params, 'to');
@@ -158,7 +158,7 @@ export function parseDashboardFilters(params: RawParams, context: FilterContext)
       ? (rawGranularity as Granularity)
       : defaultGranularity(range.from, range.to),
     userIds: [...new Set(listValue(params, 'users'))],
-    // Пустой или испорченный список типов означает «все»: пустой дашборд
+    // Пустой или испорченный список типов означает «все»: пустая статистика
     // по кривой ссылке выглядел бы поломкой приложения. Порядок — всегда
     // порядок `EVENT_KINDS`, а типы вне фильтра (выплаты) включены всегда.
     kinds: EVENT_KINDS.filter(
@@ -171,10 +171,10 @@ export function parseDashboardFilters(params: RawParams, context: FilterContext)
 /**
  * Фильтры обратно в адрес.
  *
- * Значения по умолчанию не пишутся: чистый `/dashboard` должен оставаться
+ * Значения по умолчанию не пишутся: чистый `/statistics` должен оставаться
  * чистым, а ссылка — короткой и читаемой.
  */
-export function dashboardQuery(filters: DashboardFilters): string {
+export function statisticsQuery(filters: StatisticsFilters): string {
   const params = new URLSearchParams();
 
   if (filters.preset === 'custom') {
@@ -193,13 +193,13 @@ export function dashboardQuery(filters: DashboardFilters): string {
   return query === '' ? '' : `?${query}`;
 }
 
-/** Адрес дашборда с изменённой частью фильтров. */
-export function dashboardHref(
-  filters: DashboardFilters,
-  patch: Partial<DashboardFilters>,
-  basePath = '/dashboard',
+/** Адрес статистики с изменённой частью фильтров. */
+export function statisticsHref(
+  filters: StatisticsFilters,
+  patch: Partial<StatisticsFilters>,
+  basePath = '/statistics',
 ): string {
-  return `${basePath}${dashboardQuery({ ...filters, ...patch })}`;
+  return `${basePath}${statisticsQuery({ ...filters, ...patch })}`;
 }
 
 /**

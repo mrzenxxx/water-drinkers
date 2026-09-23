@@ -14,12 +14,12 @@ import {
   GRANULARITIES,
   GRANULARITY_LABEL,
   PERIOD_LABEL,
-  dashboardHref,
-  type DashboardFilters,
+  statisticsHref,
+  type StatisticsFilters,
 } from '@/lib/view/filters';
 
 /**
- * Фильтры дашборда (§6.9).
+ * Фильтры статистики (§6.9).
  *
  * Одна панель над всем, что она задаёт: и лента, и график, и сводка считаются
  * по одному и тому же отрезку. Состояние живёт в адресе страницы — §6.9 прямо
@@ -36,18 +36,18 @@ import {
  * Подписи строк стоят слева только на широком экране, ниже 1024px — над
  * содержимым: сбоку они отнимали ширину, и строки ломались.
  */
-export function DashboardFilters({
+export function StatisticsFilters({
   filters,
   people,
 }: {
-  filters: DashboardFilters;
+  filters: StatisticsFilters;
   people: readonly PickerPerson[];
 }): ReactNode {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [current, setCurrent] = useOptimistic(
     filters,
-    (state, patch: Partial<DashboardFilters>) => ({ ...state, ...patch }),
+    (state, patch: Partial<StatisticsFilters>) => ({ ...state, ...patch }),
   );
   const peopleLabelId = useId();
 
@@ -65,10 +65,10 @@ export function DashboardFilters({
     }
   }
 
-  const apply = (patch: Partial<DashboardFilters>): void => {
+  const apply = (patch: Partial<StatisticsFilters>): void => {
     startTransition(() => {
       setCurrent(patch);
-      router.replace(dashboardHref(current, patch), { scroll: false });
+      router.replace(statisticsHref(current, patch), { scroll: false });
     });
   };
 
@@ -104,7 +104,7 @@ export function DashboardFilters({
               )}
             />
             <span className="sr-only" aria-live="polite">
-              {pending ? 'Обновляю дашборд' : ''}
+              {pending ? 'Обновляю статистику' : ''}
             </span>
           </>
         }

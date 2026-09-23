@@ -28,7 +28,7 @@ import { pageTitle } from '@/lib/view/app';
  * без HTTP к собственному `/api/graphql` (§12а).
  */
 
-/** Сколько элементов показывать в ленте. Дальше — дашборд и раздел объявлений. */
+/** Сколько элементов показывать в ленте. Дальше — статистика и раздел объявлений. */
 const FEED_LIMIT = 12;
 
 /*
@@ -111,7 +111,7 @@ export default async function HomePage(): Promise<ReactNode> {
    * в ней закреплённое уезжало под каждый новый заказ.
    *
    * Объявление при этом событием фонда не стало — суммы у него нет, в расчёт
-   * балансов оно не входит и на таймлайне дашборда (§6.9) не появляется;
+   * балансов оно не входит и на таймлайне статистики (§6.9) не появляется;
    * сводятся они на уровне экрана, чистыми функциями из `lib/view/feed.ts`.
    *
    * Отметку «прочитано» ставит только раздел: погаси её главная — человек
@@ -272,7 +272,7 @@ export default async function HomePage(): Promise<ReactNode> {
             <CardContent className={cn(BODY, 'space-y-4')}>
               <ActivityFeed items={feed} people={byId} today={today} />
               <Button asChild size="sm" variant="outline">
-                <Link href="/dashboard">Весь таймлайн</Link>
+                <Link href="/statistics">Весь таймлайн</Link>
               </Button>
             </CardContent>
           </Card>

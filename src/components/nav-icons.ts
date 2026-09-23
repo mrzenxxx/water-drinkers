@@ -30,7 +30,7 @@ export const NAV_ICONS: Record<NavIcon, LucideIcon> = {
   fund: Coins,
   orders: Package,
   absences: CalendarOff,
-  dashboard: ChartLine,
+  statistics: ChartLine,
   notices: Megaphone,
   admin: ShieldCheck,
   queue: Inbox,
