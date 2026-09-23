@@ -1,18 +1,20 @@
 import { Coins } from 'lucide-react';
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { Amount, HeroAmount } from '@/components/amount';
 import { BalanceBreakdown } from '@/components/balance-breakdown';
-import { FundMonthlyChart } from '@/components/charts/fund-monthly-chart';
+import { FundFlowChart, type FlowStep } from '@/components/charts/fund-flow-chart';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requirePageUser } from '@/lib/auth/current-user';
 import { isCountedStatus } from '@/lib/calc';
-import { monthlyStats } from '@/lib/data';
+import { fundFlowStats } from '@/lib/data';
 import { fundState, listContributions, listOrders, peopleById } from '@/lib/data/queries';
-import { formatDate, formatMonth, fullName } from '@/lib/format';
+import { formatDate, fullName } from '@/lib/format';
 import { formatKopecks } from '@/lib/money';
 import { pageTitle } from '@/lib/view/app';
+import { bucketKeyOf, bucketTitle, nextBucketKey, type RawParams } from '@/lib/view/filters';
 
 /**
  * Фонд (§6.4).
@@ -21,10 +23,23 @@ import { pageTitle } from '@/lib/view/app';
  * показаны рядом с отметкой схождения (§5, пункт 3). Расхождение — всегда
  * баг в коде, поэтому оно не прячется и не «допускается в пределах копейки».
  */
-export default async function FundPage(): Promise<ReactNode> {
+const STEP_LABEL: Record<FlowStep, string> = { month: 'Месяцы', week: 'Недели' };
+
+/** Шаг графика из адреса: `?step=week` — недели, всё остальное — месяцы. */
+function readStep(params: RawParams): FlowStep {
+  const value = params.step;
+  return (Array.isArray(value) ? value[0] : value) === 'week' ? 'week' : 'month';
+}
+
+export default async function FundPage({
+  searchParams,
+}: {
+  searchParams: Promise<RawParams>;
+}): Promise<ReactNode> {
   const currentUser = await requirePageUser();
 
-  const [state, byId, orders, allContributions] = await Promise.all([
+  const [params, state, byId, orders, allContributions] = await Promise.all([
+    searchParams,
     fundState(),
     peopleById(),
     listOrders(),
@@ -33,7 +48,8 @@ export default async function FundPage(): Promise<ReactNode> {
   // Подтверждённые и внесённые администратором — те, что двигают деньги.
   const contributions = allContributions.filter((row) => isCountedStatus(row.status));
 
-  const stats = monthlyStats(state.input, state.result);
+  const step = readStep(params);
+  const stats = fundFlowStats(state.input, state.result, bucketKeyOf(step), nextBucketKey(step));
   const ordersById = new Map(orders.map((order) => [order.id, order]));
 
   const contributionsByUser = new Map<string, typeof contributions>();
@@ -115,15 +131,33 @@ export default async function FundPage(): Promise<ReactNode> {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Динамика по месяцам</CardTitle>
-          <CardDescription>
-            Сверху — сколько поступило и сколько потрачено за месяц, снизу — остаток
-            на его конец.
-          </CardDescription>
+        <CardHeader className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle>Динамика по {step === 'month' ? 'месяцам' : 'неделям'}</CardTitle>
+            <CardDescription>
+              Сверху — сколько поступило и сколько потрачено за{' '}
+              {step === 'month' ? 'месяц' : 'неделю'}, снизу — остаток на{' '}
+              {step === 'month' ? 'его' : 'её'} конец.
+            </CardDescription>
+          </div>
+          {/* Ссылки, а не кнопки: шаг живёт в адресе, и ссылкой можно поделиться. */}
+          <nav className="segmented" aria-label="Шаг графика">
+            {(['month', 'week'] as const).map((option) => (
+              <Link
+                key={option}
+                href={option === 'month' ? '/fund' : '/fund?step=week'}
+                scroll={false}
+                replace
+                aria-current={option === step ? 'true' : undefined}
+                className="segment"
+              >
+                {STEP_LABEL[option]}
+              </Link>
+            ))}
+          </nav>
         </CardHeader>
         <CardContent>
-          <FundMonthlyChart stats={stats} />
+          <FundFlowChart stats={stats} step={step} />
 
           {/* Табличный двойник графика: значение никогда не спрятано в подсказку. */}
           <details className="mt-4">
@@ -134,7 +168,7 @@ export default async function FundPage(): Promise<ReactNode> {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-muted-foreground text-left">
-                    <th className="py-1 pr-4 font-medium">Месяц</th>
+                    <th className="py-1 pr-4 font-medium">{step === 'month' ? 'Месяц' : 'Неделя'}</th>
                     <th className="py-1 pr-4 text-right font-medium">Поступило</th>
                     <th className="py-1 pr-4 text-right font-medium">Потрачено</th>
                     <th className="py-1 text-right font-medium">Остаток на конец</th>
@@ -142,8 +176,8 @@ export default async function FundPage(): Promise<ReactNode> {
                 </thead>
                 <tbody>
                   {stats.map((stat) => (
-                    <tr key={stat.month} className="border-border border-t">
-                      <td className="py-1 pr-4">{formatMonth(stat.month)}</td>
+                    <tr key={stat.start} className="border-border border-t">
+                      <td className="py-1 pr-4">{bucketTitle(stat.start, step)}</td>
                       <td className="py-1 pr-4 text-right">
                         <Amount value={stat.contributions} />
                       </td>

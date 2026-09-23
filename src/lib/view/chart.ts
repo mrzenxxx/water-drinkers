@@ -204,6 +204,45 @@ export function spanFraction(
   };
 }
 
+/**
+ * Раскладка полосовой оси под доступную ширину.
+ *
+ * Полосы растягиваются на всю ширину области данных, сколько бы их ни было:
+ * четыре месяца на широком экране — четыре широкие полосы, а не четыре
+ * столбика у левого края. Уже `minBand` полоса не становится: если все не
+ * помещаются, область данных расширяется и график листается вбок.
+ */
+export function bandLayout(
+  count: number,
+  available: number,
+  minBand: number,
+): { plotWidth: number; band: number; scrolls: boolean } {
+  const room = Math.max(0, available);
+  if (count <= 0) return { plotWidth: room, band: 0, scrolls: false };
+
+  const fitted = room / count;
+  if (fitted >= minBand) return { plotWidth: room, band: fitted, scrolls: false };
+  return { plotWidth: minBand * count, band: minBand, scrolls: true };
+}
+
+/**
+ * Через сколько полос ставить подпись оси, чтобы подписи не слипались.
+ *
+ * `labelWidth` — сколько пикселей нужно одной подписи вместе с зазором.
+ */
+export function labelStride(count: number, band: number, labelWidth: number): number {
+  if (count <= 0 || band <= 0) return 1;
+  return Math.max(1, Math.ceil(labelWidth / band));
+}
+
+/** Номер полосы под точкой `x`, или `null`, если точка вне области данных. */
+export function bandIndexAt(x: number, left: number, band: number, count: number): number | null {
+  if (band <= 0 || count <= 0) return null;
+  const index = Math.floor((x - left) / band);
+  if (index < 0 || index >= count) return null;
+  return index;
+}
+
 /** Координаты в SVG округляются до сотых: длинные хвосты только раздувают разметку. */
 function round(value: number): number {
   return Math.round(value * 100) / 100;

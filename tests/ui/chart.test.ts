@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   bandCenter,
+  bandIndexAt,
+  bandLayout,
+  labelStride,
   bandWidth,
   chartBox,
   linePath,
@@ -141,5 +144,32 @@ describe('доля отрезка в окне', () => {
   it('отрезок целиком вне окна даёт нулевую длину', () => {
     expect(spanFraction(20, 30, 0, 10)).toEqual({ start: 0, length: 0 });
     expect(spanFraction(0, 10, 5, 5)).toEqual({ start: 0, length: 0 });
+  });
+});
+
+describe('раскладка полос под ширину', () => {
+  it('растягивает немногие полосы на всю ширину', () => {
+    expect(bandLayout(4, 800, 14)).toEqual({ plotWidth: 800, band: 200, scrolls: false });
+  });
+
+  it('не сжимает полосу уже минимума, а расширяет область и листает', () => {
+    expect(bandLayout(40, 300, 14)).toEqual({ plotWidth: 560, band: 14, scrolls: true });
+  });
+
+  it('без полос не делит на ноль', () => {
+    expect(bandLayout(0, 300, 14)).toEqual({ plotWidth: 300, band: 0, scrolls: false });
+  });
+
+  it('прореживает подписи так, чтобы они не слипались', () => {
+    expect(labelStride(12, 60, 48)).toBe(1);
+    expect(labelStride(52, 10, 48)).toBe(5);
+    expect(labelStride(0, 10, 48)).toBe(1);
+  });
+
+  it('находит полосу под курсором и не выходит за край', () => {
+    expect(bandIndexAt(76, 76, 20, 5)).toBe(0);
+    expect(bandIndexAt(175.9, 76, 20, 5)).toBe(4);
+    expect(bandIndexAt(176, 76, 20, 5)).toBeNull();
+    expect(bandIndexAt(50, 76, 20, 5)).toBeNull();
   });
 });

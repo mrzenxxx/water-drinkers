@@ -1,12 +1,15 @@
+'use client';
+
 import type { ReactNode } from 'react';
 
 import { EVENT_COLOR, describeEvent } from '@/components/event-style';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { PlotTip, useFrameWidth, usePlotHover, useScrollToEnd } from '@/components/charts/plot-frame';
 import type { IsoDate } from '@/lib/calc/types';
 import { formatDate, formatMonthShort, fullName, type NamedUser } from '@/lib/format';
 import { formatKopecks } from '@/lib/money';
 import {
-  bandCenter,
+  bandLayout,
+  labelStride,
   linearScale,
   niceDomain,
   stepAreaPath,
@@ -26,19 +29,29 @@ import { zeroCrossings, type BalanceSeries } from '@/lib/view/series';
  * Пересечение нуля выделено: тёплая полоса под нулевой линией и отметки в
  * точках перехода. Цвет здесь не единственный носитель — рядом стоит подпись.
  *
- * При наведении на ступень всплывает её карточка: остаток на конец шага,
- * изменение за шаг и операции, которые его сдвинули, — кто внёс, кто оформил
- * заказ. Слой наведения — прозрачные колонки поверх графика; без них график
- * рисуется как раньше, поэтому `steps` необязателен.
+ * График занимает всю ширину карточки в настоящих пикселях: шаги
+ * растягиваются, сколько бы их ни было, а шрифт остаётся 11px на любом
+ * экране (`plot-frame.tsx`). Если шагов так много, что ступень выходит уже
+ * `MIN_BAND`, график листается вбок и открывается на свежем конце.
+ *
+ * При наведении или касании ступени всплывает её карточка: остаток на конец
+ * шага, изменение за шаг и операции, которые его сдвинули, — кто внёс, кто
+ * оформил заказ. `steps` необязателен: без него подсказка показывает только
+ * остаток и изменение.
  *
  * Один ряд — одна шкала. Второй оси у графика нет и не будет: совмещение
  * двух разномасштабных величин на одной картинке выдумывает связь, которой
- * в данных нет.
+ * в данных нет. Балансы участников — отдельным графиком ниже.
  */
 
-const WIDTH = 760;
+/** Ширина до первого замера; на сервере график рисуется на ней. */
+const FALLBACK_WIDTH = 760;
 const HEIGHT = 220;
-const PADDING = { top: 16, right: 16, bottom: 28, left: 76 };
+const PADDING = { top: 16, right: 16, bottom: 28, left: 64 };
+/** Уже ступень не становится — дальше график листается. */
+const MIN_BAND = 4;
+/** Место под одну подпись оси вместе с зазором. */
+const LABEL_WIDTH = 52;
 
 /** Сколько операций перечислять в подсказке ступени, прежде чем свернуть. */
 const STEP_EVENTS_SHOWN = 6;
@@ -58,12 +71,26 @@ export function FundBalanceChart({
   people?: ReadonlyMap<string, NamedUser>;
 }): ReactNode {
   const { points } = series;
+  const { ref, frame, width: frameWidth } = useFrameWidth(FALLBACK_WIDTH);
+
+  const layout = bandLayout(
+    points.length,
+    frameWidth - PADDING.left - PADDING.right,
+    MIN_BAND,
+  );
+  const width = PADDING.left + layout.plotWidth + PADDING.right;
+  const { scrollRef, scrollLeft, onScroll } = useScrollToEnd(width, layout.scrolls);
+  const hover = usePlotHover({
+    count: points.length,
+    left: PADDING.left,
+    band: layout.band,
+    container: frame,
+  });
 
   if (points.length === 0) {
     return <p className="text-muted-foreground text-sm">За период движения денег не было.</p>;
   }
 
-  const plotWidth = WIDTH - PADDING.left - PADDING.right;
   const plotHeight = HEIGHT - PADDING.top - PADDING.bottom;
 
   const { domain, ticks } = niceDomain(
@@ -72,8 +99,7 @@ export function FundBalanceChart({
   );
   const y = linearScale(domain, [PADDING.top + plotHeight, PADDING.top]);
 
-  const centerX = (index: number): number =>
-    bandCenter(index, points.length, plotWidth, PADDING.left);
+  const centerX = (index: number): number => PADDING.left + layout.band * (index + 0.5);
 
   const geometry = points.map((point, index) => ({ x: centerX(index), y: y(point.balance) }));
   const crossings = zeroCrossings(points);
@@ -82,168 +108,172 @@ export function FundBalanceChart({
   const last = points[points.length - 1]!;
   const lastPoint = geometry[geometry.length - 1]!;
 
-  const labelEvery = Math.max(1, Math.ceil(points.length / 7));
+  const labelEvery = labelStride(points.length, layout.band, LABEL_WIDTH);
   const formatKey = (key: IsoDate): string =>
     granularity === 'month' ? formatMonthShort(key.slice(0, 7)) : formatDate(key).slice(0, 5);
 
+  const active = hover.active;
+  const activePoint = active === null ? undefined : points[active];
+  const activeGeometry = active === null ? undefined : geometry[active];
+
   return (
     <figure className="plot-surface m-0 p-2">
-      <svg
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        width="100%"
-        role="img"
-        aria-label={`Остаток фонда за период: от ${formatKopecks(series.startBalance)} до ${formatKopecks(last.balance)}`}
-        className="block h-auto w-full"
-      >
-        {/* Территория ниже нуля — фонд в долгу. Полоса рисуется под данными. */}
-        {belowZero && (
-          <rect
-            x={PADDING.left}
-            y={y(0)}
-            width={plotWidth}
-            height={Math.max(0, PADDING.top + plotHeight - y(0))}
-            fill="var(--owes)"
-            fillOpacity={0.08}
-          />
-        )}
-
-        {ticks.map((tick) => (
-          <g key={tick}>
-            <line
-              x1={PADDING.left}
-              x2={PADDING.left + plotWidth}
-              y1={y(tick)}
-              y2={y(tick)}
-              stroke={tick === 0 && belowZero ? 'var(--owes)' : 'var(--chart-grid)'}
-              strokeWidth={1}
-            />
-            <text
-              x={PADDING.left - 8}
-              y={y(tick) + 4}
-              textAnchor="end"
-              className="tabular fill-muted-foreground text-[11px]"
-            >
-              {formatKopecks(tick, { withSymbol: false })}
-            </text>
-          </g>
-        ))}
-
-        <path
-          d={stepAreaPath(geometry, y(Math.max(domain[0], 0)))}
-          fill="var(--chart-1)"
-          fillOpacity={0.1}
-        />
-        <path
-          d={stepPath(geometry)}
-          fill="none"
-          stroke="var(--chart-1)"
-          strokeWidth={2}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-
-        {crossings.map((index) => (
-          <circle
-            key={`crossing-${index}`}
-            cx={geometry[index]!.x}
-            cy={geometry[index]!.y}
-            r={5}
-            fill="var(--owes)"
-            stroke="var(--chart-surface)"
-            strokeWidth={2}
-          >
-            <title>{`${formatDate(points[index]!.date)}: фонд пересёк ноль, остаток ${formatKopecks(points[index]!.balance)}`}</title>
-          </circle>
-        ))}
-
-        <circle
-          cx={lastPoint.x}
-          cy={lastPoint.y}
-          r={4}
-          fill="var(--chart-1)"
-          stroke="var(--chart-surface)"
-          strokeWidth={2}
-        />
-        {/* Подпись уходит влево от точки: справа край картинки, текст обрезало бы. */}
-        <text
-          x={lastPoint.x - 8}
-          y={Math.max(lastPoint.y - 8, PADDING.top + 10)}
-          textAnchor="end"
-          className="tabular fill-foreground text-[11px] font-medium"
+      <div ref={ref} className="relative">
+        <div
+          ref={scrollRef}
+          onScroll={onScroll}
+          className={layout.scrolls ? 'overflow-x-auto overscroll-x-contain' : undefined}
         >
-          {formatKopecks(last.balance)}
-        </text>
+          <svg
+            viewBox={`0 0 ${width} ${HEIGHT}`}
+            width={width}
+            height={HEIGHT}
+            role="img"
+            aria-label={`Остаток фонда за период: от ${formatKopecks(series.startBalance)} до ${formatKopecks(last.balance)}. Стрелки влево и вправо переходят по шагам.`}
+            className="block touch-manipulation select-none outline-none focus-visible:ring-ring/50 focus-visible:ring-2 rounded-sm"
+            {...hover.svgProps}
+          >
+            {/* Территория ниже нуля — фонд в долгу. Полоса рисуется под данными. */}
+            {belowZero && (
+              <rect
+                x={PADDING.left}
+                y={y(0)}
+                width={layout.plotWidth}
+                height={Math.max(0, PADDING.top + plotHeight - y(0))}
+                fill="var(--owes)"
+                fillOpacity={0.08}
+              />
+            )}
 
-        {points.map((point, index) =>
-          index % labelEvery === 0 || index === points.length - 1 ? (
+            {ticks.map((tick) => (
+              <g key={tick}>
+                <line
+                  x1={PADDING.left}
+                  x2={PADDING.left + layout.plotWidth}
+                  y1={y(tick)}
+                  y2={y(tick)}
+                  stroke={tick === 0 && belowZero ? 'var(--owes)' : 'var(--chart-grid)'}
+                  strokeWidth={1}
+                />
+                <text
+                  x={PADDING.left - 8}
+                  y={y(tick) + 4}
+                  textAnchor="end"
+                  className="tabular fill-muted-foreground text-[11px]"
+                >
+                  {formatKopecks(tick, { withSymbol: false })}
+                </text>
+              </g>
+            ))}
+
+            <path
+              d={stepAreaPath(geometry, y(Math.max(domain[0], 0)))}
+              fill="var(--chart-1)"
+              fillOpacity={0.1}
+            />
+            <path
+              d={stepPath(geometry)}
+              fill="none"
+              stroke="var(--chart-1)"
+              strokeWidth={2}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+
+            {crossings.map((index) => (
+              <circle
+                key={`crossing-${index}`}
+                cx={geometry[index]!.x}
+                cy={geometry[index]!.y}
+                r={5}
+                fill="var(--owes)"
+                stroke="var(--chart-surface)"
+                strokeWidth={2}
+              >
+                <title>{`${formatDate(points[index]!.date)}: фонд пересёк ноль, остаток ${formatKopecks(points[index]!.balance)}`}</title>
+              </circle>
+            ))}
+
+            <circle
+              cx={lastPoint.x}
+              cy={lastPoint.y}
+              r={4}
+              fill="var(--chart-1)"
+              stroke="var(--chart-surface)"
+              strokeWidth={2}
+            />
+            {/* Подпись уходит влево от точки: справа край картинки, текст обрезало бы. */}
             <text
-              key={point.date}
-              x={centerX(index)}
-              y={HEIGHT - 8}
-              textAnchor="middle"
-              className="fill-muted-foreground text-[11px]"
+              x={lastPoint.x - 8}
+              y={Math.max(lastPoint.y - 8, PADDING.top + 10)}
+              textAnchor="end"
+              className="tabular fill-foreground text-[11px] font-medium"
             >
-              {formatKey(point.date)}
+              {formatKopecks(last.balance)}
             </text>
-          ) : null,
+
+            {points.map((point, index) =>
+              index % labelEvery === 0 ? (
+                <text
+                  key={point.date}
+                  x={centerX(index)}
+                  y={HEIGHT - 8}
+                  textAnchor="middle"
+                  className="fill-muted-foreground text-[11px]"
+                >
+                  {formatKey(point.date)}
+                </text>
+              ) : null,
+            )}
+
+            {activeGeometry !== undefined && (
+              <g pointerEvents="none">
+                <line
+                  x1={activeGeometry.x}
+                  x2={activeGeometry.x}
+                  y1={PADDING.top}
+                  y2={PADDING.top + plotHeight}
+                  stroke="var(--foreground)"
+                  strokeOpacity={0.3}
+                  strokeDasharray="3 3"
+                />
+                <circle
+                  cx={activeGeometry.x}
+                  cy={activeGeometry.y}
+                  r={4.5}
+                  fill="var(--chart-1)"
+                  stroke="var(--chart-surface)"
+                  strokeWidth={2}
+                />
+              </g>
+            )}
+
+            {/* Прозрачная подложка ловит курсор и палец по всей области данных. */}
+            <rect
+              x={PADDING.left}
+              y={PADDING.top}
+              width={layout.plotWidth}
+              height={plotHeight}
+              fill="transparent"
+              className="cursor-crosshair"
+            />
+          </svg>
+        </div>
+
+        {active !== null && activePoint !== undefined && activeGeometry !== undefined && (
+          <PlotTip x={activeGeometry.x - scrollLeft} frameWidth={frameWidth}>
+            <StepTip
+              step={steps?.[active] ?? { title: formatKey(activePoint.date), events: [] }}
+              balance={activePoint.balance}
+              change={
+                activePoint.balance -
+                (active === 0 ? series.startBalance : points[active - 1]!.balance)
+              }
+              people={people}
+            />
+          </PlotTip>
         )}
-
-        {/* Слой наведения — последним, поверх данных: иначе линия и точки
-            перехватывали бы курсор у колонок. */}
-        {steps !== undefined &&
-          points.map((point, index) => {
-            const step = steps[index];
-            if (step === undefined) return null;
-            const band = plotWidth / points.length;
-            const before = index === 0 ? series.startBalance : points[index - 1]!.balance;
-
-            return (
-              <Tooltip key={`hover-${point.date}`}>
-                <TooltipTrigger asChild>
-                  <g className="group/step cursor-crosshair">
-                    <rect
-                      x={PADDING.left + band * index}
-                      y={PADDING.top}
-                      width={band}
-                      height={plotHeight}
-                      fill="transparent"
-                      pointerEvents="all"
-                    />
-                    <line
-                      x1={geometry[index]!.x}
-                      x2={geometry[index]!.x}
-                      y1={PADDING.top}
-                      y2={PADDING.top + plotHeight}
-                      stroke="var(--foreground)"
-                      strokeOpacity={0.3}
-                      strokeDasharray="3 3"
-                      pointerEvents="none"
-                      className="opacity-0 transition-opacity group-hover/step:opacity-100"
-                    />
-                    <circle
-                      cx={geometry[index]!.x}
-                      cy={geometry[index]!.y}
-                      r={4.5}
-                      fill="var(--chart-1)"
-                      stroke="var(--chart-surface)"
-                      strokeWidth={2}
-                      pointerEvents="none"
-                      className="opacity-0 transition-opacity group-hover/step:opacity-100"
-                    />
-                  </g>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-80">
-                  <StepTip
-                    step={step}
-                    balance={point.balance}
-                    change={point.balance - before}
-                    people={people}
-                  />
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
-      </svg>
+      </div>
 
       <figcaption className="text-muted-foreground mt-2 text-xs">
         Остаток на начало периода — {formatKopecks(series.startBalance)}, на конец —{' '}
@@ -251,6 +281,7 @@ export function FundBalanceChart({
         {belowZero
           ? 'Тёплая полоса — область ниже нуля: там фонд в долгу.'
           : 'Ниже нуля фонд за этот период не уходил.'}
+        {layout.scrolls && ' График не поместился целиком — листается вбок.'}
       </figcaption>
     </figure>
   );

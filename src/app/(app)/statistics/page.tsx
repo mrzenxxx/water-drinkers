@@ -21,7 +21,6 @@ import { IconChip } from '@/components/icon-chip';
 import { StatTile } from '@/components/stat-tile';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requirePageUser } from '@/lib/auth/current-user';
-import { addDays } from '@/lib/calc';
 import type { IsoDate } from '@/lib/calc/types';
 import { todayIso } from '@/lib/data';
 import { earliestKnownDate, fundState, listPeople, peopleById, timelineSource } from '@/lib/data/queries';
@@ -32,10 +31,7 @@ import {
   PERSON_DAYS,
   formatDate,
   formatDateRange,
-  formatMonth,
   fullName,
-  monthOf,
-  shiftMonth,
   withCount,
 } from '@/lib/format';
 import { formatKopecks } from '@/lib/money';
@@ -43,8 +39,9 @@ import { buildEvents, filterEvents, groupEvents } from '@/lib/view/events';
 import { toFeedItems } from '@/lib/view/feed';
 import {
   bucketKeyOf,
+  bucketTitle,
+  nextBucketKey,
   parseStatisticsFilters,
-  type Granularity,
   type RawParams,
 } from '@/lib/view/filters';
 import { buildBalanceSeries, bucketKeys, bucketMovements, fundDeltas } from '@/lib/view/series';
@@ -61,13 +58,6 @@ import { pageTitle } from '@/lib/view/app';
  * Состояние экрана целиком в адресе: период, шаг, участники, типы событий.
  * Ссылкой можно поделиться — прямое требование §6.9.
  */
-
-/** Следующая корзина для выбранного шага. Пара к `bucketKeyOf`. */
-function nextBucket(granularity: Granularity): (key: IsoDate) => IsoDate {
-  if (granularity === 'day') return (key) => addDays(key, 1);
-  if (granularity === 'week') return (key) => addDays(key, 7);
-  return (key) => `${shiftMonth(monthOf(key), 1)}-01`;
-}
 
 export default async function StatisticsPage({
   searchParams,
@@ -117,7 +107,7 @@ export default async function StatisticsPage({
     числом, которого в кассе нет. Фильтры типов и участников задают ленту; периоду
     подчиняются оба.
   */
-  const keys = bucketKeys(range, bucketKeyOf(filters.granularity), nextBucket(filters.granularity));
+  const keys = bucketKeys(range, bucketKeyOf(filters.granularity), nextBucketKey(filters.granularity));
   const series = buildBalanceSeries(
     fundDeltas(allEvents),
     state.input.fund.openingBalance,
@@ -127,11 +117,7 @@ export default async function StatisticsPage({
 
   const groups = groupEvents(visible, bucketKeyOf(filters.granularity)).reverse();
 
-  const bucketTitle = (key: IsoDate): string => {
-    if (filters.granularity === 'month') return formatMonth(monthOf(key));
-    if (filters.granularity === 'week') return `Неделя с ${formatDate(key)}`;
-    return formatDate(key);
-  };
+  const titleOf = (key: IsoDate): string => bucketTitle(key, filters.granularity);
 
   return (
     <div className="flex flex-col gap-6">
@@ -250,7 +236,7 @@ export default async function StatisticsPage({
             series={series}
             granularity={filters.granularity}
             steps={bucketMovements(allEvents, range, keys).map((events, index) => ({
-              title: bucketTitle(keys[index]!),
+              title: titleOf(keys[index]!),
               events,
             }))}
             people={byId}
@@ -274,7 +260,7 @@ export default async function StatisticsPage({
               {groups.map((group) => (
                 <section key={group.key}>
                   <h3 className="text-muted-foreground mb-1 text-xs font-medium">
-                    {bucketTitle(group.key)} · {withCount(group.events.length, EVENTS)}
+                    {titleOf(group.key)} · {withCount(group.events.length, EVENTS)}
                   </h3>
                   <ActivityFeed items={toFeedItems(group.events)} people={byId} today={today} />
                 </section>

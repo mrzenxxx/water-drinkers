@@ -12,7 +12,14 @@
 
 import { addDays, compareDates, isIsoDate, maxDate, minDate, toEpochDay } from '@/lib/calc';
 import type { IsoDate } from '@/lib/calc/types';
-import { monthOf, shiftDateByMonths, startOfWeek } from '@/lib/format/dates';
+import {
+  formatDate,
+  formatMonth,
+  monthOf,
+  shiftDateByMonths,
+  shiftMonth,
+  startOfWeek,
+} from '@/lib/format/dates';
 
 import { EVENT_KINDS, isEventKind, type EventKind } from './events';
 
@@ -218,6 +225,20 @@ export function bucketKeyOf(granularity: Granularity): (date: IsoDate) => IsoDat
   if (granularity === 'day') return (date) => date;
   if (granularity === 'week') return startOfWeek;
   return (date) => `${monthOf(date)}-01`;
+}
+
+/** Название корзины для подсказок, таблиц и заголовков ленты. Пара к `bucketKeyOf`. */
+export function bucketTitle(key: IsoDate, granularity: Granularity): string {
+  if (granularity === 'month') return formatMonth(monthOf(key));
+  if (granularity === 'week') return `Неделя с ${formatDate(key)}`;
+  return formatDate(key);
+}
+
+/** Первый день следующей корзины. Пара к `bucketKeyOf`. */
+export function nextBucketKey(granularity: Granularity): (key: IsoDate) => IsoDate {
+  if (granularity === 'day') return (key) => addDays(key, 1);
+  if (granularity === 'week') return (key) => addDays(key, 7);
+  return (key) => `${shiftMonth(monthOf(key), 1)}-01`;
 }
 
 // ─── Фильтры таблицы взносов (§6.3) ────────────────────────────────────────

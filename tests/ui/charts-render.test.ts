@@ -16,16 +16,16 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { FundBalanceChart } from '@/components/charts/fund-balance-chart';
-import { FundMonthlyChart } from '@/components/charts/fund-monthly-chart';
-import type { MonthlyStat } from '@/lib/data/fund';
+import { FundFlowChart } from '@/components/charts/fund-flow-chart';
+import type { FundFlowStat } from '@/lib/data/fund';
 import type { BalanceSeries } from '@/lib/view/series';
 
 const BROKEN = /NaN|Infinity|undefined/;
 
-const STATS: MonthlyStat[] = [
-  { month: '2026-06', contributions: 400_000, orders: -300_000, endBalance: 100_000 },
-  { month: '2026-07', contributions: 0, orders: -250_000, endBalance: -150_000 },
-  { month: '2026-08', contributions: 500_000, orders: 0, endBalance: 350_000 },
+const STATS: FundFlowStat[] = [
+  { start: '2026-06-01', contributions: 400_000, orders: -300_000, endBalance: 100_000 },
+  { start: '2026-07-01', contributions: 0, orders: -250_000, endBalance: -150_000 },
+  { start: '2026-08-01', contributions: 500_000, orders: 0, endBalance: 350_000 },
 ];
 
 const SERIES: BalanceSeries = {
@@ -41,16 +41,16 @@ const SERIES: BalanceSeries = {
   crossesZero: true,
 };
 
-describe('график по месяцам', () => {
+describe('график движения фонда', () => {
   it('рисует пути без битых координат', () => {
-    const markup = renderToStaticMarkup(createElement(FundMonthlyChart, { stats: STATS }));
+    const markup = renderToStaticMarkup(createElement(FundFlowChart, { stats: STATS }));
     expect(markup).toContain('<svg');
     expect(markup).toMatch(/d="M/);
     expect(BROKEN.test(markup)).toBe(false);
   });
 
   it('на пустых данных говорит об этом словами, а не пустым прямоугольником', () => {
-    const markup = renderToStaticMarkup(createElement(FundMonthlyChart, { stats: [] }));
+    const markup = renderToStaticMarkup(createElement(FundFlowChart, { stats: [] }));
     expect(markup).not.toContain('<svg');
     expect(markup).toContain('Пока нечего показывать');
   });
