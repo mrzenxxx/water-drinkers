@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { requirePageUser } from '@/lib/auth/current-user';
+import { isCountedStatus } from '@/lib/calc';
 import { listContributions, listPeople, peopleById } from '@/lib/data/queries';
 import { CONTRIBUTION_STATUS_LABEL, CONTRIBUTIONS, fullName, withCount } from '@/lib/format';
 import { pageTitle } from '@/lib/view/app';
@@ -47,7 +48,7 @@ export default async function AllContributionsPage({
   ]);
 
   const confirmedTotal = rows
-    .filter((row) => row.status === 'CONFIRMED')
+    .filter((row) => isCountedStatus(row.status))
     .reduce((sum, row) => sum + row.amount, 0);
 
   const fieldClass =
@@ -94,7 +95,7 @@ export default async function AllContributionsPage({
                 className={fieldClass}
               >
                 <option value="">Любой</option>
-                {(['PENDING', 'CONFIRMED', 'REJECTED'] as const).map((status) => (
+                {(['PENDING', 'CONFIRMED', 'RECORDED', 'REJECTED'] as const).map((status) => (
                   <option key={status} value={status}>
                     {CONTRIBUTION_STATUS_LABEL[status]}
                   </option>
@@ -130,7 +131,7 @@ export default async function AllContributionsPage({
             {withCount(rows.length, CONTRIBUTIONS)}
           </CardTitle>
           <CardDescription>
-            Подтверждено на сумму <Amount value={confirmedTotal} />. Неподтверждённые взносы
+            Учтено в фонде на сумму <Amount value={confirmedTotal} />. Неподтверждённые взносы
             в фонд ещё не попали.
           </CardDescription>
         </CardHeader>

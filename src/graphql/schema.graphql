@@ -25,6 +25,8 @@ enum Restriction {
 enum ContributionStatus {
   PENDING
   CONFIRMED
+  "Внесён администратором за участника (§6.7): в фонде сразу, без подтверждения."
+  RECORDED
   REJECTED
 }
 

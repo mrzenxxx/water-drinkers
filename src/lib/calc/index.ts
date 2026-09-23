@@ -26,6 +26,8 @@ export type {
   WaterOrder,
 } from './types';
 
+export { isCountedStatus } from './types';
+
 export {
   addDays,
   compareDates,

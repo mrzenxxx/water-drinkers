@@ -214,7 +214,7 @@ export function bucketKeyOf(granularity: Granularity): (date: IsoDate) => IsoDat
 
 // ─── Фильтры таблицы взносов (§6.3) ────────────────────────────────────────
 
-const CONTRIBUTION_STATUSES = ['PENDING', 'CONFIRMED', 'REJECTED'] as const;
+const CONTRIBUTION_STATUSES = ['PENDING', 'CONFIRMED', 'RECORDED', 'REJECTED'] as const;
 
 export type ContributionStatusFilter = (typeof CONTRIBUTION_STATUSES)[number];
 

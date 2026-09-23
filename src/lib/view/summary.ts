@@ -9,7 +9,7 @@
  * балансов и не является источником истины (§6.9).
  */
 
-import { addDays, compareDates, daysPresent } from '@/lib/calc';
+import { addDays, compareDates, daysPresent, isCountedStatus } from '@/lib/calc';
 import type { Absence, IsoDate, Participant } from '@/lib/calc/types';
 import type { Kopecks } from '@/lib/money';
 
@@ -110,7 +110,7 @@ export function summarizePeriod(input: SummaryInput): PeriodSummary {
     if (compareDates(event.startsOn, range.from) < 0) continue;
     if (compareDates(event.startsOn, range.to) > 0) continue;
     // Взнос без подтверждения фонда не касается (правило 6).
-    if (event.kind === 'CONTRIBUTION' && event.status !== 'CONFIRMED') continue;
+    if (event.kind === 'CONTRIBUTION' && (event.status === undefined || !isCountedStatus(event.status))) continue;
 
     if (event.amount >= 0) received += event.amount;
     else spent += -event.amount;

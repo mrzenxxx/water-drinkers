@@ -6,6 +6,7 @@ import { MyContributions } from '@/components/my-contributions';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requirePageUser } from '@/lib/auth/current-user';
+import { isCountedStatus } from '@/lib/calc';
 import { todayIso } from '@/lib/data';
 import { fundState, listContributions, listPeople } from '@/lib/data/queries';
 import { CONTRIBUTIONS, withCount } from '@/lib/format';
@@ -27,7 +28,7 @@ export default async function MyContributionsPage(): Promise<ReactNode> {
     fundState(),
   ]);
 
-  const confirmed = rows.filter((row) => row.status === 'CONFIRMED');
+  const confirmed = rows.filter((row) => isCountedStatus(row.status));
   const pending = rows.filter((row) => row.status === 'PENDING');
   const total = confirmed.reduce((sum, row) => sum + row.amount, 0);
   const pendingTotal = pending.reduce((sum, row) => sum + row.amount, 0);
@@ -37,7 +38,7 @@ export default async function MyContributionsPage(): Promise<ReactNode> {
       <title>{pageTitle('Мои взносы')}</title>
 
       <PageHeader icon={Wallet} title="Мои взносы">
-        Взнос влияет на баланс только после подтверждения администратором.
+        Взнос влияет на баланс после подтверждения администратором или сразу, если его внёс сам администратор.
       </PageHeader>
 
       <Card>

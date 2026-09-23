@@ -565,7 +565,7 @@ describe('корректировки (§2.4)', () => {
 });
 
 describe('ввод за участника (§6.7)', () => {
-  it('взнос создаётся PENDING, помечен и всё равно проходит подтверждение', async () => {
+  it('взнос создаётся RECORDED и сразу попадает в фонд без очереди', async () => {
     const db = seedOffice();
 
     const data = await runOk(CONTRIBUTION_FOR, {
@@ -576,33 +576,40 @@ describe('ввод за участника (§6.7)', () => {
     });
 
     expect(data.addContributionFor).toMatchObject({
-      status: 'PENDING',
+      status: 'RECORDED',
       amount: 50_000,
       paidAt: '2026-06-10',
       user: { id: 'u-0' },
     });
-    expect(db.tables.contribution.rows[0]).toMatchObject({ enteredByAdmin: true, status: 'PENDING' });
+    expect(db.tables.contribution.rows[0]).toMatchObject({
+      enteredByAdmin: true,
+      status: 'RECORDED',
+      reviewedBy: ADMIN_ID,
+    });
 
-    // Правило 6: до подтверждения денег нет.
-    expect(db.tables.fundTransaction.rows).toHaveLength(0);
-    const before = await expectConsistent(db, 'до подтверждения');
-    expect(before.fund.balance).toBe(0);
+    // Запись администратора и есть подтверждение: деньги в фонде сразу,
+    // в той же транзакции, что и сам взнос.
+    expect(db.tables.fundTransaction.rows).toHaveLength(1);
+    expect(db.tables.fundTransaction.rows[0]).toMatchObject({
+      type: 'CONTRIBUTION',
+      userId: 'u-0',
+      createdBy: ADMIN_ID,
+    });
+    const after = await expectConsistent(db, 'после ввода за участника');
+    expect(after.fund.balance).toBe(50_000);
 
+    // Второй раз его не подтвердить и не отклонить: он уже рассмотрен.
     const id = (data.addContributionFor as { id: string }).id;
-    await runOk(`mutation ($id: ID!) { confirmContribution(id: $id) { id status } }`, {
+    const again = await run(`mutation ($id: ID!) { confirmContribution(id: $id) { id } }`, {
       db: db.client,
       userId: ADMIN_ID,
       asOf: ASOF,
       variables: { id },
     });
+    expect(errorCode(again)).toBe('CONFLICT');
+    expect(db.tables.fundTransaction.rows).toHaveLength(1);
 
-    const after = await expectConsistent(db, 'после подтверждения');
-    expect(after.fund.balance).toBe(50_000);
-
-    expect(db.tables.auditEntry.rows.map((row) => row.action)).toEqual([
-      'contribution.submit.for',
-      'contribution.confirm',
-    ]);
+    expect(db.tables.auditEntry.rows.map((row) => row.action)).toEqual(['contribution.submit.for']);
   });
 
   it('отсутствие помечается и не пересекается с уже отмеченным', async () => {

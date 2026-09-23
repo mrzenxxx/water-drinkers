@@ -102,6 +102,21 @@ describe('balances (§4.5)', () => {
     assertInvariant(result);
   });
 
+  it('counts contributions an administrator entered on a participant\'s behalf (§6.7)', () => {
+    const result = computeBalances({
+      ...base,
+      contributions: [
+        confirmed('c1', 'u1', 500 * RUB, '2026-06-01'),
+        { id: 'c2', userId: 'u2', amount: 300 * RUB, paidAt: '2026-06-01', status: 'RECORDED' },
+      ],
+    });
+
+    expect(balanceOf(result, 'u1')).toBe(500 * RUB);
+    expect(balanceOf(result, 'u2')).toBe(300 * RUB);
+    expect(result.fundBalance).toBe(800 * RUB);
+    assertInvariant(result);
+  });
+
   it('excludes everything before the start date and every historical record (§4.2)', () => {
     const result = computeBalances({
       ...base,

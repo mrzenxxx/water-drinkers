@@ -1,4 +1,4 @@
-import { CircleCheck, CircleX, Clock3, type LucideIcon } from 'lucide-react';
+import { BadgeCheck, CircleCheck, CircleX, Clock3, type LucideIcon } from 'lucide-react';
 
 import type { ContributionStatus } from '@/lib/calc/types';
 
@@ -17,5 +17,8 @@ import type { ContributionStatus } from '@/lib/calc/types';
 export const CONTRIBUTION_STATUS_ICON: Record<ContributionStatus, LucideIcon> = {
   PENDING: Clock3,
   CONFIRMED: CircleCheck,
+  // Многоконечная звезда-печать: запись администратора не ждёт проверки, она
+  // сама и есть проверка. От кружка «Подтверждён» отличается формой контура.
+  RECORDED: BadgeCheck,
   REJECTED: CircleX,
 };

@@ -520,10 +520,12 @@ export const adminMutations: Pick<
   /**
    * Взнос, внесённый администратором за участника (§6.7).
    *
-   * Статус — `PENDING`, как и у поданного самим участником: взнос, внесённый
-   * администратором, всё равно проходит подтверждение, иначе исчезает
-   * разделение «внёс» и «проверил». Запись помечается `enteredByAdmin`,
-   * а в журнал аудита попадает и кто внёс, и за кого.
+   * Статус — `RECORDED`: запись администратора и есть подтверждение, ждать
+   * второго взгляда ей незачем (решение ADR-0005). Поэтому, как и при
+   * `confirmContribution`, строка `CONTRIBUTION` в журнале операций пишется
+   * здесь же и в той же транзакции: разъехавшись, взнос и деньги дали бы
+   * расхождение инварианта. Запись помечается `enteredByAdmin`, а в журнал
+   * аудита попадает и кто внёс, и за кого.
    */
   addContributionFor: async (_parent, { input }, ctx) => {
     const admin = await requireAdmin(ctx);
@@ -545,9 +547,22 @@ export const adminMutations: Pick<
           userId: user.id,
           amount: toBigIntKopecks(value, 'сумма взноса'),
           paidAt: fromIsoDate(date),
-          status: 'PENDING',
+          status: 'RECORDED',
           receiptId: input.receiptFileId ?? null,
           enteredByAdmin: true,
+          reviewedBy: admin.id,
+          reviewedAt: new Date(),
+        },
+      });
+
+      // Момент, в который деньги появляются в фонде (§2.3, правило 6).
+      await tx.fundTransaction.create({
+        data: {
+          type: 'CONTRIBUTION',
+          amount: row.amount,
+          userId: row.userId,
+          refId: row.id,
+          createdBy: admin.id,
         },
       });
 
@@ -560,7 +575,7 @@ export const adminMutations: Pick<
           userId: user.id,
           amount: value,
           paidAt: date,
-          status: 'PENDING',
+          status: 'RECORDED',
           enteredByAdmin: true,
         },
       });
@@ -568,8 +583,6 @@ export const adminMutations: Pick<
       return row;
     });
 
-    // Денег этот взнос пока не двигает (правило 6), но очередь подтверждений
-    // в этом же ответе обязана показать новую строку.
     ctx.invalidateFundState();
     return created;
   },

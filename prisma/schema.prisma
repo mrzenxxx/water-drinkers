@@ -140,7 +140,7 @@ model Contribution {
   /// копейки, CHECK (amount > 0) в ручной миграции
   amount BigInt
   paidAt DateTime @map("paid_at") @db.Date
-  /// PENDING | CONFIRMED | REJECTED
+  /// PENDING | CONFIRMED | RECORDED | REJECTED
   status        String    @default("PENDING")
   receiptId     String?   @map("receipt_id") @db.Uuid
   submittedAt   DateTime  @default(now()) @map("submitted_at") @db.Timestamptz(6)

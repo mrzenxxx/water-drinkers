@@ -58,9 +58,19 @@ export type WaterOrder = {
   historical?: boolean;
 };
 
-export type ContributionStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED';
+/**
+ * `RECORDED` is a contribution an administrator entered on a participant's
+ * behalf (§6.7). Entering it is the administrator's confirmation, so it moves
+ * money at once, exactly like `CONFIRMED`.
+ */
+export type ContributionStatus = 'PENDING' | 'CONFIRMED' | 'RECORDED' | 'REJECTED';
 
-/** A participant's payment into the fund. Affects balances only once CONFIRMED (rule 6). */
+/** Statuses whose contribution moves money: confirmed by an administrator (rule 6). */
+export function isCountedStatus(status: ContributionStatus): boolean {
+  return status === 'CONFIRMED' || status === 'RECORDED';
+}
+
+/** A participant's payment into the fund. Affects balances only once counted (rule 6). */
 export type Contribution = {
   id: string;
   userId: string;

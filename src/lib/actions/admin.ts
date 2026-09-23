@@ -399,7 +399,7 @@ export async function addContributionForAction(
       NO_INFO,
     );
     refresh();
-    return ok('Взнос внесён и ждёт подтверждения в очереди.');
+    return ok('Взнос внесён и уже учтён в фонде.');
   } catch (cause) {
     return failed(cause);
   }

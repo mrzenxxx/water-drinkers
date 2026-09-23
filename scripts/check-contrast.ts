@@ -257,6 +257,7 @@ function run(): boolean {
     for (const [name, gradient, text, min] of [
       ['кнопка действия', '--gradient-primary', '--primary-foreground', 4.5],
       ['значок-капля', '--gradient-water', '--primary-foreground', 3],
+      ['бейджик «внесён администратором»', '--gradient-mint', '--mint-foreground', 4.5],
     ] as const) {
       const foreground = parseOklch(tokens.get(text)!);
       for (const [index, stop] of [...tokens.get(gradient)!.matchAll(OKLCH_ALL)].entries()) {

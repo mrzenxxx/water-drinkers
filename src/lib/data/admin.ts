@@ -316,6 +316,7 @@ const MONEY_KEYS = new Set(['amount', 'openingBalance', 'balanceBefore', 'fundOp
 const VALUE_LABELS: Record<string, string> = {
   PENDING: 'на рассмотрении',
   CONFIRMED: 'подтверждён',
+  RECORDED: 'внесён администратором',
   REJECTED: 'отклонён',
   ADMIN: 'администратор',
   PARTICIPANT: 'участник',

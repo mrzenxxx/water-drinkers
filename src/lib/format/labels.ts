@@ -40,6 +40,7 @@ export function initials(user: NamedUser): string {
 export const CONTRIBUTION_STATUS_LABEL: Record<ContributionStatus, string> = {
   PENDING: 'Ждёт подтверждения',
   CONFIRMED: 'Подтверждён',
+  RECORDED: 'Внесён администратором',
   REJECTED: 'Отклонён',
 };
 
@@ -49,10 +50,11 @@ export const CONTRIBUTION_STATUS_LABEL: Record<ContributionStatus, string> = {
  */
 export const CONTRIBUTION_STATUS_VARIANT: Record<
   ContributionStatus,
-  'default' | 'secondary' | 'destructive' | 'outline'
+  'default' | 'secondary' | 'destructive' | 'outline' | 'recorded'
 > = {
   PENDING: 'outline',
   CONFIRMED: 'default',
+  RECORDED: 'recorded',
   REJECTED: 'destructive',
 };
 

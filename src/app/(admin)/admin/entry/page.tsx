@@ -25,8 +25,8 @@ export default async function EntryPage(): Promise<ReactNode> {
       <div>
         <h2 className="text-lg font-semibold">Ввод за участника</h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Взнос, внесённый администратором, всё равно проходит подтверждение: «внёс» и «проверил»
-          должны оставаться разными действиями.
+          Взнос, внесённый администратором, сразу попадает в фонд: запись администратора и есть
+          подтверждение.
         </p>
       </div>
 

@@ -196,7 +196,8 @@ const submitContribution: Operation = (world, rng) => {
     userId: who.id,
     amount: int(rng, 1, 1500) * 100,
     paidAt: addDays(world.today, -int(rng, 0, 10)),
-    status: 'PENDING',
+    // Часть взносов вносит администратор за участника: они в фонде сразу (§6.7).
+    status: chance(rng, 0.2) ? 'RECORDED' : 'PENDING',
     historical: chance(rng, 0.05),
   });
 };

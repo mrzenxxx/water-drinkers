@@ -73,3 +73,4 @@
 | [0002](./0002-server-actions-call-resolvers.md) | Server Actions зовут резолверы в процессе | Принято |
 | [0003](./0003-receipt-files-live-in-the-database.md) | Файлы чеков лежат в базе | Принято |
 | [0004](./0004-password-login-issued-by-admin.md) | Вход по логину и паролю, которые выдаёт администратор | Принято |
+| [0005](./0005-admin-entered-contributions-skip-review.md) | Взнос, внесённый администратором, не ждёт подтверждения | Принято |

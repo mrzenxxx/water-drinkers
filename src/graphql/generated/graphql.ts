@@ -188,6 +188,8 @@ export type ContributionForInput = {
 export enum ContributionStatus {
   Confirmed = 'CONFIRMED',
   Pending = 'PENDING',
+  /** Внесён администратором за участника (§6.7): в фонде сразу, без подтверждения. */
+  Recorded = 'RECORDED',
   Rejected = 'REJECTED'
 }
 

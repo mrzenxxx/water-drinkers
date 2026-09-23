@@ -12,7 +12,7 @@
  * Ни базы, ни часов: вход → выход.
  */
 
-import { compareDates, toEpochDay } from '@/lib/calc';
+import { compareDates, isCountedStatus, toEpochDay } from '@/lib/calc';
 import type { IsoDate } from '@/lib/calc/types';
 import type { Kopecks } from '@/lib/money';
 
@@ -42,7 +42,7 @@ export function fundDeltas(events: readonly TimelineEvent[]): FundDelta[] {
 /** Двигает ли событие деньги фонда — то же правило, что у `fundDeltas`. */
 function movesFund(event: TimelineEvent): boolean {
   if (event.amount === null) return false;
-  return event.kind !== 'CONTRIBUTION' || event.status === 'CONFIRMED';
+  return event.kind !== 'CONTRIBUTION' || (event.status !== undefined && isCountedStatus(event.status));
 }
 
 /**

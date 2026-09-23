@@ -92,7 +92,7 @@ export function toWaterOrder(row: PrismaWaterOrder): WaterOrder {
   };
 }
 
-const CONTRIBUTION_STATUSES = new Set<string>(['PENDING', 'CONFIRMED', 'REJECTED']);
+const CONTRIBUTION_STATUSES = new Set<string>(['PENDING', 'CONFIRMED', 'RECORDED', 'REJECTED']);
 
 export function toContributionStatus(value: string): ContributionStatus {
   if (!CONTRIBUTION_STATUSES.has(value)) {

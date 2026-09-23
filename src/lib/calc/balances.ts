@@ -31,6 +31,7 @@ import type {
   Participant,
   WaterOrder,
 } from './types';
+import { isCountedStatus } from './types';
 
 /** `true` when the record is on or after the start date and not marked historical (§4.2). */
 function isCountable(date: IsoDate, historical: boolean | undefined, startDate: IsoDate | null): boolean {
@@ -45,8 +46,8 @@ export function countableOrders(orders: readonly WaterOrder[], fund: FundSetting
 }
 
 /**
- * Contributions that move money: confirmed by an administrator (rule 6 of
- * CLAUDE.md, §4.5) and on or after the start of accounting.
+ * Contributions that move money: confirmed or entered by an administrator
+ * (rule 6 of CLAUDE.md, §4.5, §6.7) and on or after the start of accounting.
  */
 export function countableContributions(
   contributions: readonly Contribution[],
@@ -54,7 +55,7 @@ export function countableContributions(
 ): Contribution[] {
   return contributions.filter(
     (contribution) =>
-      contribution.status === 'CONFIRMED' &&
+      isCountedStatus(contribution.status) &&
       isCountable(contribution.paidAt, contribution.historical, fund.startDate),
   );
 }

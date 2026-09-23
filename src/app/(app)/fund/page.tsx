@@ -7,6 +7,7 @@ import { FundMonthlyChart } from '@/components/charts/fund-monthly-chart';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requirePageUser } from '@/lib/auth/current-user';
+import { isCountedStatus } from '@/lib/calc';
 import { monthlyStats } from '@/lib/data';
 import { fundState, listContributions, listOrders, peopleById } from '@/lib/data/queries';
 import { formatDate, formatMonth, fullName } from '@/lib/format';
@@ -23,12 +24,14 @@ import { pageTitle } from '@/lib/view/app';
 export default async function FundPage(): Promise<ReactNode> {
   const currentUser = await requirePageUser();
 
-  const [state, byId, orders, contributions] = await Promise.all([
+  const [state, byId, orders, allContributions] = await Promise.all([
     fundState(),
     peopleById(),
     listOrders(),
-    listContributions({ status: 'CONFIRMED' }),
+    listContributions(),
   ]);
+  // Подтверждённые и внесённые администратором — те, что двигают деньги.
+  const contributions = allContributions.filter((row) => isCountedStatus(row.status));
 
   const stats = monthlyStats(state.input, state.result);
   const ordersById = new Map(orders.map((order) => [order.id, order]));

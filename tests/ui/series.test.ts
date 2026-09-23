@@ -39,6 +39,21 @@ describe('денежные движения ленты', () => {
     ]);
   });
 
+  it('берёт и взносы, внесённые администратором (§6.7)', () => {
+    const deltas = fundDeltas(
+      buildEvents({
+        ...SOURCE,
+        contributions: [
+          { id: 'c5', userId: 'u-1', amount: 25_000, paidAt: '2026-06-04', status: 'RECORDED' },
+        ],
+      }),
+    );
+    expect(deltas).toEqual([
+      { date: '2026-06-04', amount: 25_000 },
+      { date: '2026-06-10', amount: -300_000 },
+    ]);
+  });
+
   it('остаток на утро дня не включает операции этого дня', () => {
     const deltas = fundDeltas(buildEvents(SOURCE));
     expect(balanceBefore(deltas, '2026-06-02', 0)).toBe(0);

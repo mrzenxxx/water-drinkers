@@ -326,7 +326,14 @@ share_k(i) = C_k × days(i, P_k) / D_k  — доля участника i в з�
 
 ### 6.2 Мои взносы
 
-Список своих платежей со статусами `PENDING` / `CONFIRMED` / `REJECTED` (у отклонённого виден комментарий администратора).
+Список своих платежей со статусами `PENDING` / `CONFIRMED` / `RECORDED` / `REJECTED` (у отклонённого виден комментарий администратора).
+
+| Статус | Подпись | Значок | Деньги в фонде |
+|---|---|---|---|
+| `PENDING` | Ждёт подтверждения | часы | нет |
+| `CONFIRMED` | Подтверждён | галочка в круге, синяя заливка | да |
+| `RECORDED` | Внесён администратором | многоконечная звезда-печать с галочкой, мятная заливка | да, сразу (§6.7) |
+| `REJECTED` | Отклонён | крест в круге | нет |
 
 Статус показывает бейджик со значком и подписью — тот же, что в ленте главной.
 Своя форма у каждого статуса, поэтому цвет здесь ничего не несёт в одиночку
@@ -443,8 +450,11 @@ share_k(i) = C_k × days(i, P_k) / D_k  — доля участника i в з�
 
 Обе записи помечаются полем «внесено администратором» (`entered_by_admin`, §11)
 и попадают в журнал аудита с указанием, кто и за кого их создал. Взнос,
-внесённый администратором, всё равно проходит подтверждение — иначе исчезает
-разделение «внёс» и «проверил».
+внесённый администратором, **очередь не проходит**: он сразу получает статус
+`RECORDED` («Внесён администратором»), и в той же транзакции пишется строка
+`CONTRIBUTION` в журнал операций. Запись администратора и есть подтверждение
+(ADR-0005). Отменяется такой взнос, как и подтверждённый, встречной
+корректировкой (§2.4).
 
 #### Журнал и корректировки
 
@@ -983,7 +993,7 @@ scalar DateTime   # ISO 8601
 scalar Money      # копейки, целое число
 
 enum Role               { PARTICIPANT ADMIN }
-enum ContributionStatus { PENDING CONFIRMED REJECTED }
+enum ContributionStatus { PENDING CONFIRMED RECORDED REJECTED }
 enum Confidence         { HIGH MEDIUM LOW }
 enum AbsenceType        { VACATION SICK_LEAVE }
 
@@ -1349,7 +1359,7 @@ CREATE TABLE contributions (
   user_id        UUID NOT NULL REFERENCES users(id),
   amount         BIGINT NOT NULL CHECK (amount > 0),
   paid_at        DATE NOT NULL,
-  status         TEXT NOT NULL DEFAULT 'PENDING',
+  status         TEXT NOT NULL DEFAULT 'PENDING',  -- PENDING | CONFIRMED | RECORDED | REJECTED
   receipt_id     UUID REFERENCES receipts(id),
   submitted_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
   reviewed_by    UUID REFERENCES users(id),
