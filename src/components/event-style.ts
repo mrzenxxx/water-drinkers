@@ -7,7 +7,16 @@
  * в одиночку — рядом всегда подпись типа (§12).
  */
 
-import { ABSENCE_TYPE_LABEL, fullName, type NamedUser } from '@/lib/format';
+import { toEpochDay } from '@/lib/calc';
+import {
+  ABSENCE_TYPE_LABEL,
+  CONTRIBUTION_STATUS_LABEL,
+  DAYS,
+  formatDate,
+  fullName,
+  withCount,
+  type NamedUser,
+} from '@/lib/format';
 import { formatDateRange } from '@/lib/format/dates';
 import { formatKopecks } from '@/lib/money';
 import type { EventKind, TimelineEvent } from '@/lib/view/events';
@@ -93,4 +102,89 @@ export function describeEvent(
         detail: event.note ?? null,
       };
   }
+}
+
+/** Строка карточки события: подпись и значение. */
+export type EventDetailRow = { label: string; value: string };
+
+/** Всё, что подсказка графика говорит о событии. */
+export type EventDetails = {
+  kind: EventKind;
+  /** «Взнос», «Заказ воды»… — тип события, а не его описание. */
+  label: string;
+  /** Дата, у отсутствия — период. */
+  when: string;
+  rows: EventDetailRow[];
+};
+
+/**
+ * Карточка события для подсказки при наведении на график.
+ *
+ * `describeEvent` даёт одну фразу для ленты; здесь то же событие разложено
+ * по полям: кто внёс, кто отсутствовал, кто оформил заказ или провёл
+ * операцию. Функция чистая, поэтому набор полей проверяется тестом.
+ */
+export function eventDetails(
+  event: TimelineEvent,
+  people: ReadonlyMap<string, NamedUser>,
+): EventDetails {
+  const nameOf = (id: string | null | undefined): string | null => {
+    if (id === null || id === undefined) return null;
+    const person = people.get(id);
+    return person === undefined ? null : fullName(person);
+  };
+
+  const who = nameOf(event.userId);
+  const actor = nameOf(event.actorId);
+  const rows: EventDetailRow[] = [];
+  const push = (label: string, value: string | null | undefined): void => {
+    if (value !== null && value !== undefined && value.trim() !== '') rows.push({ label, value });
+  };
+
+  switch (event.kind) {
+    case 'CONTRIBUTION':
+      push('Внёс', who);
+      push('Сумма', formatKopecks(event.amount ?? 0));
+      push('Статус', event.status === undefined ? null : CONTRIBUTION_STATUS_LABEL[event.status]);
+      break;
+
+    case 'ORDER':
+      push('Сумма', formatKopecks(-(event.amount ?? 0)));
+      push('Оформил', actor);
+      push('Заметка', event.note);
+      break;
+
+    case 'ABSENCE': {
+      const days = toEpochDay(event.endsOn) - toEpochDay(event.startsOn) + 1;
+      push('Отсутствовал', who);
+      push('Причина', event.absenceType === undefined ? null : ABSENCE_TYPE_LABEL[event.absenceType]);
+      push('Длительность', withCount(days, DAYS));
+      break;
+    }
+
+    case 'SETTLEMENT':
+      push('Кому', who);
+      push('Сумма', formatKopecks(event.amount ?? 0));
+      push('Провёл', actor);
+      push('Комментарий', event.note);
+      break;
+
+    case 'ADJUSTMENT':
+      // Корректировка без участника раскладывается на всех активных (§2.4).
+      push('Кого касается', who ?? 'Весь фонд');
+      push('Сумма', formatKopecks(event.amount ?? 0, { alwaysSign: true }));
+      push('Провёл', actor);
+      push('Комментарий', event.note);
+      break;
+  }
+
+  return {
+    kind: event.kind,
+    label: EVENT_LABEL[event.kind],
+    when:
+      event.startsOn === event.endsOn
+        ? formatDate(event.startsOn)
+        : formatDateRange(event.startsOn, event.endsOn),
+    rows,
+  };
 }

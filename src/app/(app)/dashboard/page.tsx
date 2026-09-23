@@ -43,12 +43,11 @@ import { buildEvents, filterEvents, groupEvents } from '@/lib/view/events';
 import { toFeedItems } from '@/lib/view/feed';
 import {
   bucketKeyOf,
-  dashboardQuery,
   parseDashboardFilters,
   type Granularity,
   type RawParams,
 } from '@/lib/view/filters';
-import { buildBalanceSeries, bucketKeys, fundDeltas } from '@/lib/view/series';
+import { buildBalanceSeries, bucketKeys, bucketMovements, fundDeltas } from '@/lib/view/series';
 import { summarizePeriod } from '@/lib/view/summary';
 import { pageTitle } from '@/lib/view/app';
 
@@ -151,7 +150,6 @@ export default async function DashboardPage({
 
       <FoldCard title="Фильтры">
         <DashboardFilters
-          key={dashboardQuery(filters)}
           filters={filters}
           people={people.map((person) => ({ id: person.id, name: fullName(person) }))}
         />
@@ -249,7 +247,15 @@ export default async function DashboardPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <FundBalanceChart series={series} granularity={filters.granularity} />
+          <FundBalanceChart
+            series={series}
+            granularity={filters.granularity}
+            steps={bucketMovements(allEvents, range, keys).map((events, index) => ({
+              title: bucketTitle(keys[index]!),
+              events,
+            }))}
+            people={byId}
+          />
         </CardContent>
       </Card>
 

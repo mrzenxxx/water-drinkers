@@ -49,6 +49,11 @@ export type TimelineEvent = {
   amount: Kopecks | null;
   /** Участник; `null` у корректировки уровня фонда (§2.4). */
   userId: string | null;
+  /**
+   * Кто завёл запись: оформил заказ, провёл выплату или корректировку.
+   * У взноса и отсутствия автор совпадает с участником, и поле не нужно.
+   */
+  actorId?: string | null;
   /** Статус взноса: неподтверждённый в фонд ещё не попал (правило 6). */
   status?: ContributionStatus;
   absenceType?: AbsenceType;
@@ -69,6 +74,7 @@ export type EventSource = {
     amount: Kopecks;
     orderedAt: IsoDate;
     note?: string | null;
+    createdBy?: string | null;
   }[];
   absences: readonly {
     id: string;
@@ -84,6 +90,7 @@ export type EventSource = {
     userId: string | null;
     occurredOn: IsoDate;
     comment?: string | null;
+    createdBy?: string | null;
   }[];
 };
 
@@ -121,6 +128,7 @@ export function buildEvents(source: EventSource): TimelineEvent[] {
       // Заказ уносит деньги из фонда, поэтому в ленте он отрицателен (§2.3).
       amount: -row.amount,
       userId: null,
+      actorId: row.createdBy ?? null,
       note: row.note ?? undefined,
     });
   }
@@ -145,6 +153,7 @@ export function buildEvents(source: EventSource): TimelineEvent[] {
       endsOn: row.occurredOn,
       amount: row.amount,
       userId: row.userId,
+      actorId: row.createdBy ?? null,
       note: row.comment ?? undefined,
     });
   }

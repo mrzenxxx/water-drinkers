@@ -16,25 +16,28 @@ export type PickerPerson = { id: string; name: string };
  * в адресе дашборда, — и тогда в поле стоит единственный тег «Все участники»
  * без крестика: убирать там нечего.
  *
- * Выбор уходит в окружающую `<form method="get">` скрытыми полями `name`,
- * поэтому адрес страницы остаётся единственным источником правды.
+ * Компонент управляемый: выбор приходит в `value` и уходит в `onChange`
+ * на каждую галочку и каждый крестик. Хранит он только своё — открыт ли
+ * список и что набрано в поиске.
+ *
+ * Поле шириной по содержимому: растёт вместе с тегами и переносит их на
+ * следующую строку, только упёршись в край.
  */
 export function PeoplePicker({
-  name,
   people,
-  defaultValue,
+  value,
+  onChange,
   labelId,
 }: {
-  name: string;
   people: readonly PickerPerson[];
-  defaultValue: readonly string[];
+  /** Выбранные; пустой список — все. */
+  value: readonly string[];
+  onChange: (next: string[]) => void;
   /** `id` видимой подписи поля — для `aria-labelledby`. */
   labelId: string;
 }): ReactNode {
   const known = new Set(people.map((person) => person.id));
-  const [selected, setSelected] = useState<string[]>(() =>
-    defaultValue.filter((id) => known.has(id)),
-  );
+  const selected = value.filter((id) => known.has(id));
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const listId = useId();
@@ -48,13 +51,11 @@ export function PeoplePicker({
       : people.filter((person) => person.name.toLocaleLowerCase('ru').includes(needle));
 
   const toggle = (id: string): void => {
-    setSelected((current) => {
-      const next = current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id];
-      // Отмеченные поимённо все — это и есть «все»: адрес остаётся коротким.
-      return next.length === people.length ? [] : next;
-    });
+    const next = selected.includes(id)
+      ? selected.filter((item) => item !== id)
+      : [...selected, id];
+    // Отмеченные поимённо все — это и есть «все»: адрес остаётся коротким.
+    onChange(next.length === people.length ? [] : next);
   };
 
   return (
@@ -65,15 +66,11 @@ export function PeoplePicker({
         if (!value) setQuery('');
       }}
     >
-      {selected.map((id) => (
-        <input key={id} type="hidden" name={name} value={id} />
-      ))}
-
       <PopoverPrimitive.Anchor asChild>
         <div
           ref={fieldRef}
           className={cn(
-            'field-surface flex min-h-8 w-full min-w-0 flex-wrap items-center gap-1 rounded-md border p-[4px] text-sm transition-[border-color,box-shadow]',
+            'field-surface inline-flex min-h-8 max-w-full min-w-0 flex-wrap items-center gap-1 rounded-md border p-[4px] text-sm transition-[border-color,box-shadow]',
             open && 'border-ring ring-ring/50 ring-[3px]',
           )}
           // Всё поле раскрывает список, кроме кнопок: у крестика и стрелки своя работа.
@@ -105,7 +102,7 @@ export function PeoplePicker({
           <PopoverPrimitive.Trigger
             aria-labelledby={labelId}
             aria-controls={open ? listId : undefined}
-            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring ml-auto flex h-[1.375rem] min-w-6 flex-1 items-center justify-end rounded-sm px-1 focus-visible:ring-2 focus-visible:outline-none"
+            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring flex h-[1.375rem] w-6 shrink-0 items-center justify-center rounded-sm focus-visible:ring-2 focus-visible:outline-none"
           >
             <ChevronDown
               aria-hidden
@@ -143,7 +140,7 @@ export function PeoplePicker({
           <ul id={listId} className="max-h-64 overflow-y-auto" aria-label="Участники">
             {needle === '' && (
               <li>
-                <PickRow checked={selected.length === 0} onToggle={() => setSelected([])}>
+                <PickRow checked={selected.length === 0} onToggle={() => onChange([])}>
                   Все участники
                 </PickRow>
                 <div role="separator" className="bg-border my-1 h-px" />

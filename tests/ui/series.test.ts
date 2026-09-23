@@ -5,6 +5,7 @@ import type { CalcInput } from '@/lib/calc/types';
 import { buildEvents, type EventSource } from '@/lib/view/events';
 import { bucketKeyOf } from '@/lib/view/filters';
 import {
+  bucketMovements,
   balanceBefore,
   bucketKeys,
   buildBalanceSeries,
@@ -154,5 +155,35 @@ describe('ряд сходится с ядром расчёта', () => {
     );
 
     expect(series.points[series.points.length - 1]?.balance).toBe(result.fundBalance);
+  });
+});
+
+describe('события ступеней графика', () => {
+  const source: EventSource = {
+    contributions: [
+      { id: 'c1', userId: 'u', amount: 500, paidAt: '2026-06-02', status: 'CONFIRMED' },
+      { id: 'c2', userId: 'u', amount: 700, paidAt: '2026-06-09', status: 'PENDING' },
+    ],
+    orders: [{ id: 'o1', amount: 300, orderedAt: '2026-06-10' }],
+    absences: [{ id: 'a1', userId: 'u', type: 'VACATION', startsOn: '2026-06-03', endsOn: '2026-06-05' }],
+    transactions: [],
+  };
+
+  it('кладёт событие в корзину, которую оно сдвинуло, и берёт только движения денег', () => {
+    const keys = ['2026-06-01', '2026-06-08'];
+    const buckets = bucketMovements(buildEvents(source), { from: '2026-06-01', to: '2026-06-14' }, keys);
+
+    expect(buckets.map((bucket) => bucket.map((event) => event.id))).toEqual([
+      ['contribution:c1'],
+      // Неподтверждённый взнос и отсутствие остаток не двигают — их здесь нет.
+      ['order:o1'],
+    ]);
+  });
+
+  it('не берёт события за пределами периода', () => {
+    const buckets = bucketMovements(buildEvents(source), { from: '2026-06-08', to: '2026-06-14' }, [
+      '2026-06-08',
+    ]);
+    expect(buckets[0]!.map((event) => event.id)).toEqual(['order:o1']);
   });
 });

@@ -220,6 +220,8 @@ export type ManualTransactionRow = {
   userId: string | null;
   occurredOn: IsoDate;
   comment: string | null;
+  /** Кто провёл операцию. `null` у старых записей без автора. */
+  createdBy: string | null;
 };
 
 /**
@@ -242,6 +244,7 @@ export const listManualTransactions = cache(async (): Promise<ManualTransactionR
     // У журнала нет колонки календарного дня — только момент вставки (§11).
     occurredOn: instantToIsoDate(row.createdAt),
     comment: row.comment,
+    createdBy: row.createdBy,
   }));
 });
 

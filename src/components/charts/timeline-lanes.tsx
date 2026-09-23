@@ -1,6 +1,13 @@
 import type { ReactNode } from 'react';
 
-import { EVENT_COLOR, EVENT_LABEL_PLURAL, describeEvent } from '@/components/event-style';
+import { EventTip } from '@/components/charts/event-tip';
+import {
+  EVENT_COLOR,
+  EVENT_LABEL_PLURAL,
+  describeEvent,
+  eventDetails,
+} from '@/components/event-style';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { IsoDate } from '@/lib/calc/types';
 import { formatDate, formatDateRange, type NamedUser } from '@/lib/format';
 import { buildLanes, type LaneWindow } from '@/lib/view/timeline';
@@ -15,9 +22,9 @@ import type { EventKind, TimelineEvent } from '@/lib/view/events';
  *
  * Сделано разметкой, а не SVG: подписи в HTML переносятся и масштабируются
  * сами, а полоса, у которой есть текст, в SVG требовала бы ручного измерения.
- * Всё серверное — ни одного обработчика событий. Подсказка при наведении —
- * атрибут `title`, её показывает браузер; те же числа продублированы списком
- * под лентой, поэтому значение никогда не спрятано в подсказку.
+ * Дорожки серверные; при наведении на отметку всплывает карточка события —
+ * кто внёс, кто отсутствовал, кто оформил заказ. Те же данные продублированы
+ * списком под лентой, поэтому значение никогда не спрятано в подсказку.
  */
 export function TimelineLanes({
   events,
@@ -63,26 +70,31 @@ export function TimelineLanes({
               const isBar = item.event.kind === 'ABSENCE';
 
               return (
-                <span
-                  key={item.event.id}
-                  title={`${title}${detail === null ? '' : ` · ${detail}`}`}
-                  className="absolute rounded-full"
-                  style={{
-                    left: `${item.start * 100}%`,
-                    width: `${item.length * 100}%`,
-                    top: `${item.row * 18 + 4}px`,
-                    height: '10px',
-                    background: EVENT_COLOR[item.event.kind],
-                    // Полоса отсутствия чуть прозрачнее: она длинная и не должна
-                    // забивать собой точечные события соседних дорожек.
-                    opacity: isBar ? 0.75 : 1,
-                  }}
-                >
-                  <span className="sr-only">
-                    {title}
-                    {detail === null ? '' : ` · ${detail}`}
-                  </span>
-                </span>
+                <Tooltip key={item.event.id}>
+                  <TooltipTrigger asChild>
+                    <span
+                      className="absolute cursor-default rounded-full transition-[filter,box-shadow] hover:brightness-125 hover:ring-2 hover:ring-foreground/40"
+                      style={{
+                        left: `${item.start * 100}%`,
+                        width: `${item.length * 100}%`,
+                        top: `${item.row * 18 + 4}px`,
+                        height: '10px',
+                        background: EVENT_COLOR[item.event.kind],
+                        // Полоса отсутствия чуть прозрачнее: она длинная и не должна
+                        // забивать собой точечные события соседних дорожек.
+                        opacity: isBar ? 0.75 : 1,
+                      }}
+                    >
+                      <span className="sr-only">
+                        {title}
+                        {detail === null ? '' : ` · ${detail}`}
+                      </span>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-72">
+                    <EventTip details={eventDetails(item.event, people)} />
+                  </TooltipContent>
+                </Tooltip>
               );
             })}
           </div>

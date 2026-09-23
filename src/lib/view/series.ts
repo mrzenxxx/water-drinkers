@@ -32,12 +32,51 @@ export function fundDeltas(events: readonly TimelineEvent[]): FundDelta[] {
   const deltas: FundDelta[] = [];
 
   for (const event of events) {
-    if (event.amount === null) continue;
-    if (event.kind === 'CONTRIBUTION' && event.status !== 'CONFIRMED') continue;
-    deltas.push({ date: event.startsOn, amount: event.amount });
+    if (!movesFund(event)) continue;
+    deltas.push({ date: event.startsOn, amount: event.amount ?? 0 });
   }
 
   return deltas.sort((a, b) => compareDates(a.date, b.date));
+}
+
+/** Двигает ли событие деньги фонда — то же правило, что у `fundDeltas`. */
+function movesFund(event: TimelineEvent): boolean {
+  if (event.amount === null) return false;
+  return event.kind !== 'CONTRIBUTION' || event.status === 'CONFIRMED';
+}
+
+/**
+ * События, из которых сложилась каждая ступень графика.
+ *
+ * Шаг ряда — остаток на **конец** корзины, поэтому событие относится к той
+ * корзине, до ключа следующей которой оно случилось, — ровно по тому же
+ * правилу, что и в `buildBalanceSeries`. Иначе подсказка на ступени
+ * перечисляла бы не те операции, что её сдвинули.
+ */
+export function bucketMovements(
+  events: readonly TimelineEvent[],
+  range: { from: IsoDate; to: IsoDate },
+  bucketKeys: readonly IsoDate[],
+): TimelineEvent[][] {
+  const buckets: TimelineEvent[][] = bucketKeys.map(() => []);
+  if (buckets.length === 0) return buckets;
+
+  for (const event of events) {
+    if (!movesFund(event)) continue;
+    if (compareDates(event.startsOn, range.from) < 0) continue;
+    if (compareDates(event.startsOn, range.to) > 0) continue;
+
+    let index = 0;
+    while (
+      index + 1 < bucketKeys.length &&
+      compareDates(event.startsOn, bucketKeys[index + 1]!) >= 0
+    ) {
+      index += 1;
+    }
+    buckets[index]!.push(event);
+  }
+
+  return buckets;
 }
 
 /** Остаток фонда на утро дня `date`, то есть до всех операций этого дня. */
