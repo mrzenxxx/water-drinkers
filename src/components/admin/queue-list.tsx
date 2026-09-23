@@ -84,7 +84,7 @@ export function QueueList({ items }: { items: readonly QueueItem[] }): ReactNode
                 {item.needsAttention && (
                   <Badge variant="destructive">Требует внимания</Badge>
                 )}
-                {item.enteredByAdmin && <Badge variant="secondary">Внесено администратором</Badge>}
+                {item.enteredByAdmin && <Badge variant="secondary">Внёс админ</Badge>}
                 <MoneyAmount amount={item.amount} className="text-lg font-semibold" />
               </div>
             </CardHeader>

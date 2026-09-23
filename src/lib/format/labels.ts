@@ -40,7 +40,7 @@ export function initials(user: NamedUser): string {
 export const CONTRIBUTION_STATUS_LABEL: Record<ContributionStatus, string> = {
   PENDING: 'Ждёт подтверждения',
   CONFIRMED: 'Подтверждён',
-  RECORDED: 'Внесён администратором',
+  RECORDED: 'Внёс админ',
   REJECTED: 'Отклонён',
 };
 
