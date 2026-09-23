@@ -546,9 +546,33 @@
     `--foreground` на почти карточной подложке, контраст как у основного текста.
   */
   /*
-    Высота переключателя — ровно высота поля ввода (2rem): рядом стоят поля
-    дат, и кромки должны идти одной линией. Сегмент — это 2rem минус рамка
-    и внутренний зазор.
+    Высота компактных элементов управления: сегментов, полей дат, поля с
+    тегами. Одна величина на всех, чтобы кромки шли одной линией.
+
+    На пальцевом вводе она растёт до 40px, но не до 44px из базового слоя:
+    там правило ставит нижнюю границу каждой кнопке по отдельности, и сегмент
+    вырастал выше поля даты рядом, а стрелка в поле с тегами раздувала поле
+    вдвое. Здесь высота задана сознательно и одинаково для всех соседей,
+    поэтому базовое правило для них снимается (`.control-compact`).
+  */
+  :root {
+    --control-h: 2rem;
+  }
+
+  @media (pointer: coarse) {
+    :root {
+      --control-h: 2.5rem;
+    }
+
+    .segment,
+    .control-compact {
+      min-block-size: 0;
+    }
+  }
+
+  /*
+    Высота переключателя — ровно `--control-h`: сегмент — это она же минус
+    рамка и внутренний зазор.
   */
   .segmented {
     display: inline-flex;
@@ -565,7 +589,8 @@
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
-    height: calc(2rem - 6px);
+    justify-content: center;
+    height: calc(var(--control-h) - 6px);
     padding-inline: 0.625rem;
     border-radius: calc(var(--radius-lg) - 2px);
     font-size: 0.8125rem;
@@ -610,7 +635,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    height: 1.375rem;
+    height: calc(var(--control-h) - 10px);
     padding-inline: 0.5rem;
     border-radius: calc(var(--radius-md) - 1px);
     font-size: 0.8125rem;

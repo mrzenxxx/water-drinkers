@@ -70,7 +70,9 @@ export function PeoplePicker({
         <div
           ref={fieldRef}
           className={cn(
-            'field-surface inline-flex min-h-8 max-w-full min-w-0 flex-wrap items-center gap-1 rounded-md border p-[4px] text-sm transition-[border-color,box-shadow]',
+            // Справа место под стрелку: она стоит на первой строке поля и не
+            // переносится вместе с тегами на отдельную строку.
+            'field-surface relative inline-flex min-h-(--control-h) max-w-full min-w-0 flex-wrap items-center gap-1 rounded-md border py-[4px] pr-8 pl-[4px] text-sm transition-[border-color,box-shadow]',
             open && 'border-ring ring-ring/50 ring-[3px]',
           )}
           // Всё поле раскрывает список, кроме кнопок: у крестика и стрелки своя работа.
@@ -87,7 +89,7 @@ export function PeoplePicker({
                 <button
                   type="button"
                   aria-label={`Убрать: ${person.name}`}
-                  className="hover:bg-foreground/10 focus-visible:ring-ring -mr-1 grid size-4 place-items-center rounded-sm focus-visible:ring-2 focus-visible:outline-none"
+                  className="control-compact hover:bg-foreground/10 focus-visible:ring-ring -mr-1 grid size-4 place-items-center rounded-sm focus-visible:ring-2 focus-visible:outline-none"
                   onClick={(event) => {
                     event.stopPropagation();
                     toggle(person.id);
@@ -102,7 +104,7 @@ export function PeoplePicker({
           <PopoverPrimitive.Trigger
             aria-labelledby={labelId}
             aria-controls={open ? listId : undefined}
-            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring flex h-[1.375rem] w-6 shrink-0 items-center justify-center rounded-sm focus-visible:ring-2 focus-visible:outline-none"
+            className="control-compact text-muted-foreground hover:text-foreground focus-visible:ring-ring absolute top-[4px] right-1 flex h-[calc(var(--control-h)-10px)] w-6 items-center justify-center rounded-sm focus-visible:ring-2 focus-visible:outline-none"
           >
             <ChevronDown
               aria-hidden

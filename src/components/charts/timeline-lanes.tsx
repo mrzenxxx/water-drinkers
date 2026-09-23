@@ -50,7 +50,10 @@ export function TimelineLanes({
   return (
     <div className="plot-surface flex flex-col gap-3 p-3">
       {lanes.map((lane) => (
-        <div key={lane.kind} className="sm:grid sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-3">
+        <div
+          key={lane.kind}
+          className="animate-in fade-in duration-300 motion-reduce:animate-none sm:grid sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-3"
+        >
           <div className="text-muted-foreground flex items-center gap-2 pb-1 text-xs sm:pb-0">
             <span
               aria-hidden
@@ -62,7 +65,10 @@ export function TimelineLanes({
           </div>
 
           <div
-            className="bg-muted/40 relative w-full rounded-md"
+            // Высота дорожки меняется переходом, а не скачком: при смене
+            // участников строк становится больше или меньше, и резкий прыжок
+            // сдвигал бы всё под графиком разом.
+            className="bg-muted/40 relative w-full rounded-md transition-[height] duration-300 ease-out motion-reduce:transition-none"
             style={{ height: `${Math.max(1, lane.rows) * 18 + 8}px` }}
           >
             {lane.items.map((item) => {
@@ -73,7 +79,7 @@ export function TimelineLanes({
                 <Tooltip key={item.event.id}>
                   <TooltipTrigger asChild>
                     <span
-                      className="absolute cursor-default rounded-full transition-[filter,box-shadow] hover:brightness-125 hover:ring-2 hover:ring-foreground/40"
+                      className="absolute cursor-default rounded-full transition-[left,width,top,filter,box-shadow] duration-300 ease-out hover:brightness-125 hover:ring-2 hover:ring-foreground/40 motion-reduce:transition-none"
                       style={{
                         left: `${item.start * 100}%`,
                         width: `${item.length * 100}%`,

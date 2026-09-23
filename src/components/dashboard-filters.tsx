@@ -32,7 +32,9 @@ import {
  * подряд не теряют друг друга.
  *
  * Панель в три строки: период с датами; участники; типы событий с шагом.
- * Все элементы управления одной высоты — 2rem, как поле ввода.
+ * Все элементы управления одной высоты — `--control-h` (см. `globals.css`).
+ * Подписи строк стоят слева только на широком экране, ниже 1024px — над
+ * содержимым: сбоку они отнимали ширину, и строки ломались.
  */
 export function DashboardFilters({
   filters,
@@ -90,8 +92,30 @@ export function DashboardFilters({
 
   return (
     <div className="flex flex-col gap-3" aria-busy={pending}>
-      <Row label="Период">
-        <div className="segmented" role="group" aria-label="Период">
+      <Row
+        label="Период"
+        aside={
+          <>
+            <LoaderCircle
+              aria-hidden
+              className={cn(
+                'size-3.5 animate-spin transition-opacity motion-reduce:animate-none',
+                pending ? 'opacity-100' : 'opacity-0',
+              )}
+            />
+            <span className="sr-only" aria-live="polite">
+              {pending ? 'Обновляю дашборд' : ''}
+            </span>
+          </>
+        }
+      >
+        {/* На телефоне пять сегментов в строку не влезают — там они сеткой
+            в три колонки, а «Ручной ввод», самый длинный, занимает две. */}
+        <div
+          className="segmented grid w-full grid-cols-3 sm:inline-flex sm:w-auto"
+          role="group"
+          aria-label="Период"
+        >
           {(['month', 'quarter', 'year', 'all'] as const).map((preset) => (
             <button
               key={preset}
@@ -109,7 +133,7 @@ export function DashboardFilters({
           <button
             type="button"
             aria-pressed={manual}
-            className="segment"
+            className="segment col-span-2"
             onClick={() => {
               setDraft({ from: current.from, to: current.to });
               setManual(true);
@@ -120,8 +144,8 @@ export function DashboardFilters({
         </div>
 
         {/* Поля включаются только в ручном режиме, а в остальных показывают
-            границы выбранного периода. */}
-        <div className="flex items-center gap-1.5">
+            границы выбранного периода. На телефоне делят строку поровну. */}
+        <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 sm:flex sm:w-auto">
           <DateField
             label="Начало периода"
             value={manual ? draft.from : current.from}
@@ -138,17 +162,6 @@ export function DashboardFilters({
             onChange={(value) => changeDate('to', value)}
           />
         </div>
-
-        <LoaderCircle
-          aria-hidden
-          className={cn(
-            'text-muted-foreground size-4 animate-spin transition-opacity motion-reduce:animate-none',
-            pending ? 'opacity-100' : 'opacity-0',
-          )}
-        />
-        <span className="sr-only" aria-live="polite">
-          {pending ? 'Обновляю дашборд' : ''}
-        </span>
       </Row>
 
       <Row label="Участники" labelId={peopleLabelId}>
@@ -161,7 +174,7 @@ export function DashboardFilters({
       </Row>
 
       <Row label="События">
-        <fieldset className="segmented">
+        <fieldset className="segmented grid w-full grid-cols-2 sm:inline-flex sm:w-auto">
           <legend className="sr-only">Типы событий</legend>
           {FILTER_KINDS.map((kind) => {
             const checked = current.kinds.includes(kind);
@@ -218,26 +231,28 @@ export function DashboardFilters({
 }
 
 /**
- * Строка панели: подпись слева фиксированной ширины, содержимое справа.
+ * Строка панели: подпись и содержимое. На широком экране подпись слева
+ * фиксированной ширины, ниже 1024px — над содержимым.
  * Подпись стоит по первой строке содержимого, а не по середине: когда
  * содержимое переносится, подпись по центру повисла бы между строк.
  */
 function Row({
   label,
   labelId,
+  aside,
   children,
 }: {
   label: string;
   labelId?: string;
+  /** Мелочь рядом с подписью — например, индикатор обновления. */
+  aside?: ReactNode;
   children: ReactNode;
 }): ReactNode {
   return (
-    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-3">
-      <span
-        id={labelId}
-        className="text-muted-foreground flex w-20 shrink-0 items-center text-xs sm:h-8"
-      >
-        {label}
+    <div className="flex flex-col gap-1.5 lg:flex-row lg:items-start lg:gap-3">
+      <span className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs lg:h-(--control-h) lg:w-20">
+        <span id={labelId}>{label}</span>
+        {aside}
       </span>
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2">{children}</div>
     </div>
@@ -262,7 +277,7 @@ function DateField({
       value={value}
       disabled={!enabled}
       onChange={(event) => onChange(event.target.value)}
-      className="field-surface focus-visible:border-ring focus-visible:ring-ring/50 h-8 w-36 rounded-md border px-2 text-sm transition-[opacity,border-color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50"
+      className="field-surface focus-visible:border-ring focus-visible:ring-ring/50 h-(--control-h) w-full min-w-0 rounded-md border px-2 text-sm sm:w-36 transition-[opacity,border-color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50"
     />
   );
 }
