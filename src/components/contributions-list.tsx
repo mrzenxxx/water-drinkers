@@ -25,6 +25,11 @@ import { formatDate, formatDateTime, fullName, type NamedUser } from '@/lib/form
  * слова «без чека» сверху донизу и не говорила бы ничего. Вернётся она вместе
  * с настоящими чеками.
  *
+ * Кто рассмотрел взнос, здесь не пишется. Участнику важно, что с его взносом
+ * стало, а не кто нажал кнопку: администратор в фонде один, и колонка была
+ * его именем сверху донизу. Имя рассматривавшего никуда не делось — оно лежит
+ * в записи и видно в журнале аудита (§6.7), где по нему и спрашивают.
+ *
  * Таблица растянута во всю ширину, а содержимое каждой колонки выровнено по
  * центру — и заголовок, и ячейки. Выключки вправо у чисел здесь нет намеренно:
  * колонок шесть, свободное место браузер раздаёт им всем, и прижатые к разным
@@ -78,11 +83,6 @@ export function ContributionsList({
             */}
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
               <ContributionStatusBadge status={row.status} />
-              {row.reviewedBy !== null && (
-                <span className="text-muted-foreground">
-                  Рассмотрел {nameOf(row.reviewedBy)}
-                </span>
-              )}
             </div>
 
             {row.status === 'REJECTED' && row.reviewComment !== null && (
@@ -102,7 +102,6 @@ export function ContributionsList({
               <TableHead className="text-center">Дата платежа</TableHead>
               <TableHead className="text-center">Подан</TableHead>
               <TableHead className="text-center">Статус</TableHead>
-              <TableHead className="text-center">Рассмотрел</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -118,9 +117,6 @@ export function ContributionsList({
                 </TableCell>
                 <TableCell className="text-center">
                   <ContributionStatusBadge status={row.status} comment={row.reviewComment} />
-                </TableCell>
-                <TableCell className="text-muted-foreground text-center">
-                  {row.reviewedBy === null ? '—' : nameOf(row.reviewedBy)}
                 </TableCell>
               </TableRow>
             ))}
