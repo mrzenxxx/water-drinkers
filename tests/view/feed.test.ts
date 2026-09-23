@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { AnnouncementView } from '@/lib/view/announcements';
 import type { TimelineEvent } from '@/lib/view/events';
-import { buildFeed, toFeedItems } from '@/lib/view/feed';
+import { buildFeed, pinnedFeed, toFeedItems } from '@/lib/view/feed';
 
 /**
  * Лента главной (§6.1): события фонда и объявления администратора (§6.12)
@@ -113,6 +113,19 @@ describe('сведение ленты', () => {
     ]);
   });
 
+  it('закреплённое в ленту не попадает — оно живёт отдельным блоком', () => {
+    const items = buildFeed({
+      events: [event({ id: 'order:fresh', startsOn: '2026-08-20', endsOn: '2026-08-20' })],
+      announcements: [
+        announcement({ id: 'howto', pinned: true, publishedAt: '2026-08-01T09:00:00.000Z' }),
+        announcement({ id: 'news' }),
+      ],
+      seenAt: null,
+    });
+
+    expect(items.map((item) => item.key)).toEqual(['order:fresh', 'announcement:news']);
+  });
+
   it('предел режет уже сведённый список, а не одни события', () => {
     const items = buildFeed({
       events: [
@@ -125,6 +138,51 @@ describe('сведение ленты', () => {
     });
 
     expect(items.map((item) => item.key)).toEqual(['announcement:top', 'order:2']);
+  });
+});
+
+describe('закреплённые объявления', () => {
+  it('берутся только закреплённые, свежее сверху', () => {
+    const items = pinnedFeed({
+      announcements: [
+        announcement({ id: 'old', pinned: true, publishedAt: '2026-08-01T09:00:00.000Z' }),
+        announcement({ id: 'plain' }),
+        announcement({ id: 'new', pinned: true, publishedAt: '2026-08-20T09:00:00.000Z' }),
+      ],
+      seenAt: null,
+    });
+
+    expect(items.map((item) => item.key)).toEqual(['announcement:new', 'announcement:old']);
+  });
+
+  it('черновик и архив не всплывают даже закреплёнными', () => {
+    const items = pinnedFeed({
+      announcements: [
+        announcement({ id: 'draft', pinned: true, publishedAt: null }),
+        announcement({
+          id: 'archived',
+          pinned: true,
+          archivedAt: '2026-08-12T09:00:00.000Z',
+        }),
+        announcement({ id: 'live', pinned: true }),
+      ],
+      seenAt: null,
+    });
+
+    expect(items.map((item) => item.key)).toEqual(['announcement:live']);
+  });
+
+  it('пометка «Новое» считается так же, как в ленте', () => {
+    const items = pinnedFeed({
+      announcements: [announcement({ id: 'fresh', pinned: true })],
+      seenAt: '2026-08-01T00:00:00.000Z',
+    });
+
+    expect(items[0]?.kind === 'announcement' && items[0].unread).toBe(true);
+  });
+
+  it('без закреплённых блока нет вовсе', () => {
+    expect(pinnedFeed({ announcements: [announcement({ id: 'plain' })], seenAt: null })).toEqual([]);
   });
 });
 

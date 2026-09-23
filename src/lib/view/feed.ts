@@ -46,6 +46,44 @@ function publishedOn(item: AnnouncementView): IsoDate {
   return (item.publishedAt ?? item.updatedAt).slice(0, 10);
 }
 
+/** Объявление как элемент ленты. */
+function toFeedItem(announcement: AnnouncementView, seenAt: string | null): FeedItem {
+  return {
+    key: `announcement:${announcement.id}`,
+    date: publishedOn(announcement),
+    kind: 'announcement',
+    announcement,
+    unread: isUnread(announcement, seenAt),
+  };
+}
+
+/**
+ * Закреплённые объявления — отдельным блоком, а не в общем потоке.
+ *
+ * Закрепление означает «это не должно утонуть», а лента отсортирована по
+ * дате: инструкция «как пользоваться кассой» от августа уезжала под каждый
+ * новый заказ воды — то есть делала ровно то, от чего её закрепляли.
+ * Поэтому закреплённые вынуты из ленты целиком и стоят над ней своим
+ * списком; `buildFeed` их больше не показывает.
+ *
+ * Порядок внутри блока — свежее сверху, как и в ленте: закрепление отвечает
+ * на вопрос «тонуть или нет», а не «что за чем читать».
+ */
+export function pinnedFeed({
+  announcements,
+  seenAt,
+}: {
+  announcements: readonly AnnouncementView[];
+  seenAt: string | null;
+}): FeedItem[] {
+  const items = announcements
+    .filter((announcement) => announcement.pinned && isVisible(announcement))
+    .map((announcement) => toFeedItem(announcement, seenAt));
+
+  items.sort(compareNewestFirst);
+  return items;
+}
+
 /**
  * Сведённая лента: свежее сверху.
  *
@@ -54,6 +92,10 @@ function publishedOn(item: AnnouncementView): IsoDate {
  * заказов того же дня. Последний ключ сортировки — идентификатор: без него
  * два элемента одной даты менялись бы местами между отрисовками, и лента
  * «дрожала» бы на каждом обновлении.
+ *
+ * Закреплённых здесь нет: они стоят своим блоком над лентой (`pinnedFeed`).
+ * Оставить их и тут значило бы показать одно объявление дважды — и второй
+ * раз ровно там, где оно тонет.
  */
 export function buildFeed({
   events,
@@ -73,14 +115,10 @@ export function buildFeed({
   for (const announcement of announcements) {
     // Черновик и архив участнику не видны — на главной тем более.
     if (!isVisible(announcement)) continue;
+    // Закреплённое живёт отдельным блоком: в ленте оно тонуло по дате.
+    if (announcement.pinned) continue;
 
-    items.push({
-      key: `announcement:${announcement.id}`,
-      date: publishedOn(announcement),
-      kind: 'announcement',
-      announcement,
-      unread: isUnread(announcement, seenAt),
-    });
+    items.push(toFeedItem(announcement, seenAt));
   }
 
   items.sort(compareNewestFirst);

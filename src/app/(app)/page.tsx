@@ -1,4 +1,4 @@
-import { Coins, TrendingDown, Users, Waves } from 'lucide-react';
+import { Coins, Pin, Users, Wallet, Waves, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
@@ -13,7 +13,7 @@ import { fundState, listAnnouncements, listPeople, peopleById, timelineSource } 
 import { fullName } from '@/lib/format';
 import { formatKopecks } from '@/lib/money';
 import { buildEvents } from '@/lib/view/events';
-import { buildFeed } from '@/lib/view/feed';
+import { buildFeed, pinnedFeed } from '@/lib/view/feed';
 import { cn } from '@/lib/utils';
 import { pageTitle } from '@/lib/view/app';
 
@@ -46,6 +46,43 @@ const FEED_LIMIT = 12;
 const HEAD = 'p-4 pb-3 sm:p-6 sm:pb-4';
 const BODY = 'px-4 pb-4 sm:px-6 sm:pb-6';
 
+/*
+  ── Один макет на все карточки ────────────────────────────────────────────
+  Значок слева, рядом заголовок, под ними пояснение, дальше содержимое. До
+  этого карточки с числом были устроены иначе — подпись мелким шрифтом, под
+  ней число, значок отжат в правый угол, — и три карточки одной колонки
+  читались как три разных экрана. Крупное число никуда не делось, просто
+  стоит оно теперь в теле карточки, а не вместо её заголовка.
+*/
+function CardHead({
+  icon,
+  tone,
+  title,
+  children,
+}: {
+  icon: LucideIcon;
+  tone?: 'water' | 'owes';
+  title: string;
+  /**
+   * Пояснение под заголовком. На телефоне уходит: там дорога каждая строка.
+   * Необязательно — карточке, которую заголовок описывает исчерпывающе, вторая
+   * строка не нужна.
+   */
+  children?: ReactNode;
+}): ReactNode {
+  return (
+    <CardHeader className={HEAD}>
+      <div className="flex items-center gap-3">
+        <IconChip icon={icon} tone={tone} />
+        <CardTitle>{title}</CardTitle>
+      </div>
+      {children !== undefined && (
+        <CardDescription className="hidden sm:block">{children}</CardDescription>
+      )}
+    </CardHeader>
+  );
+}
+
 export default async function HomePage(): Promise<ReactNode> {
   const user = await requirePageUser();
 
@@ -68,10 +105,14 @@ export default async function HomePage(): Promise<ReactNode> {
     .sort((a, b) => a.amount - b.amount);
 
   /**
-   * Лента: события фонда и объявления администратора (§6.12) одним потоком,
-   * свежее сверху. Объявление событием фонда не стало — суммы у него нет,
-   * в расчёт балансов оно не входит и на таймлайне дашборда (§6.9) не
-   * появляется; сводятся они на уровне экрана, чистой функцией `buildFeed`.
+   * Два списка, а не один. Лента — события фонда и объявления администратора
+   * (§6.12) одним потоком, свежее сверху; закреплённые вынуты из неё в свой
+   * блок. Закрепление означает «не тонуть», а лента отсортирована по дате, и
+   * в ней закреплённое уезжало под каждый новый заказ.
+   *
+   * Объявление при этом событием фонда не стало — суммы у него нет, в расчёт
+   * балансов оно не входит и на таймлайне дашборда (§6.9) не появляется;
+   * сводятся они на уровне экрана, чистыми функциями из `lib/view/feed.ts`.
    *
    * Отметку «прочитано» ставит только раздел: погаси её главная — человек
    * увидел бы заголовок и никогда не прочёл бы текст. Поэтому непрочитанное
@@ -84,6 +125,7 @@ export default async function HomePage(): Promise<ReactNode> {
     seenAt,
     limit: FEED_LIMIT,
   });
+  const pinned = pinnedFeed({ announcements, seenAt });
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6">
@@ -113,37 +155,27 @@ export default async function HomePage(): Promise<ReactNode> {
             узнать, должен он или нет.
           */}
           <Card className={owes ? 'border-owes/50' : undefined}>
-            <CardHeader className={HEAD}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <CardDescription>Ваш баланс</CardDescription>
-                  <CardTitle className="mt-1">
-                    <HeroAmount
-                      value={amount}
-                      tone="auto"
-                      signed
-                      className="text-3xl sm:text-4xl lg:text-5xl"
-                    />
-                  </CardTitle>
-                </div>
-                <IconChip icon={owes ? TrendingDown : Waves} tone={owes ? 'owes' : 'water'} />
-              </div>
-            </CardHeader>
+            {/*
+              Пояснение — второй заход для тех, кому короткой строки мало.
+              На телефоне оно уходит: там уже сказано и числом, и строкой под
+              ним, а три лишние строки текста отжимают ленту за край экрана.
+            */}
+            <CardHead icon={Wallet} tone={owes ? 'owes' : 'water'} title="Ваш баланс">
+              {owes
+                ? 'Внесите взнос и приложите чек — администратор подтвердит его, и баланс обновится.'
+                : 'Взносы покрывают вашу долю в заказах. Как только баланс уйдёт в минус, здесь появится сумма.'}
+            </CardHead>
             <CardContent className={cn(BODY, 'space-y-2 sm:space-y-3')}>
+              <HeroAmount
+                value={amount}
+                tone="auto"
+                signed
+                className="block text-3xl sm:text-4xl lg:text-5xl"
+              />
               <p className={owes ? 'text-owes font-medium' : 'text-credit font-medium'}>
                 {owes
                   ? `Ты должен ${formatKopecks(-amount)}`
                   : 'Пока скидываться не надо'}
-              </p>
-              {/*
-                Пояснение — второй заход для тех, кому короткой строки мало.
-                На телефоне оно уходит: там уже сказано и числом, и строкой над
-                ним, а три лишние строки текста отжимают ленту за край экрана.
-              */}
-              <p className="text-muted-foreground hidden text-sm sm:block">
-                {owes
-                  ? 'Внесите взнос и приложите чек — администратор подтвердит его, и баланс обновится.'
-                  : 'Взносы покрывают вашу долю в заказах. Как только баланс уйдёт в минус, здесь появится сумма.'}
               </p>
               <Button asChild size="sm">
                 <Link href="/contributions">Мои взносы</Link>
@@ -152,31 +184,21 @@ export default async function HomePage(): Promise<ReactNode> {
           </Card>
 
           <Card>
-            <CardHeader className={HEAD}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <CardDescription>Остаток фонда</CardDescription>
-                  <CardTitle className="mt-1">
-                    <HeroAmount
-                      value={state.result.fundBalance}
-                      tone="neutral"
-                      className="text-3xl sm:text-4xl lg:text-5xl"
-                    />
-                  </CardTitle>
-                </div>
-                <IconChip icon={Coins} />
-              </div>
-            </CardHeader>
+            <CardHead icon={Coins} title="Остаток фонда">
+              Деньги, которые есть у кассы прямо сейчас. Сумма балансов всех участников
+              равна этому числу — сходимость видна в разделе «Фонд».
+            </CardHead>
             <CardContent className={cn(BODY, 'space-y-2 sm:space-y-3')}>
+              <HeroAmount
+                value={state.result.fundBalance}
+                tone="neutral"
+                className="block text-3xl sm:text-4xl lg:text-5xl"
+              />
               <p className="text-sm">
                 Участников в составе:{' '}
                 <span className="tabular font-medium">
                   {people.filter((person) => person.leftAt === null).length}
                 </span>
-              </p>
-              <p className="text-muted-foreground hidden text-sm sm:block">
-                Деньги, которые есть у кассы прямо сейчас. Сумма балансов всех участников
-                равна этому числу — сходимость видна в разделе «Фонд».
               </p>
               <Button asChild size="sm" variant="outline">
                 <Link href="/fund">Раскрыть расчёт</Link>
@@ -185,16 +207,10 @@ export default async function HomePage(): Promise<ReactNode> {
           </Card>
 
           <Card>
-            <CardHeader className={HEAD}>
-              <div className="flex items-center gap-3">
-                <IconChip icon={Users} size="sm" tone={debtors.length === 0 ? 'water' : 'owes'} />
-                <CardTitle>Кто в минусе</CardTitle>
-              </div>
-              <CardDescription className="hidden sm:block">
-                Очередь видна всем: приложение прозрачно, участник видит то же, что администратор.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className={BODY}>
+            <CardHead icon={Users} tone={debtors.length === 0 ? 'water' : 'owes'} title="Кто в минусе">
+              Очередь видна всем: приложение прозрачно, участник видит то же, что администратор.
+            </CardHead>
+            <CardContent className={cn(BODY, 'space-y-3')}>
               {debtors.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
                   Никто не должен фонду. Хороший день.
@@ -220,29 +236,47 @@ export default async function HomePage(): Promise<ReactNode> {
                   })}
                 </ul>
               )}
+
+              {/*
+                Очередь отвечает на «кто должен», а «сколько внёс каждый» —
+                уже другой вопрос, и ответ на него в «Мы все». Ссылка стоит
+                здесь потому, что спрашивают их подряд.
+              */}
+              <Button asChild size="sm" variant="outline">
+                <Link href="/contributions/all">Взносы всех участников</Link>
+              </Button>
             </CardContent>
           </Card>
         </div>
 
-        <Card>
-          <CardHeader className={HEAD}>
-            <div className="flex items-center gap-3">
-              <IconChip icon={Waves} size="sm" />
-              <CardTitle>Лента событий</CardTitle>
-            </div>
-            <CardDescription className="hidden sm:block">
+        <div className="flex flex-col gap-4 lg:gap-6">
+          {/*
+            Закреплённые стоят своим блоком над лентой, а не в ней. Лента
+            отсортирована по дате, и закреплённое объявление уезжало вниз
+            под каждый новый заказ воды — делало ровно то, от чего его
+            закрепляли. Блока нет вовсе, когда закреплять нечего.
+          */}
+          {pinned.length > 0 && (
+            <Card>
+              <CardHead icon={Pin} title="Закреплённые уведомления" />
+              <CardContent className={BODY}>
+                <ActivityFeed items={pinned} people={byId} today={today} />
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+            <CardHead icon={Waves} title="Лента событий">
               Взносы, заказы, отсутствия, корректировки и объявления — свежее сверху.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className={BODY}>
-            <ActivityFeed items={feed} people={byId} today={today} />
-            <div className="mt-4">
+            </CardHead>
+            <CardContent className={cn(BODY, 'space-y-4')}>
+              <ActivityFeed items={feed} people={byId} today={today} />
               <Button asChild size="sm" variant="outline">
                 <Link href="/dashboard">Весь таймлайн</Link>
               </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
