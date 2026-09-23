@@ -2,7 +2,13 @@
 
 import type { ReactNode } from 'react';
 
-import { PlotTip, useFrameWidth, usePlotHover, useScrollToEnd } from '@/components/charts/plot-frame';
+import {
+  PlotTip,
+  StickyAxis,
+  useFrameWidth,
+  usePlotHover,
+  useScrollToEnd,
+} from '@/components/charts/plot-frame';
 import type { IsoDate } from '@/lib/calc/types';
 import type { FundFlowStat } from '@/lib/data';
 import { formatDate, formatMonthShort } from '@/lib/format';
@@ -45,7 +51,7 @@ const BALANCE_HEIGHT = 96;
 const GAP = 44;
 const PADDING = { top: 16, right: 16, bottom: 26, left: 64 };
 /** Уже полоса не становится — дальше график листается. */
-const MIN_BAND = 18;
+const MIN_BAND = 14;
 /** Место под одну подпись оси вместе с зазором. */
 const LABEL_WIDTH = 52;
 
@@ -108,9 +114,16 @@ export function FundFlowChart({
     y: balanceScale(stat.endBalance),
   }));
 
-  const labelEvery = labelStride(stats.length, layout.band, LABEL_WIDTH);
+  // Ступень остатка держит значение шага на всю ширину его полосы.
+  const balanceSteps = stats.map((stat, index) => ({
+    x: PADDING.left + layout.band * index,
+    y: balanceScale(stat.endBalance),
+  }));
+  const plotRight = PADDING.left + plotWidth;
   const lastStat = stats[stats.length - 1]!;
-  const lastPoint = balancePoints[balancePoints.length - 1]!;
+  const lastPoint = { x: plotRight, y: balanceScale(lastStat.endBalance) };
+
+  const labelEvery = labelStride(stats.length, layout.band, LABEL_WIDTH);
   const crossesZero = stats.some((stat) => stat.endBalance < 0);
 
   const active = hover.active;
@@ -223,12 +236,12 @@ export function FundFlowChart({
             ))}
 
             <path
-              d={stepAreaPath(balancePoints, balanceScale(Math.max(balance.domain[0], 0)))}
+              d={stepAreaPath(balanceSteps, balanceScale(Math.max(balance.domain[0], 0)), plotRight)}
               fill="var(--chart-1)"
               fillOpacity={0.1}
             />
             <path
-              d={stepPath(balancePoints)}
+              d={stepPath(balanceSteps, plotRight)}
               fill="none"
               stroke="var(--chart-1)"
               strokeWidth={2}
@@ -295,6 +308,23 @@ export function FundFlowChart({
             />
           </svg>
         </div>
+
+        {layout.scrolls && (
+          <StickyAxis
+            width={PADDING.left}
+            height={height - PADDING.bottom}
+            ticks={[
+              ...flow.ticks.map((tick) => ({
+                y: flowScale(tick),
+                label: formatKopecks(tick, { withSymbol: false }),
+              })),
+              ...balance.ticks.map((tick) => ({
+                y: balanceScale(tick),
+                label: formatKopecks(tick, { withSymbol: false }),
+              })),
+            ]}
+          />
+        )}
 
         {active !== null && activeStat !== undefined && (
           <PlotTip x={centerX(active) - scrollLeft} frameWidth={frameWidth}>

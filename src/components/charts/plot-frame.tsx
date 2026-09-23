@@ -11,6 +11,7 @@ import {
   type UIEvent,
 } from 'react';
 
+import { cn } from '@/lib/utils';
 import { bandIndexAt } from '@/lib/view/chart';
 
 /**
@@ -163,11 +164,16 @@ export function usePlotHover({
   };
 }
 
+/** Уже этой рамки карточка не встаёт сбоку от полосы, а растягивается между краями. */
+const NARROW_FRAME = 480;
+
 /**
  * Карточка у выбранной полосы.
  *
  * Встаёт справа от полосы, а во второй половине графика — слева, чтобы
- * не уходить за край. `x` — в координатах рамки (с учётом прокрутки).
+ * не уходить за край, и не шире места, что осталось с этой стороны. На узком
+ * экране места сбоку нет вовсе, и карточка занимает всю ширину рамки.
+ * `x` — в координатах рамки (с учётом прокрутки).
  */
 export function PlotTip({
   x,
@@ -178,13 +184,24 @@ export function PlotTip({
   frameWidth: number;
   children: ReactNode;
 }): ReactNode {
+  const narrow = frameWidth < NARROW_FRAME;
   const onRight = x <= frameWidth / 2;
+  const room = onRight ? frameWidth - x - 20 : x - 20;
+
+  const style = narrow
+    ? { left: 8, right: 8 }
+    : onRight
+      ? { left: x + 12, maxWidth: Math.min(320, room) }
+      : { right: frameWidth - x + 12, maxWidth: Math.min(320, room) };
 
   return (
     <div
       role="status"
-      className="glass-strong animate-in fade-in-0 zoom-in-95 pointer-events-none absolute top-2 z-20 w-max max-w-[min(20rem,calc(100%-1rem))] rounded-lg px-3 py-2 text-xs leading-snug duration-100 motion-reduce:animate-none"
-      style={onRight ? { left: Math.max(8, x + 12) } : { right: Math.max(8, frameWidth - x + 12) }}
+      className={cn(
+        'glass-strong animate-in fade-in-0 zoom-in-95 pointer-events-none absolute top-2 z-20 rounded-lg px-3 py-2 text-xs leading-snug duration-100 motion-reduce:animate-none',
+        !narrow && 'w-max',
+      )}
+      style={style}
     >
       {children}
     </div>
@@ -220,4 +237,43 @@ export function useScrollToEnd(
     scrollLeft: scrolls ? scrollLeft : 0,
     onScroll: (event) => setScrollLeft(event.currentTarget.scrollLeft),
   };
+}
+
+/**
+ * Неподвижная ось значений поверх листаемого графика.
+ *
+ * Когда график листается, его собственные подписи оси уезжают вместе с
+ * данными, и столбик становится не с чем сравнить. Эта копия оси стоит на
+ * месте, на фоне поверхности графика, и закрывает уехавшие подписи собой.
+ */
+export function StickyAxis({
+  width,
+  height,
+  ticks,
+}: {
+  width: number;
+  height: number;
+  ticks: readonly { y: number; label: string }[];
+}): ReactNode {
+  return (
+    <svg
+      aria-hidden
+      width={width}
+      height={height}
+      className="pointer-events-none absolute top-0 left-0"
+    >
+      <rect width={width} height={height} fill="var(--chart-surface)" />
+      {ticks.map((tick) => (
+        <text
+          key={`${tick.y}-${tick.label}`}
+          x={width - 8}
+          y={tick.y + 4}
+          textAnchor="end"
+          className="tabular fill-muted-foreground text-[11px]"
+        >
+          {tick.label}
+        </text>
+      ))}
+    </svg>
+  );
 }

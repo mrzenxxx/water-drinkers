@@ -44,6 +44,8 @@ export type PersonRow = {
   role: string;
   joinedAt: IsoDate;
   leftAt: IsoDate | null;
+  /** Название отдела; `null`, если отдел не указан (ADR-0004). */
+  department: string | null;
 };
 
 const PERSON_ORDER: Prisma.UserOrderByWithRelationInput[] = [
@@ -60,7 +62,10 @@ const PERSON_ORDER: Prisma.UserOrderByWithRelationInput[] = [
  * Фильтрация «только активные» делается на месте, а не запросом.
  */
 export const listPeople = cache(async (): Promise<PersonRow[]> => {
-  const rows = await prisma.user.findMany({ orderBy: PERSON_ORDER });
+  const rows = await prisma.user.findMany({
+    orderBy: PERSON_ORDER,
+    include: { department: { select: { name: true } } },
+  });
 
   return rows.map((row) => ({
     id: row.id,
@@ -70,6 +75,7 @@ export const listPeople = cache(async (): Promise<PersonRow[]> => {
     role: row.role,
     joinedAt: toIsoDate(row.joinedAt),
     leftAt: row.leftAt === null ? null : toIsoDate(row.leftAt),
+    department: row.department?.name ?? null,
   }));
 });
 

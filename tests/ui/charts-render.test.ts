@@ -18,7 +18,8 @@ import { describe, expect, it } from 'vitest';
 import { FundBalanceChart } from '@/components/charts/fund-balance-chart';
 import { FundFlowChart } from '@/components/charts/fund-flow-chart';
 import type { FundFlowStat } from '@/lib/data/fund';
-import type { BalanceSeries } from '@/lib/view/series';
+import { ParticipantBalanceChart } from '@/components/charts/participant-balance-chart';
+import type { BalanceSeries, ParticipantSeries } from '@/lib/view/series';
 
 const BROKEN = /NaN|Infinity|undefined/;
 
@@ -80,5 +81,58 @@ describe('график остатка фонда', () => {
       createElement(FundBalanceChart, { series: empty, granularity: 'day' }),
     );
     expect(markup).not.toContain('<svg');
+  });
+});
+
+describe('график балансов участников', () => {
+  const LINES = [
+    { userId: 'u-1', name: 'Анна Петрова', department: 'ГИС', isMe: true },
+    { userId: 'u-2', name: 'Иван Сидоров', department: null, isMe: false },
+  ];
+  const PARTICIPANTS: ParticipantSeries[] = [
+    {
+      userId: 'u-1',
+      startBalance: 0,
+      points: [
+        { date: '2026-06-01', balance: 50_000, contributed: 50_000, spent: 0 },
+        { date: '2026-06-08', balance: -10_000, contributed: 0, spent: 60_000 },
+      ],
+    },
+    {
+      userId: 'u-2',
+      startBalance: 10_000,
+      points: [
+        { date: '2026-06-01', balance: 10_000, contributed: 0, spent: 0 },
+        { date: '2026-06-08', balance: 5_000, contributed: 0, spent: 5_000 },
+      ],
+    },
+  ];
+
+  it('рисует линию на каждого участника и легенду с именами', () => {
+    const markup = renderToStaticMarkup(
+      createElement(ParticipantBalanceChart, {
+        series: PARTICIPANTS,
+        lines: LINES,
+        granularity: 'week',
+        titles: ['Неделя с 01.06.2026', 'Неделя с 08.06.2026'],
+      }),
+    );
+    expect(markup.match(/<path d="M[^"]*H[^"]*V/g)).toHaveLength(2);
+    expect(markup).toContain('Анна Петрова');
+    expect(markup).toContain('Иван Сидоров');
+    expect(BROKEN.test(markup)).toBe(false);
+  });
+
+  it('без выбранных участников подсказывает, где их выбрать', () => {
+    const markup = renderToStaticMarkup(
+      createElement(ParticipantBalanceChart, {
+        series: [],
+        lines: [],
+        granularity: 'week',
+        titles: [],
+      }),
+    );
+    expect(markup).not.toContain('<svg');
+    expect(markup).toContain('Выберите участников в фильтре');
   });
 });

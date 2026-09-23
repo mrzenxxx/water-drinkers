@@ -3,7 +3,13 @@
 import type { ReactNode } from 'react';
 
 import { EVENT_COLOR, describeEvent } from '@/components/event-style';
-import { PlotTip, useFrameWidth, usePlotHover, useScrollToEnd } from '@/components/charts/plot-frame';
+import {
+  PlotTip,
+  StickyAxis,
+  useFrameWidth,
+  usePlotHover,
+  useScrollToEnd,
+} from '@/components/charts/plot-frame';
 import type { IsoDate } from '@/lib/calc/types';
 import { formatDate, formatMonthShort, fullName, type NamedUser } from '@/lib/format';
 import { formatKopecks } from '@/lib/money';
@@ -102,11 +108,19 @@ export function FundBalanceChart({
   const centerX = (index: number): number => PADDING.left + layout.band * (index + 0.5);
 
   const geometry = points.map((point, index) => ({ x: centerX(index), y: y(point.balance) }));
+  // Ступень держит значение шага на всю ширину его полосы — от левого края
+  // до левого края следующей, а у последней до конца области данных.
+  const stepGeometry = points.map((point, index) => ({
+    x: PADDING.left + layout.band * index,
+    y: y(point.balance),
+  }));
+  const plotRight = PADDING.left + layout.plotWidth;
+  const last = points[points.length - 1]!;
+  // Точка «сейчас» — в конце линии, у правого края.
+  const lastPoint = { x: plotRight, y: y(last.balance) };
   const crossings = zeroCrossings(points);
   const belowZero = series.min < 0;
 
-  const last = points[points.length - 1]!;
-  const lastPoint = geometry[geometry.length - 1]!;
 
   const labelEvery = labelStride(points.length, layout.band, LABEL_WIDTH);
   const formatKey = (key: IsoDate): string =>
@@ -167,12 +181,12 @@ export function FundBalanceChart({
             ))}
 
             <path
-              d={stepAreaPath(geometry, y(Math.max(domain[0], 0)))}
+              d={stepAreaPath(stepGeometry, y(Math.max(domain[0], 0)), plotRight)}
               fill="var(--chart-1)"
               fillOpacity={0.1}
             />
             <path
-              d={stepPath(geometry)}
+              d={stepPath(stepGeometry, plotRight)}
               fill="none"
               stroke="var(--chart-1)"
               strokeWidth={2}
@@ -259,6 +273,17 @@ export function FundBalanceChart({
             />
           </svg>
         </div>
+
+        {layout.scrolls && (
+          <StickyAxis
+            width={PADDING.left}
+            height={HEIGHT - PADDING.bottom}
+            ticks={ticks.map((tick) => ({
+              y: y(tick),
+              label: formatKopecks(tick, { withSymbol: false }),
+            }))}
+          />
+        )}
 
         {active !== null && activePoint !== undefined && activeGeometry !== undefined && (
           <PlotTip x={activeGeometry.x - scrollLeft} frameWidth={frameWidth}>

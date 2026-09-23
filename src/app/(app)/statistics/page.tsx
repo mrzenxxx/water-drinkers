@@ -16,6 +16,7 @@ import { Amount } from '@/components/amount';
 import { StatisticsFilters } from '@/components/statistics-filters';
 import { FoldCard } from '@/components/fold-card';
 import { FundBalanceChart } from '@/components/charts/fund-balance-chart';
+import { ParticipantBalanceChart } from '@/components/charts/participant-balance-chart';
 import { TimelineLanes } from '@/components/charts/timeline-lanes';
 import { IconChip } from '@/components/icon-chip';
 import { StatTile } from '@/components/stat-tile';
@@ -44,7 +45,13 @@ import {
   parseStatisticsFilters,
   type RawParams,
 } from '@/lib/view/filters';
-import { buildBalanceSeries, bucketKeys, bucketMovements, fundDeltas } from '@/lib/view/series';
+import {
+  buildBalanceSeries,
+  bucketKeys,
+  bucketMovements,
+  fundDeltas,
+  participantBalanceSeries,
+} from '@/lib/view/series';
 import { summarizePeriod } from '@/lib/view/summary';
 import { pageTitle } from '@/lib/view/app';
 
@@ -64,7 +71,7 @@ export default async function StatisticsPage({
 }: {
   searchParams: Promise<RawParams>;
 }): Promise<ReactNode> {
-  await requirePageUser();
+  const currentUser = await requirePageUser();
 
   const [params, state, source, people, byId, earliest] = await Promise.all([
     searchParams,
@@ -114,6 +121,13 @@ export default async function StatisticsPage({
     range,
     keys,
   );
+
+  /*
+    Балансы участников — только выбранных в фильтре: линии на всех сразу
+    слились бы в пучок. Ряд считается ядром на конец каждого шага, поэтому
+    последняя точка — текущий баланс (`participantBalanceSeries`).
+  */
+  const participantSeries = participantBalanceSeries(state.input, filters.userIds, range, keys);
 
   const groups = groupEvents(visible, bucketKeyOf(filters.granularity)).reverse();
 
@@ -240,6 +254,32 @@ export default async function StatisticsPage({
               events,
             }))}
             people={byId}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Балансы участников</CardTitle>
+          <CardDescription>
+            Линии участников, выбранных в фильтре, на одной шкале: кто когда вносил и как
+            на нём сказались заказы
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ParticipantBalanceChart
+            series={participantSeries}
+            lines={participantSeries.map((line) => {
+              const person = byId.get(line.userId);
+              return {
+                userId: line.userId,
+                name: person === undefined ? line.userId : fullName(person),
+                department: person?.department ?? null,
+                isMe: line.userId === currentUser.id,
+              };
+            })}
+            granularity={filters.granularity}
+            titles={keys.map(titleOf)}
           />
         </CardContent>
       </Card>
