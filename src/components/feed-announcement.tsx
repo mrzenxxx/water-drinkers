@@ -6,6 +6,7 @@ import { AnnouncementBody, AnnouncementImage } from '@/components/announcement-c
 import { Badge } from '@/components/ui/badge';
 import type { IsoDate } from '@/lib/calc/types';
 import { formatRelativeDate } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { summarize, type AnnouncementView } from '@/lib/view/announcements';
 
 /**
@@ -16,6 +17,11 @@ import { summarize, type AnnouncementView } from '@/lib/view/announcements';
  * в самом элементе, поэтому компонент остаётся серверным и в бандл не едет.
  * Заодно это бесплатно даёт клавиатуру, чтение с экрана и поиск по странице —
  * браузер раскрывает `<details>`, найдя текст внутри свёрнутого блока.
+ *
+ * Раскрывается плавно: `.disclosure` в `globals.css` анимирует высоту самого
+ * содержимого. Обёрткой этого не сделать — закрываясь, браузер убирает
+ * содержимое из отрисовки сразу, и анимации закрытия просто не из чего
+ * строить. Где нужных свойств нет, раскрытие мгновенное, как и было.
  *
  * Стекло здесь тише, чем у карточки (`glass-soft`): объявление стоит внутри
  * ленты и не должно выглядеть второй карточкой поверх первой.
@@ -37,8 +43,20 @@ export function FeedAnnouncement({
   unread: boolean;
 }): ReactNode {
   return (
-    <details className="group glass-soft rounded-lg px-3 py-2.5">
-      <summary className="focus-visible:ring-ring flex cursor-pointer list-none items-start gap-3 rounded-md focus-visible:ring-2 focus-visible:outline-none [&::-webkit-details-marker]:hidden">
+    /*
+      Боковые отступы живут не на плитке, а внутри неё: содержимое `<details>`
+      при раскрытии обрезается по своим краям (`overflow: hidden` — цена
+      анимации высоты), и картинка, выведенная за них отрицательным полем,
+      просто исчезла бы по бокам. Нижнего отступа у плитки с картинкой нет
+      вовсе — картинка сама становится её низом.
+    */
+    <details
+      className={cn(
+        'disclosure group glass-soft overflow-hidden rounded-lg py-2.5',
+        item.image !== null && 'pb-0',
+      )}
+    >
+      <summary className="focus-visible:ring-ring flex cursor-pointer list-none items-start gap-3 rounded-md px-3 focus-visible:ring-2 focus-visible:outline-none [&::-webkit-details-marker]:hidden">
         <Megaphone aria-hidden className="text-primary mt-0.5 size-4 shrink-0" />
 
         <div className="min-w-0 flex-1">
@@ -70,17 +88,32 @@ export function FeedAnnouncement({
         />
       </summary>
 
-      <div className="mt-3 flex flex-col gap-3 pl-7">
-        <AnnouncementBody body={item.body} />
+      <div className="mt-3 flex flex-col gap-3">
+        {/* Текст стоит под заголовком, отступив на ширину рупора слева. */}
+        <div className="flex flex-col gap-3 pr-3 pl-10">
+          <AnnouncementBody body={item.body} />
 
-        {item.image !== null && <AnnouncementImage image={item.image} className="max-w-sm" />}
+          <Link
+            href="/notices"
+            className="text-primary text-xs underline underline-offset-2"
+          >
+            Все объявления
+          </Link>
+        </div>
 
-        <Link
-          href="/notices"
-          className="text-primary text-xs underline underline-offset-2"
-        >
-          Все объявления
-        </Link>
+        {/*
+          Картинка — во всю ширину плитки, вровень с её краями и в самом низу.
+          Высота остаётся `auto`: картинка видна целиком, в своих пропорциях,
+          без обрезки. Своих углов и рамки у неё здесь нет — нижние углы ей
+          скругляет сама плитка (`overflow: hidden`), а вторая рамка рядом с
+          рамкой плитки читалась бы вторым забором.
+        */}
+        {item.image !== null && (
+          <AnnouncementImage
+            image={item.image}
+            className="w-full max-w-none rounded-none border-0"
+          />
+        )}
       </div>
     </details>
   );
