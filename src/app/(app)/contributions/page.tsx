@@ -69,27 +69,17 @@ export default async function MyContributionsPage(): Promise<ReactNode> {
       </Card>
 
       {/*
-        Форма и история живут в одном компоненте: только так поданный взнос
-        появляется в списке сразу, ещё до ответа сервера (`useOptimistic`).
+        Форма и история живут в одном компоненте — он же рисует обе плашки:
+        только так поданный взнос появляется в списке сразу, ещё до ответа
+        сервера (`useOptimistic`).
       */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Новый взнос</CardTitle>
-          <CardDescription>
-            После отправки взнос уходит в очередь на подтверждение. У отклонённого видна
-            причина отказа — её оставляет администратор.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <MyContributions
-            rows={rows}
-            people={people}
-            today={todayIso()}
-            suggestedAmount={toRublesString(state.input.fund.defaultContribution)}
-            readOnly={user.restriction === 'MUTED'}
-          />
-        </CardContent>
-      </Card>
+      <MyContributions
+        rows={rows}
+        people={people}
+        today={todayIso()}
+        suggestedAmount={toRublesString(state.input.fund.defaultContribution)}
+        readOnly={user.restriction === 'MUTED'}
+      />
     </div>
   );
 }

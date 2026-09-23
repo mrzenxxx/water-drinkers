@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { Amount } from '@/components/amount';
-import { ContributionStatusIcon } from '@/components/contribution-status';
-import { Badge } from '@/components/ui/badge';
+import { ContributionStatusBadge } from '@/components/contribution-status';
 import {
   Table,
   TableBody,
@@ -12,14 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { ContributionRow } from '@/lib/data/queries';
-import {
-  CONTRIBUTION_STATUS_LABEL,
-  CONTRIBUTION_STATUS_VARIANT,
-  formatDate,
-  formatDateTime,
-  fullName,
-  type NamedUser,
-} from '@/lib/format';
+import { formatDate, formatDateTime, fullName, type NamedUser } from '@/lib/format';
 
 /**
  * Список взносов: §6.2 (свои) и §6.3 (все).
@@ -27,6 +19,16 @@ import {
  * На узком экране таблица превращается в карточки, а не в горизонтальный
  * скролл (§12) — поэтому разметки две, и обе описаны здесь один раз,
  * а не переписаны на каждом экране.
+ *
+ * Колонки чека здесь нет. Прикрепление чека к взносу — этап 6 (§8.4), и до
+ * тех пор `receiptId` у каждой строки `null`: колонка состояла бы из одного
+ * слова «без чека» сверху донизу и не говорила бы ничего. Вернётся она вместе
+ * с настоящими чеками.
+ *
+ * Таблица растянута во всю ширину, а содержимое каждой колонки выровнено по
+ * центру — и заголовок, и ячейки. Выключки вправо у чисел здесь нет намеренно:
+ * колонок шесть, свободное место браузер раздаёт им всем, и прижатые к разным
+ * краям столбцы расходились бы с собственными заголовками.
  */
 
 type ContributionsListProps = {
@@ -36,33 +38,6 @@ type ContributionsListProps = {
   showPerson?: boolean;
   emptyText?: string;
 };
-
-/**
- * Ссылка на чек — тот же маршрут `/api/receipts/:id` (§8.4), что и у заказов.
- * У взносов `receiptId` пока всегда `null`: прикрепление чека к взносу
- * появится на этапе 6, а до тех пор строка честно показывает «без чека».
- */
-function ReceiptCell({ receiptId }: { receiptId: string | null }): ReactNode {
-  if (receiptId === null) return <span className="text-muted-foreground">без чека</span>;
-
-  return (
-    <a href={`/api/receipts/${receiptId}`} className="underline underline-offset-2">
-      Чек
-    </a>
-  );
-}
-
-/**
- * Статус словами — для карточек узкого экрана: подсказки по наведению там нет,
- * а касание её не открывает. В таблице статус показывает значок с подсказкой.
- */
-function StatusBadge({ row }: { row: ContributionRow }): ReactNode {
-  return (
-    <Badge variant={CONTRIBUTION_STATUS_VARIANT[row.status]}>
-      {CONTRIBUTION_STATUS_LABEL[row.status]}
-    </Badge>
-  );
-}
 
 export function ContributionsList({
   rows,
@@ -96,9 +71,13 @@ export function ContributionsList({
               <Amount value={row.amount} className="font-medium" />
             </div>
 
+            {/*
+              На карточке подсказки нет — касание её не открывает, — поэтому
+              причина отказа печатается ниже обычным текстом, а бейджику
+              комментарий не передаётся: иначе одно и то же сказано дважды.
+            */}
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-              <StatusBadge row={row} />
-              <ReceiptCell receiptId={row.receiptId} />
+              <ContributionStatusBadge status={row.status} />
               {row.reviewedBy !== null && (
                 <span className="text-muted-foreground">
                   Рассмотрел {nameOf(row.reviewedBy)}
@@ -118,34 +97,30 @@ export function ContributionsList({
         <Table>
           <TableHeader>
             <TableRow>
-              {showPerson && <TableHead>Участник</TableHead>}
-              <TableHead className="text-right">Сумма</TableHead>
-              <TableHead>Дата платежа</TableHead>
-              <TableHead>Подан</TableHead>
-              <TableHead className="w-16">Статус</TableHead>
-              <TableHead>Рассмотрел</TableHead>
-              <TableHead>Чек</TableHead>
+              {showPerson && <TableHead className="text-center">Участник</TableHead>}
+              <TableHead className="text-center">Сумма</TableHead>
+              <TableHead className="text-center">Дата платежа</TableHead>
+              <TableHead className="text-center">Подан</TableHead>
+              <TableHead className="text-center">Статус</TableHead>
+              <TableHead className="text-center">Рассмотрел</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.id}>
-                {showPerson && <TableCell>{nameOf(row.userId)}</TableCell>}
-                <TableCell className="text-right">
+                {showPerson && <TableCell className="text-center">{nameOf(row.userId)}</TableCell>}
+                <TableCell className="text-center">
                   <Amount value={row.amount} />
                 </TableCell>
-                <TableCell className="tabular">{formatDate(row.paidAt)}</TableCell>
-                <TableCell className="tabular text-muted-foreground">
+                <TableCell className="tabular text-center">{formatDate(row.paidAt)}</TableCell>
+                <TableCell className="tabular text-muted-foreground text-center">
                   {formatDateTime(row.submittedAt)}
                 </TableCell>
-                <TableCell>
-                  <ContributionStatusIcon status={row.status} comment={row.reviewComment} />
+                <TableCell className="text-center">
+                  <ContributionStatusBadge status={row.status} comment={row.reviewComment} />
                 </TableCell>
-                <TableCell className="text-muted-foreground">
+                <TableCell className="text-muted-foreground text-center">
                   {row.reviewedBy === null ? '—' : nameOf(row.reviewedBy)}
-                </TableCell>
-                <TableCell>
-                  <ReceiptCell receiptId={row.receiptId} />
                 </TableCell>
               </TableRow>
             ))}

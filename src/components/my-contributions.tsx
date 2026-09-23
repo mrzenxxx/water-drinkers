@@ -5,6 +5,13 @@ import { useActionState, useOptimistic } from 'react';
 
 import { ContributionForm } from '@/components/contribution-form';
 import { ContributionsList } from '@/components/contributions-list';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { submitContributionAction } from '@/lib/actions/contributions';
 import { IDLE } from '@/lib/actions/state';
 import type { ContributionRow } from '@/lib/data/queries';
@@ -26,6 +33,11 @@ import { parseRubles } from '@/lib/money';
  * Строка помечена статусом `PENDING`, и это не выдумка: взнос действительно
  * попадает в очередь на подтверждение и до неё на баланс не влияет
  * (правило 6 CLAUDE.md).
+ *
+ * Плашек две — «Новый взнос» и «История», — но компонент один: только так
+ * поданный взнос появляется в списке сразу, ещё до ответа сервера. Разнести
+ * их по двум компонентам значило бы вынести `useOptimistic` выше, в общего
+ * родителя, и это тот же один компонент, только длиннее.
  */
 export function MyContributions({
   rows,
@@ -72,27 +84,45 @@ export function MyContributions({
   const byId = new Map(people.map((person) => [person.id, person]));
 
   return (
-    <>
-      {readOnly ? (
-        <p className="text-muted-foreground text-sm">
-          Подавать взносы сейчас нельзя: администратор включил режим только просмотра.
-        </p>
-      ) : (
-        <ContributionForm
-          today={today}
-          suggestedAmount={suggestedAmount}
-          action={action}
-          state={state}
-        />
-      )}
-      <div className="mt-6">
-        <ContributionsList
-          rows={optimisticRows}
-          people={byId}
-          emptyText="Вы ещё не подавали взносов."
-        />
-      </div>
-    </>
+    <div className="flex flex-col gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Новый взнос</CardTitle>
+          <CardDescription>
+            После регистрации взнос уходит в очередь на подтверждение. У отклонённого
+            видна причина отказа — её оставляет администратор.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {readOnly ? (
+            <p className="text-muted-foreground text-sm">
+              Подавать взносы сейчас нельзя: администратор включил режим только просмотра.
+            </p>
+          ) : (
+            <ContributionForm
+              today={today}
+              suggestedAmount={suggestedAmount}
+              action={action}
+              state={state}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>История</CardTitle>
+          <CardDescription>Все ваши взносы и что с ними стало.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ContributionsList
+            rows={optimisticRows}
+            people={byId}
+            emptyText="Вы ещё не подавали взносов."
+          />
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

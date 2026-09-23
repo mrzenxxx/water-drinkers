@@ -14,10 +14,10 @@ import type { ActionState } from '@/lib/actions/state';
  * показывает `useFormStatus` внутри кнопки. Ни `onSubmit`, ни `preventDefault`,
  * ни клиентского `fetch` (CLAUDE.md).
  *
- * Распознавание чеков — этап 6 (§8.4). Пока его нет, дата и сумма вводятся
- * руками, а место под индикатор уверенности обозначено, но **не заполнено
- * выдуманными данными**: показать «уверенность 90 %» там, где ничего не
- * распознавалось, хуже, чем честно сказать, что распознавания ещё нет.
+ * Чека в форме нет. Прикрепление и распознавание — этап 6 (§8.4), и до тех
+ * пор поле было бы выключенным полем с объяснением, почему оно выключено:
+ * место занимает, сделать ничего нельзя. Пока дата и сумма вводятся руками,
+ * а администратор сверяет их при подтверждении.
  */
 export function ContributionForm({
   today,
@@ -59,25 +59,6 @@ export function ContributionForm({
         </div>
       </div>
 
-      <div className="border-border rounded-lg border border-dashed p-4">
-        <p className="text-sm font-medium">Чек</p>
-        <p className="text-muted-foreground mt-1 text-xs">
-          К заказу воды чек уже прикладывается (§6.5). Для взносов прикрепление и
-          распознавание появятся на этапе 6: тогда дата и сумма будут подставляться из
-          чека, а пока их вводит человек, а администратор сверяет при подтверждении.
-        </p>
-        <input
-          type="file"
-          accept="image/*,.pdf"
-          disabled
-          aria-label="Файл чека (пока недоступно)"
-          className="text-muted-foreground mt-3 block w-full text-xs disabled:cursor-not-allowed"
-        />
-        <p className="text-muted-foreground mt-3 text-xs">
-          Здесь же встанет индикатор уверенности распознавания — пока показывать нечего.
-        </p>
-      </div>
-
       {state.status !== 'idle' && state.message !== null && (
         <p
           role={state.status === 'error' ? 'alert' : 'status'}
@@ -87,7 +68,13 @@ export function ContributionForm({
         </p>
       )}
 
-      <SubmitButton pendingLabel="Отправляем…">Отправить взнос</SubmitButton>
+      {/*
+        Кнопка во всю ширину: это единственное действие формы, и целиться в
+        неё не приходится — ни на телефоне, ни мышью.
+      */}
+      <SubmitButton pendingLabel="Регистрируем…" className="w-full">
+        Зарегистрировать взнос
+      </SubmitButton>
     </form>
   );
 }
