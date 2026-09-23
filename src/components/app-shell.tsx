@@ -162,7 +162,13 @@ export function AppShell({ user, unreadNotices = 0, children }: AppShellProps): 
           <p className="text-muted-foreground flex items-start gap-2">
             <Droplets aria-hidden className="text-primary mt-0.5 size-4 shrink-0 opacity-70" />
             <span>
-              Σ балансов всех участников всегда равна остатку фонда. Расхождение видно
+              {/*
+                Сигма — знак самого инварианта, и в строке мелкого серого текста
+                она тонула. Цвет приложения и насыщенное начертание возвращают ей
+                вес: глаз цепляется за знак, а не разбирает строку с начала.
+              */}
+              <span className="text-primary text-sm font-bold">Σ</span>{' '}
+              балансов всех участников всегда равна остатку фонда. Расхождение видно
               в разделе{' '}
               <Link href="/fund" className="underline underline-offset-2">
                 «Фонд»
