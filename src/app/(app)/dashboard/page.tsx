@@ -142,8 +142,7 @@ export default async function DashboardPage({
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Дашборд</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Как фонд жил во времени. Экран только показывает: источник истины — таблицы
-            взносов, заказов и балансов.
+            Как фонд жил во времени
           </p>
         </div>
       </header>

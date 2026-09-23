@@ -595,6 +595,13 @@
     border-radius: calc(var(--radius-lg) - 2px);
     font-size: 0.8125rem;
     color: var(--muted-foreground);
+    /*
+      Невыбранный сегмент — тоже кнопка, а не подпись: у него приглушённая
+      подложка и едва заметная кромка. Выбранный отличается от него
+      синей кромкой и светлым текстом, а не самим фактом рамки.
+    */
+    background-color: color-mix(in oklab, var(--foreground) 6%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--foreground) 7%, transparent);
     cursor: pointer;
     white-space: nowrap;
     transition:
@@ -605,7 +612,7 @@
 
   .segment:hover {
     color: var(--foreground);
-    background-color: color-mix(in oklab, var(--foreground) 6%, transparent);
+    background-color: color-mix(in oklab, var(--foreground) 11%, transparent);
   }
 
   .segment:focus-visible {
