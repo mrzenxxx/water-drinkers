@@ -13,7 +13,9 @@ deploy/.env
 .git
 .claude
 .superpowers
+# docs не нужны, кроме руководства: его читает с диска страница /guide.
 docs
+!docs/USER_GUIDE.md
 tests
 *.log
 .DS_Store
