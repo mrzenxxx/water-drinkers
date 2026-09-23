@@ -3,6 +3,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { AdminContactLinks } from '@/components/admin-contact-links';
+import { BookHelp } from '@/components/guide-icon';
 import { BottomNav, MainNav } from '@/components/main-nav';
 import { SectionTabs } from '@/components/nav-tabs';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -44,7 +45,7 @@ import { APP_SECTIONS, ADMIN_SECTION, type NavSection } from '@/lib/view/nav';
  * содержимым, и сквозь неё не должен читаться уезжающий под неё текст.
  * Рамка остаётся только снизу — стекло здесь край экрана, а не карточка.
  *
- * В подвале — напоминание об инварианте слева и связь с администратором
+ * В подвале — ссылка на руководство слева и связь с администратором
  * справа, в одну строку. Мессенджера два — Telegram и MAX: первого нет у
  * всех и с рабочего компьютера он обычно не открывается, второй открывается,
  * но стоит не у каждого. Адреса те же, что на экране входа
@@ -156,26 +157,25 @@ export function AppShell({ user, unreadNotices = 0, children }: AppShellProps): 
 
         {/*
           Одна строка на широком экране, две — на узком: связь с
-          администратором уходит под напоминание, а не жмётся к нему сбоку.
+          администратором уходит под ссылку на руководство, а не жмётся к ней
+          сбоку.
         */}
         <footer className="border-border mx-auto mt-4 flex w-full max-w-6xl flex-col items-start gap-3 border-t px-4 py-6 text-xs sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-          <p className="text-muted-foreground flex items-start gap-2">
-            <Droplets aria-hidden className="text-primary mt-0.5 size-4 shrink-0 opacity-70" />
-            <span>
-              {/*
-                Сигма — знак самого инварианта, и в строке мелкого серого текста
-                она тонула. Цвет приложения и насыщенное начертание возвращают ей
-                вес: глаз цепляется за знак, а не разбирает строку с начала.
-              */}
-              <span className="text-primary text-sm font-bold">Σ</span>{' '}
-              балансов всех участников всегда равна остатку фонда. Расхождение видно
-              в разделе{' '}
-              <Link href="/fund" className="underline underline-offset-2">
-                «Фонд»
-              </Link>
-              .
-            </span>
-          </p>
+          {/*
+            Слева — руководство: как всё считается и почему. Раньше здесь
+            стояло напоминание об инварианте со ссылкой на «Фонд»; теперь
+            инвариант объяснён в руководстве вместе с остальными правилами,
+            и подвал ведёт туда, где объяснено всё. Руководство открывают
+            редко, поэтому оно в подвале, а не в верхней полосе, где каждый
+            значок отнимает место у разделов (§6.11).
+          */}
+          <Link
+            href="/guide"
+            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring flex items-center gap-2 rounded-lg transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none"
+          >
+            <BookHelp aria-hidden className="text-primary size-5 shrink-0" />
+            <span>Как всё устроено и считается</span>
+          </Link>
 
           <AdminContactLinks
             contacts={contacts}

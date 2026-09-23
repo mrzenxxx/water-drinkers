@@ -19,6 +19,8 @@ const nextConfig: NextConfig = {
   // SDL читается с диска в src/graphql/schema.ts — файл должен попасть в сборку.
   outputFileTracingIncludes: {
     '/api/graphql': ['./src/graphql/schema.graphql'],
+    // Руководство читается с диска страницей `/guide` — один источник текста.
+    '/guide': ['./docs/USER_GUIDE.md'],
   },
 };
 

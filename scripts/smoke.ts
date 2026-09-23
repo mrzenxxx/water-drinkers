@@ -54,6 +54,7 @@ const PAGES: readonly Page[] = [
   { path: '/notices', as: 'member', expect: ['Объявления'] },
   { path: '/statistics', as: 'member', expect: ['<svg'] },
   { path: '/profile', as: 'member', expect: ['Учётная запись'] },
+  { path: '/guide', as: 'member', expect: ['Содержание', 'href="/fund"'] },
   { path: '/statistics?period=quarter&granularity=week', as: 'member', expect: ['<svg'] },
   { path: '/admin/queue', as: 'admin' },
   { path: '/admin/participants', as: 'admin' },
