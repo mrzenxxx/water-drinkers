@@ -60,10 +60,11 @@ services:
       - app
     environment:
       SITE_HOST: ${SITE_HOST}
+    # Только TCP: UDP 443 (HTTP/3) на боевом сервере занят другим сервисом,
+    # а браузеры без него просто остаются на HTTP/2.
     ports:
       - '80:80'
       - '443:443'
-      - '443:443/udp'
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       # Здесь лежат выпущенные сертификаты. Потеря тома — не беда, Caddy

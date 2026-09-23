@@ -4,10 +4,11 @@
 #
 #   scp deploy/server-setup.sh root@IP:/tmp/ && ssh root@IP bash /tmp/server-setup.sh
 #
-# Файрвол скрипт намеренно не включает: на сервере работает ViPNet Client
-# со своими правилами iptables, и ufw поверх них может отрезать и VPN, и SSH.
-# Защита держится на том, что наружу опубликованы только 80 и 443 (Caddy),
-# а база слушает 127.0.0.1 (compose.yml).
+# На сервере живут и чужие сервисы (ViPNet, VPN-панель, мониторинг), поэтому
+# скрипт ничего не выключает и существующих правил ufw не трогает. Файрвол он
+# не включает — только добавляет 80 и 443/tcp, если ufw уже работает.
+# Публикуемые Docker'ом порты ufw всё равно не фильтрует; правило нужно, чтобы
+# `ufw status` честно показывал, что открыто. База слушает 127.0.0.1.
 
 set -euo pipefail
 
@@ -43,6 +44,11 @@ if [ ! -f /etc/docker/daemon.json ]; then
 }
 JSON
   systemctl restart docker
+fi
+
+if ufw status 2>/dev/null | grep -q '^Status: active'; then
+  ufw allow 80/tcp comment waterdrinkers >/dev/null
+  ufw allow 443/tcp comment waterdrinkers >/dev/null
 fi
 
 mkdir -p "$APP_DIR" "$BACKUP_DIR"
