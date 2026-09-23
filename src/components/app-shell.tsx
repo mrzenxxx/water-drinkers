@@ -3,7 +3,6 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { AdminContactLinks } from '@/components/admin-contact-links';
-import { BookHelp } from '@/components/guide-icon';
 import { BottomNav, MainNav } from '@/components/main-nav';
 import { SectionTabs } from '@/components/nav-tabs';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -156,38 +155,33 @@ export function AppShell({ user, unreadNotices = 0, children }: AppShellProps): 
         </main>
 
         {/*
-          Одна строка на широком экране, две — на узком: связь с
-          администратором уходит под ссылку на руководство, а не жмётся к ней
-          сбоку.
+          На широком экране — одна строка: руководство слева, связь с
+          администратором справа. На узком — столбец по центру: ссылка на
+          руководство, под ней слова «Связаться с администратором» и под ними
+          знаки мессенджеров. Разнесённые по краям строки на телефоне
+          читались обрывками, а центр держит всё одной осью.
         */}
-        <footer className="border-border mx-auto mt-4 flex w-full max-w-6xl flex-col items-start gap-3 border-t px-4 py-6 text-xs sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+        <footer className="border-border mx-auto mt-4 flex w-full max-w-6xl flex-col items-center gap-3 border-t px-4 py-6 text-center text-xs sm:flex-row sm:justify-between sm:gap-6 sm:text-left">
           {/*
-            Слева — руководство: как всё считается и почему. Раньше здесь
-            стояло напоминание об инварианте со ссылкой на «Фонд»; теперь
-            инвариант объяснён в руководстве вместе с остальными правилами,
-            и подвал ведёт туда, где объяснено всё. Руководство открывают
-            редко, поэтому оно в подвале, а не в верхней полосе, где каждый
-            значок отнимает место у разделов (§6.11).
+            Руководство: как всё считается и почему. Раньше здесь стояло
+            напоминание об инварианте со ссылкой на «Фонд»; теперь инвариант
+            объяснён в руководстве вместе с остальными правилами. Оно в
+            подвале, а не в верхней полосе: открывают его редко, а каждый
+            значок в полосе отнимает место у разделов (§6.11). Значка у
+            ссылки нет: рядом со знаками мессенджеров он читался третьим
+            способом связи.
           */}
           <Link
             href="/guide"
-            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring focus-visible:ring-offset-background flex items-center gap-2.5 rounded-xl transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded-md transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none"
           >
-            {/*
-              Плитка того же размера, что знаки мессенджеров справа (40 px), и
-              в той же «капле», что значок профиля в шапке: подвал держится на
-              двух одинаковых по весу краях, а не на значке с одной стороны.
-            */}
-            <span className="droplet-mark press flex size-10 shrink-0 items-center justify-center rounded-xl">
-              <BookHelp aria-hidden className="size-5" />
-            </span>
-            <span>Как всё устроено и считается</span>
+            Как всё устроено и считается
           </Link>
 
           <AdminContactLinks
             contacts={contacts}
             label="Связаться с администратором"
-            className="shrink-0"
+            className="flex-col sm:flex-row"
           />
         </footer>
       </div>
