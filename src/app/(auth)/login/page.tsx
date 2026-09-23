@@ -1,19 +1,21 @@
-import { Droplets, Send } from 'lucide-react';
+import { Droplets } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+import { AdminContactLinks } from '@/components/admin-contact-links';
 import { LoginForm } from '@/components/login-form';
-import { Button } from '@/components/ui/button';
-import { adminTelegramHref } from '@/lib/view/admin-contact';
+import { adminContactsFromEnv } from '@/lib/view/admin-contact';
 import { APP_NAME, pageTitle } from '@/lib/view/app';
 
 /**
  * Вход (§7, ADR-0004): логин и пароль, выданные администратором.
  *
- * Своей регистрации нет — учётные данные заводит администратор. Кнопка
- * «Присоединиться к водопою» ведёт к нему в Telegram; адрес задаётся
- * `ADMIN_TELEGRAM_URL`, без него кнопки нет. Схему адреса дописывает
- * `adminTelegramHref`: `t.me/ivanov` без неё браузер считает путём внутри
- * сайта, и кнопка открывает свою же страницу 404.
+ * Своей регистрации нет — учётные данные заводит администратор. «Присоединиться
+ * к водопою» ведёт к нему в мессенджер, и мессенджеров два: Telegram
+ * (`ADMIN_TELEGRAM_URL`) и MAX (`ADMIN_MAX_URL`). Первого нет у всех и с
+ * рабочего компьютера он обычно не открывается, второй открывается, но стоит
+ * не у каждого — выбор отдан человеку. Без переменных приглашения нет.
+ * Схему адреса дописывает `adminContactHref`: `t.me/ivanov` без неё браузер
+ * считает путём внутри сайта, и ссылка открывает свою же страницу 404.
  */
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +25,7 @@ export default async function LoginPage({
   searchParams: Promise<{ link?: string }>;
 }): Promise<ReactNode> {
   const { link } = await searchParams;
-  const telegramUrl = adminTelegramHref(process.env.ADMIN_TELEGRAM_URL);
+  const contacts = adminContactsFromEnv();
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-6 py-12">
@@ -57,17 +59,22 @@ export default async function LoginPage({
           <LoginForm />
         </div>
 
-        {telegramUrl !== null && (
-          <div className="mt-6 flex flex-col items-center gap-2 border-t pt-6 text-center">
+        {contacts.length > 0 && (
+          <div className="mt-6 flex flex-col items-center gap-4 border-t pt-6 text-center">
             <p className="text-muted-foreground text-sm">
               Логин и пароль предоставляются администратором по запросу
             </p>
-            <Button asChild variant="outline" className="w-full">
-              <a href={telegramUrl} target="_blank" rel="noopener noreferrer">
-                <Send aria-hidden />
-                Присоединиться к водопою
-              </a>
-            </Button>
+            {/*
+              Слова приглашают, знаки выбирают мессенджер. Кнопка со словами
+              внутри здесь не годится: их пришлось бы написать дважды, по разу
+              на мессенджер, и карточка входа выросла бы вдвое ради одной мысли.
+            */}
+            <AdminContactLinks
+              contacts={contacts}
+              label="Присоединиться к водопою"
+              stacked
+              className="text-sm"
+            />
           </div>
         )}
       </div>

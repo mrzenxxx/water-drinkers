@@ -1,13 +1,13 @@
-import { Droplets, Send, UserRound } from 'lucide-react';
+import { Droplets, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
+import { AdminContactLinks } from '@/components/admin-contact-links';
 import { BottomNav, MainNav } from '@/components/main-nav';
 import { SectionTabs } from '@/components/nav-tabs';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { Button } from '@/components/ui/button';
 import { ROLE_LABEL, fullName, type NamedUser } from '@/lib/format';
-import { adminTelegramHref } from '@/lib/view/admin-contact';
+import { adminContactsFromEnv } from '@/lib/view/admin-contact';
 import { APP_NAME } from '@/lib/view/app';
 import { APP_SECTIONS, ADMIN_SECTION, type NavSection } from '@/lib/view/nav';
 
@@ -45,10 +45,12 @@ import { APP_SECTIONS, ADMIN_SECTION, type NavSection } from '@/lib/view/nav';
  * Рамка остаётся только снизу — стекло здесь край экрана, а не карточка.
  *
  * В подвале — напоминание об инварианте слева и связь с администратором
- * справа, в одну строку. Адрес тот же, что на экране входа
- * (`ADMIN_TELEGRAM_URL`), и добывается той же функцией: два разных способа
- * дописать схему однажды разошлись бы. Без переменной кнопки нет — вести
- * в никуда хуже, чем не звать.
+ * справа, в одну строку. Мессенджера два — Telegram и MAX: первого нет у
+ * всех и с рабочего компьютера он обычно не открывается, второй открывается,
+ * но стоит не у каждого. Адреса те же, что на экране входа
+ * (`ADMIN_TELEGRAM_URL`, `ADMIN_MAX_URL`), и добываются той же функцией: два
+ * разных способа дописать схему однажды разошлись бы. Без переменных связи
+ * нет — вести в никуда хуже, чем не звать.
  */
 
 type AppShellProps = {
@@ -68,7 +70,7 @@ export function AppShell({ user, unreadNotices = 0, children }: AppShellProps): 
     item.href === '/notices' && unreadNotices > 0 ? { ...item, badge: unreadNotices } : item,
   );
 
-  const telegramUrl = adminTelegramHref(process.env.ADMIN_TELEGRAM_URL);
+  const contacts = adminContactsFromEnv();
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -169,14 +171,11 @@ export function AppShell({ user, unreadNotices = 0, children }: AppShellProps): 
             </span>
           </p>
 
-          {telegramUrl !== null && (
-            <Button asChild variant="outline" size="sm" className="shrink-0">
-              <a href={telegramUrl} target="_blank" rel="noopener noreferrer">
-                Связаться с администратором
-                <Send aria-hidden />
-              </a>
-            </Button>
-          )}
+          <AdminContactLinks
+            contacts={contacts}
+            label="Связаться с администратором"
+            className="shrink-0"
+          />
         </footer>
       </div>
 
