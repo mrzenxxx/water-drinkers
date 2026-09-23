@@ -10,6 +10,7 @@
 import { toEpochDay } from '@/lib/calc';
 import {
   ABSENCE_TYPE_LABEL,
+  BOTTLES,
   CONTRIBUTION_STATUS_LABEL,
   DAYS,
   formatDate,
@@ -68,11 +69,23 @@ export function describeEvent(
         detail: null,
       };
 
-    case 'ORDER':
+    case 'ORDER': {
+      /*
+        Сколько бутылей — первое, что спрашивают о заказе после суммы: цена
+        одной воды меняется, и «3 000 ₽» без штук ни о чём не говорит.
+        Заказы, заведённые до того, как счётчик появился, штук не показывают —
+        приписывать им ноль значило бы соврать.
+      */
+      const parts = [
+        event.bottles === undefined ? null : withCount(event.bottles, BOTTLES),
+        event.note ?? null,
+      ].filter((part): part is string => part !== null);
+
       return {
         title: `Заказ воды на ${formatKopecks(-(event.amount ?? 0))}`,
-        detail: event.note ?? null,
+        detail: parts.length === 0 ? null : parts.join(' · '),
       };
+    }
 
     case 'ABSENCE': {
       const type = event.absenceType === undefined ? 'Отсутствие' : ABSENCE_TYPE_LABEL[event.absenceType];

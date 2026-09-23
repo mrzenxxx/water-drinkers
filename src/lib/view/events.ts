@@ -56,6 +56,22 @@ export type TimelineEvent = {
   actorId?: string | null;
   /** Статус взноса: неподтверждённый в фонд ещё не попал (правило 6). */
   status?: ContributionStatus;
+  /**
+   * Чек заказа (§6.5, §8.4); `null` — заказ заведён до того, как чек стал
+   * обязательным.
+   *
+   * Здесь метаданные, а не байты: тип нужен, чтобы предпросмотр знал, чем
+   * показывать файл, а идентификатор — чтобы собрать адрес выдачи. Сами байты
+   * лежат отдельной таблицей и отдаются по ссылке (ADR-0003). Открыть чек
+   * может любой участник: деньги потрачены из общего фонда (§8.4).
+   */
+  receipt?: { id: string; mediaType: string } | null;
+  /**
+   * Сколько бутылей привезли (§6.5). Есть только у заказа, и только у того,
+   * что заведён после появления счётчика: приписывать старым ноль значило бы
+   * соврать.
+   */
+  bottles?: number;
   absenceType?: AbsenceType;
   note?: string;
 };
@@ -75,6 +91,10 @@ export type EventSource = {
     orderedAt: IsoDate;
     note?: string | null;
     createdBy?: string | null;
+    /** Чек заказа; `null` — заказ заведён до того, как чек стал обязательным. */
+    receipt?: { id: string; mediaType: string } | null;
+    /** Сколько бутылей привезли; `null` — заказ заведён до появления счётчика. */
+    bottlesCount?: number | null;
   }[];
   absences: readonly {
     id: string;
@@ -130,6 +150,8 @@ export function buildEvents(source: EventSource): TimelineEvent[] {
       userId: null,
       actorId: row.createdBy ?? null,
       note: row.note ?? undefined,
+      receipt: row.receipt ?? null,
+      bottles: row.bottlesCount ?? undefined,
     });
   }
 

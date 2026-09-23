@@ -2,11 +2,14 @@ import type { ReactNode } from 'react';
 
 import { EVENT_COLOR, EVENT_LABEL, describeEvent } from '@/components/event-style';
 import { FeedAnnouncement } from '@/components/feed-announcement';
+import { ReceiptPreview } from '@/components/receipt-preview';
+import { CONTRIBUTION_STATUS_ICON } from '@/components/status-icons';
 import { Badge } from '@/components/ui/badge';
-import type { IsoDate } from '@/lib/calc/types';
+import type { ContributionStatus, IsoDate } from '@/lib/calc/types';
 import {
   CONTRIBUTION_STATUS_LABEL,
   CONTRIBUTION_STATUS_VARIANT,
+  formatDate,
   formatRelativeDate,
   type NamedUser,
 } from '@/lib/format';
@@ -26,7 +29,31 @@ import type { FeedItem } from '@/lib/view/feed';
  *
  * Тип события несёт и цветную точку, и подпись — цвет здесь не единственный
  * носитель смысла (§12).
+ *
+ * Бейджики справа от события говорят то же, что говорит таблица взносов, и
+ * теми же значками (`status-icons.ts`): у статуса своя форма, поэтому цвет
+ * бейджика ничего не несёт в одиночку. Значок стоит перед словом и отделён
+ * от него отступом — это тот же жест, которым помечена строка таблицы, а не
+ * второе обозначение того же.
+ *
+ * У заказа бейджик «Чек»: деньги ушли из общего фонда, и по каждой трате
+ * должен быть документ (§6.5). Бейджик открывает тот же предпросмотр, что и
+ * раздел «Заказы», — открыть чек может любой участник, деньги общие (§8.4).
+ * От соседних бейджиков он отличается цветом и откликом на наведение: те
+ * только называют состояние, а этот ещё и нажимается.
  */
+/** Статус взноса бейджиком: тот же значок, что в таблице, и то же слово. */
+function StatusBadge({ status }: { status: ContributionStatus }): ReactNode {
+  const Icon = CONTRIBUTION_STATUS_ICON[status];
+
+  return (
+    <Badge variant={CONTRIBUTION_STATUS_VARIANT[status]} className="shrink-0 gap-1.5">
+      <Icon aria-hidden />
+      {CONTRIBUTION_STATUS_LABEL[status]}
+    </Badge>
+  );
+}
+
 export function ActivityFeed({
   items,
   people,
@@ -83,9 +110,17 @@ export function ActivityFeed({
             </div>
 
             {event.status !== undefined && event.status !== 'CONFIRMED' && (
-              <Badge variant={CONTRIBUTION_STATUS_VARIANT[event.status]} className="shrink-0">
-                {CONTRIBUTION_STATUS_LABEL[event.status]}
-              </Badge>
+              <StatusBadge status={event.status} />
+            )}
+
+            {event.receipt != null && (
+              <ReceiptPreview
+                variant="badge"
+                label="Чек"
+                src={`/api/receipts/${event.receipt.id}`}
+                mediaType={event.receipt.mediaType}
+                title={`Чек заказа от ${formatDate(event.startsOn)}`}
+              />
             )}
           </li>
         );
