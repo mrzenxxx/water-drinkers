@@ -72,7 +72,10 @@ export function PeoplePicker({
           className={cn(
             // Справа место под стрелку: она стоит на первой строке поля и не
             // переносится вместе с тегами на отдельную строку.
-            'field-surface relative inline-flex min-h-(--control-h) max-w-full min-w-0 flex-wrap items-center gap-1 rounded-md border py-[4px] pr-8 pl-[4px] text-sm transition-[border-color,box-shadow]',
+            // Кромка — как у переключателей над и под полем, а не как у поля
+            // ввода: здесь не пишут, а выбирают, и яркая рамка `--input`
+            // выбивалась из ряда сегментов.
+            'field-surface relative inline-flex min-h-(--control-h) max-w-full min-w-0 flex-wrap items-center gap-1 rounded-md border border-(--glass-border-soft) py-[4px] pr-8 pl-[4px] text-sm transition-[border-color,box-shadow]',
             open && 'border-ring ring-ring/50 ring-[3px]',
           )}
           // Всё поле раскрывает список, кроме кнопок: у крестика и стрелки своя работа.
