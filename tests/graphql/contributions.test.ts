@@ -101,6 +101,46 @@ describe('подача взноса', () => {
   });
 });
 
+describe('один взнос на рассмотрении (§6.2)', () => {
+  it('второй не регистрируется, пока первый ждёт подтверждения', async () => {
+    const db = seedOffice();
+    const first = await submit(db, 'u-0');
+
+    const again = await run(SUBMIT, {
+      db: db.client,
+      userId: 'u-0',
+      variables: { amount: 30_000, paidAt: '2026-06-11' },
+    });
+    expect(errorCode(again)).toBe('CONFLICT');
+    expect(again.errors?.[0]?.extensions?.pendingId).toBe(first);
+    expect(db.tables.contribution.rows).toHaveLength(1);
+    expect(db.tables.auditEntry.rows).toHaveLength(1);
+  });
+
+  it('чужой взнос на рассмотрении не мешает', async () => {
+    const db = seedOffice();
+    await submit(db, 'u-0');
+    await submit(db, 'u-1');
+    expect(db.tables.contribution.rows).toHaveLength(2);
+  });
+
+  it('после подтверждения или отказа можно зарегистрировать следующий', async () => {
+    const db = seedOffice();
+    const first = await submit(db, 'u-0');
+    await runOk(CONFIRM, { db: db.client, userId: ADMIN_ID, variables: { id: first } });
+
+    const second = await submit(db, 'u-0');
+    await runOk(REJECT, {
+      db: db.client,
+      userId: ADMIN_ID,
+      variables: { id: second, comment: 'Не пришло' },
+    });
+
+    await submit(db, 'u-0');
+    expect(db.tables.contribution.rows).toHaveLength(3);
+  });
+});
+
 describe('модерация взноса', () => {
   it('участник подтвердить не может, администратор может', async () => {
     const db = seedOffice();

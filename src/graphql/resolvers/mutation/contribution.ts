@@ -2,7 +2,6 @@ import type { GraphQLContext } from '@/graphql/context';
 import { requireAdmin, requireWriter } from '@/graphql/context';
 import { conflict, notFound, notImplemented, requireDate, requirePositiveMoney, requireText } from '@/graphql/errors';
 import type { MutationResolvers } from '@/graphql/generated/graphql';
-import { requireWriteQuota } from '@/graphql/write-quota';
 import { fromIsoDate, toBigIntKopecks, writeAudit } from '@/lib/data';
 
 /**
@@ -34,9 +33,21 @@ export const contributionMutations: Pick<
       }
     }
 
-    await requireWriteQuota(ctx, user, 'contribution.submit');
-
     const created = await ctx.db.$transaction(async (tx) => {
+      // Один взнос на рассмотрении за раз (§6.2): следующий регистрируется,
+      // когда администратор рассмотрит предыдущий. Это и есть защита от
+      // повторной отправки — вместо лимита по времени.
+      const pending = await tx.contribution.findFirst({
+        where: { userId: user.id, status: 'PENDING' },
+        select: { id: true },
+      });
+      if (pending !== null) {
+        throw conflict(
+          'У вас уже есть взнос на рассмотрении. Новый можно зарегистрировать, когда администратор его рассмотрит.',
+          { pendingId: pending.id },
+        );
+      }
+
       const row = await tx.contribution.create({
         data: {
           userId: user.id,

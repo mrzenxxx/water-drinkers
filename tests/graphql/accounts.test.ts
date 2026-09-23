@@ -291,13 +291,12 @@ describe('лимит записей участника', () => {
     ]);
   }
 
-  it('второй взнос в течение часа отвергается', async () => {
+  it('на взносы лимит по времени не действует: их держит правило «один на рассмотрении»', async () => {
     const db = seedOffice();
     auditAt(db, 'u-0', 'contribution.submit', 20);
+    auditAt(db, 'u-0', 'contribution.submit', 40);
 
-    const result = await run(SUBMIT, { db: db.client, userId: 'u-0', variables: { amount: 50_000, paidAt: '2026-06-10' } });
-    expect(errorCode(result)).toBe('RATE_LIMITED');
-    expect(result.errors?.[0]?.extensions?.retryAt).toEqual(expect.any(String));
+    await runOk(SUBMIT, { db: db.client, userId: 'u-0', variables: { amount: 50_000, paidAt: '2026-06-10' } });
   });
 
   it('третий за сутки отвергается, даже если последний был больше часа назад', async () => {

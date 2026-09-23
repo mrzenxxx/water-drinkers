@@ -4,8 +4,9 @@ import { graphqlError } from '@/graphql/errors';
 import { WRITE_RATE_LOOKBACK_MS, checkWriteRate } from '@/lib/rate-limit';
 
 /**
- * Лимит на записи участника (§6.13): не больше одной в час и двух за сутки
- * отдельно для отсутствий и для взносов.
+ * Лимит на отсутствия участника (§3): не больше одного в час и двух за сутки.
+ * У взносов лимита по времени нет: их сдерживает правило «один взнос на
+ * рассмотрении за раз» в `submitContribution`.
  *
  * Прошлые записи берутся из журнала аудита, а не из самих таблиц: у отсутствий
  * нет момента создания, а удалённое отсутствие не должно возвращать лимит —
@@ -16,7 +17,7 @@ import { WRITE_RATE_LOOKBACK_MS, checkWriteRate } from '@/lib/rate-limit';
 export async function requireWriteQuota(
   ctx: GraphQLContext,
   user: PrismaUser,
-  action: 'absence.add' | 'contribution.submit',
+  action: 'absence.add',
   now: Date = new Date(),
 ): Promise<void> {
   if (user.role === 'ADMIN') return;
@@ -40,10 +41,8 @@ export async function requireWriteQuota(
     hour: '2-digit',
     minute: '2-digit',
   });
-  const what = action === 'absence.add' ? 'отсутствие' : 'взнос';
-
   throw graphqlError(
-    `Слишком часто: не больше одной записи в час и двух в сутки. Следующий ${what} можно добавить ${at}.`,
+    `Слишком часто: не больше одной записи в час и двух в сутки. Следующее отсутствие можно добавить ${at}.`,
     'RATE_LIMITED',
     { retryAt: decision.retryAt.toISOString() },
   );

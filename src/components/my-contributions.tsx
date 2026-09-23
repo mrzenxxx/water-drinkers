@@ -82,6 +82,9 @@ export function MyContributions({
   }, IDLE);
 
   const byId = new Map(people.map((person) => [person.id, person]));
+  // Из оптимистичного списка, а не из серверного: форма закрывается в миг
+  // нажатия, и второй раз отправить тот же взнос просто нечем.
+  const pending = optimisticRows.find((row) => row.status === 'PENDING') ?? null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -89,8 +92,8 @@ export function MyContributions({
         <CardHeader>
           <CardTitle>Новый взнос</CardTitle>
           <CardDescription>
-            После регистрации взнос уходит в очередь на подтверждение. У отклонённого
-            видна причина отказа — её оставляет администратор.
+            После регистрации взнос уходит на подтверждение; пока он там, новый
+            не зарегистрировать. У отклонённого видна причина отказа.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -104,6 +107,7 @@ export function MyContributions({
               suggestedAmount={suggestedAmount}
               action={action}
               state={state}
+              pending={pending}
             />
           )}
         </CardContent>
