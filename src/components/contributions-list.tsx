@@ -25,10 +25,10 @@ import { formatDate, formatDateTime, fullName, type NamedUser } from '@/lib/form
  * слова «без чека» сверху донизу и не говорила бы ничего. Вернётся она вместе
  * с настоящими чеками.
  *
- * Кто рассмотрел взнос, здесь не пишется. Участнику важно, что с его взносом
- * стало, а не кто нажал кнопку: администратор в фонде один, и колонка была
- * его именем сверху донизу. Имя рассматривавшего никуда не делось — оно лежит
- * в записи и видно в журнале аудита (§6.7), где по нему и спрашивают.
+ * Колонки «кто рассмотрел» здесь нет: администратор в фонде один, и она была
+ * бы его именем сверху донизу. Само имя никуда не делось — оно вместе с
+ * временем рассмотрения и причиной отказа лежит в подсказке бейджика статуса,
+ * то есть ровно там, где этот вопрос и возникает.
  *
  * Таблица растянута во всю ширину, а содержимое каждой колонки выровнено по
  * центру — и заголовок, и ячейки. Выключки вправо у чисел здесь нет намеренно:
@@ -54,11 +54,13 @@ export function ContributionsList({
     return <p className="text-muted-foreground text-sm">{emptyText}</p>;
   }
 
-  const nameOf = (userId: string | null): string => {
-    if (userId === null) return '—';
+  const nameOrNull = (userId: string | null): string | null => {
+    if (userId === null) return null;
     const person = people.get(userId);
-    return person === undefined ? '—' : fullName(person);
+    return person === undefined ? null : fullName(person);
   };
+
+  const nameOf = (userId: string | null): string => nameOrNull(userId) ?? '—';
 
   return (
     <>
@@ -77,17 +79,18 @@ export function ContributionsList({
             </div>
 
             {/*
-              На карточке подсказки нет — касание её не открывает, — поэтому
-              причина отказа печатается ниже обычным текстом, а бейджику
-              комментарий не передаётся: иначе одно и то же сказано дважды.
+              Бейджик здесь тот же, что в таблице, и подсказка у него та же:
+              касание её открывает. Отдельной строки с причиной отказа под
+              карточкой больше нет — она говорила бы то же самое дважды.
             */}
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-              <ContributionStatusBadge status={row.status} />
+              <ContributionStatusBadge
+                status={row.status}
+                comment={row.reviewComment}
+                reviewer={nameOrNull(row.reviewedBy)}
+                reviewedAt={row.reviewedAt}
+              />
             </div>
-
-            {row.status === 'REJECTED' && row.reviewComment !== null && (
-              <p className="text-owes mt-2 text-xs">Причина: {row.reviewComment}</p>
-            )}
           </li>
         ))}
       </ul>
@@ -116,7 +119,12 @@ export function ContributionsList({
                   {formatDateTime(row.submittedAt)}
                 </TableCell>
                 <TableCell className="text-center">
-                  <ContributionStatusBadge status={row.status} comment={row.reviewComment} />
+                  <ContributionStatusBadge
+                    status={row.status}
+                    comment={row.reviewComment}
+                    reviewer={nameOrNull(row.reviewedBy)}
+                    reviewedAt={row.reviewedAt}
+                  />
                 </TableCell>
               </TableRow>
             ))}
