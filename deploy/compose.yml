@@ -1,0 +1,77 @@
+# Боевой запуск: база, приложение и Caddy с HTTPS. Порядок работы — в README.
+#
+# Лежит на сервере в /opt/waterdrinkers рядом с `.env` (шаблон — env.template)
+# и `Caddyfile`. Образ приложения не собирается здесь: у сервера 1 ГБ памяти,
+# его привозит `deploy/ship.sh` готовым.
+
+name: waterdrinkers
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: waterdrinkers
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в .env}
+      POSTGRES_DB: waterdrinkers
+    # Под машину с 1 ГБ: умолчания Postgres рассчитаны на сервер побольше,
+    # а нам хватает десятка соединений на десяток участников.
+    command: postgres -c shared_buffers=64MB -c max_connections=20 -c work_mem=4MB
+    # Только на localhost сервера: снаружи база недоступна, а миграции и
+    # перенос дампа идут через SSH-туннель (README, «Миграции»).
+    ports:
+      - '127.0.0.1:${DB_HOST_PORT:-5432}:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U waterdrinkers -d waterdrinkers']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    image: waterdrinkers:${APP_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://waterdrinkers:${POSTGRES_PASSWORD}@db:5432/waterdrinkers
+      SESSION_SECRET: ${SESSION_SECRET:?задайте SESSION_SECRET в .env}
+      # По этому адресу строятся магические ссылки, и от его схемы зависит
+      # флаг `secure` у cookie сессии (src/lib/auth/session.ts).
+      APP_URL: https://${SITE_HOST:?задайте SITE_HOST в .env}
+      ADMIN_TELEGRAM_URL: ${ADMIN_TELEGRAM_URL:-}
+      NODE_OPTIONS: --max-old-space-size=384
+    # Наружу не публикуется: запросы приходят только через Caddy.
+    expose:
+      - '3000'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q --spider http://127.0.0.1:3000/login || exit 1']
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      SITE_HOST: ${SITE_HOST}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Здесь лежат выпущенные сертификаты. Потеря тома — не беда, Caddy
+      # выпустит новые, но частый перевыпуск упирается в лимиты Let's Encrypt.
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

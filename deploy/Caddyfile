@@ -1,0 +1,23 @@
+# SITE_HOST — адрес вида 203-0-113-7.sslip.io: имя, которое без покупки
+# домена указывает на IP сервера. Caddy сам получает на него сертификат
+# Let's Encrypt, продлевает его и уводит http на https.
+
+{$SITE_HOST} {
+	encode zstd gzip
+
+	# Чек поставки до 5 МБ, лимит Next — 6 МБ (next.config.ts). Здесь чуть
+	# выше, чтобы на слишком большой файл отвечало приложение понятной
+	# ошибкой, а не прокси обрывом соединения.
+	request_body {
+		max_size 8MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "same-origin"
+		-Server
+	}
+
+	reverse_proxy app:3000
+}

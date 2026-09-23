@@ -1,6 +1,13 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  /**
+   * Сборка кладёт в `.next/standalone` сервер и ровно те файлы `node_modules`,
+   * которые он читает. Образ для сервера собирается из неё (`Dockerfile`):
+   * у боевой машины 1 ГБ памяти, `next build` там не проходит, а полный
+   * `node_modules` незачем возить по сети. На `npm run dev` не влияет.
+   */
+  output: 'standalone',
   typedRoutes: true,
   experimental: {
     /**
