@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils"
 
 /*
   Бейджик — матовый: заливка градиентом или стекло карточки, без рамки,
-  бликов и теней. Размер — компактный, по строке мелкого текста рядом:
+  бликов и теней. В режиме жидкого стекла `.badge-gloss` добавляет блик,
+  кромку и тень цвета `--badge-tone` (`globals.css`), размер не меняется. Размер — компактный, по строке мелкого текста рядом:
   бейджик помечает, а не перетягивает внимание.
 */
 
@@ -16,15 +17,15 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-[image:var(--gradient-primary)] text-primary-foreground [a&]:hover:brightness-95 dark:[a&]:hover:brightness-110",
+          "badge-gloss bg-[image:var(--gradient-primary)] text-primary-foreground [a&]:hover:brightness-95 dark:[a&]:hover:brightness-110",
         secondary:
-          "bg-[image:var(--gradient-secondary)] text-secondary-foreground [a&]:hover:brightness-95 dark:[a&]:hover:brightness-110",
+          "badge-gloss [--badge-tone:var(--secondary-foreground)] bg-[image:var(--gradient-secondary)] text-secondary-foreground [a&]:hover:brightness-95 dark:[a&]:hover:brightness-110",
         destructive:
-          "bg-[image:var(--gradient-danger)] text-destructive-foreground focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 [a&]:hover:brightness-95 dark:[a&]:hover:brightness-110",
+          "badge-gloss [--badge-tone:var(--destructive)] bg-[image:var(--gradient-danger)] text-destructive-foreground focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 [a&]:hover:brightness-95 dark:[a&]:hover:brightness-110",
         recorded:
-          "bg-[image:var(--gradient-mint)] text-mint-foreground [a&]:hover:brightness-95 dark:[a&]:hover:brightness-110",
+          "badge-gloss [--badge-tone:var(--mint-foreground)] bg-[image:var(--gradient-mint)] text-mint-foreground [a&]:hover:brightness-95 dark:[a&]:hover:brightness-110",
         outline:
-          "glass-soft border-border rounded-full text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+          "glass-soft badge-gloss [--badge-tone:var(--foreground)] border-border rounded-full text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         link: "text-primary underline-offset-4 [a&]:hover:underline",
       },

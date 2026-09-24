@@ -46,7 +46,7 @@ function Badge({ count }: { count: number }): ReactNode {
     <>
       <span
         aria-hidden
-        className="bg-[image:var(--gradient-primary)] text-primary-foreground ring-card absolute -top-1.5 -right-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[0.625rem] font-semibold tabular-nums ring-2"
+        className="badge-gloss bg-[image:var(--gradient-primary)] text-primary-foreground ring-card absolute -top-1.5 -right-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[0.625rem] font-semibold tabular-nums ring-2"
       >
         {count}
       </span>

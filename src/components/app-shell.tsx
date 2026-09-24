@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 import { AdminContactLinks } from '@/components/admin-contact-links';
 import { BottomNav, MainNav } from '@/components/main-nav';
+import { GlassToggle } from '@/components/glass-toggle';
 import { SectionTabs } from '@/components/nav-tabs';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ROLE_LABEL, fullName, type NamedUser } from '@/lib/format';
@@ -15,8 +16,8 @@ import { APP_SECTIONS, ADMIN_SECTION, type NavSection } from '@/lib/view/nav';
  * Оболочка приложения: верхняя полоса, разделы, вкладки раздела.
  *
  * Серверный компонент: ничего интерактивного здесь нет — подсветка текущего
- * раздела живёт в `MainNav`, `BottomNav` и `NavTabs`, переключатель темы в
- * `ThemeToggle`. Оболочка в бандл не едет.
+ * раздела живёт в `MainNav`, `BottomNav` и `NavTabs`, переключатели стекла
+ * и темы — в `GlassToggle` и `ThemeToggle`. Оболочка в бандл не едет.
  *
  * **Навигация одна.** Раньше форм было две — боковая панель и строка вкладок,
  * — и человек выбирал между ними кнопкой. Выбор стоил трёх компонентов,
@@ -114,6 +115,7 @@ export function AppShell({ user, unreadNotices = 0, children }: AppShellProps): 
           <MainNav items={sections} />
 
           <div className="ml-auto flex shrink-0 items-center gap-1">
+            <GlassToggle />
             <ThemeToggle />
 
             {/*

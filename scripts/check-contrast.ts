@@ -275,6 +275,32 @@ function run(): boolean {
     }
 
     /*
+      Жидкое стекло (`[data-glass='liquid']`): поверх заливок кнопок и
+      бейджиков лежит блик. Под буквами он не гаснет до нуля — второй упор
+      `--button-sheen` стоит на строке текста (30% высоты), и именно его
+      яркость накладывается на каждый конец градиента.
+    */
+    const sheenStops = [...tokens.get('--button-sheen')!.matchAll(OKLCH_ALL)];
+    const textLineSheen = parseOklch(sheenStops[1]![0]);
+    for (const [name, gradient, text] of [
+      ['жидкое: кнопка действия', '--gradient-primary', '--primary-foreground'],
+      ['жидкое: опасная кнопка', '--gradient-danger', '--destructive-foreground'],
+      ['жидкое: бейджик вторичный', '--gradient-secondary', '--secondary-foreground'],
+      ['жидкое: «внёс админ»', '--gradient-mint', '--mint-foreground'],
+      ['жидкое: бейджик чека', '--gradient-ink', '--background'],
+    ] as const) {
+      const foreground = parseOklch(tokens.get(text)!);
+      for (const [index, stop] of [...tokens.get(gradient)!.matchAll(OKLCH_ALL)].entries()) {
+        const ratio = contrast(foreground, over(textLineSheen, parseOklch(stop[0])));
+        const passed = ratio >= 4.5;
+        if (!passed) ok = false;
+        console.log(
+          `  ${passed ? '✓' : '✗'} ${`${name}, конец ${index + 1}`.padEnd(22)} ${ratio.toFixed(2)}:1 (нужно 4.5:1)`,
+        );
+      }
+    }
+
+    /*
       Название приложения набрано градиентом. Своё место у него одно — шапка
       поверх стекла, — но та же пара цветов может однажды встать прямо на
       фоне, и подложки эти разные: пройденной на стекле за фон не поручиться.

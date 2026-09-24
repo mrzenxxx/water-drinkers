@@ -174,6 +174,52 @@
   --gradient-chip: linear-gradient(135deg, oklch(0.97 0.018 225), oklch(0.93 0.03 215));
   /* Кольцо фокуса поля: тонкое и без свечения. */
   --field-ring: 0 0 0 3px color-mix(in oklab, var(--ring) 22%, transparent);
+
+  /*
+    Жидкое стекло (`[data-glass='liquid']`, переключатель в шапке): блик
+    кнопок и бейджиков, их кромка и тени, рельеф полей. В матовом виде эти
+    значения не используются. Второй упор блика стоит на строке букв (30%
+    высоты) — его `check:contrast` накладывает на каждую залитую пару.
+  */
+  --button-sheen: linear-gradient(
+    180deg,
+    oklch(1 0 0 / 0.42) 0%,
+    oklch(1 0 0 / 0.1) 30%,
+    oklch(1 0 0 / 0) 55%,
+    oklch(1 0 0 / 0) 78%,
+    oklch(1 0 0 / 0.14) 100%
+  );
+  --btn-edge: oklch(1 0 0 / 0.28);
+  --badge-drop: oklch(0.4 0.08 245 / 0.22);
+  --btn-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.5),
+    inset 0 -2px 3px oklch(0.3 0.1 255 / 0.28),
+    0 1px 2px oklch(0.35 0.1 250 / 0.25),
+    0 8px 20px -8px color-mix(in oklab, var(--primary) 75%, transparent);
+  --btn-shadow-hover:
+    inset 0 1px 0 oklch(1 0 0 / 0.6),
+    inset 0 -2px 3px oklch(0.3 0.1 255 / 0.28),
+    0 1px 2px oklch(0.35 0.1 250 / 0.3),
+    0 12px 28px -10px color-mix(in oklab, var(--primary) 90%, transparent);
+  --btn-shadow-danger:
+    inset 0 1px 0 oklch(1 0 0 / 0.45),
+    inset 0 -2px 3px oklch(0.3 0.1 30 / 0.3),
+    0 1px 2px oklch(0.35 0.1 30 / 0.25),
+    0 8px 20px -8px color-mix(in oklab, var(--destructive) 70%, transparent);
+  --btn-shadow-danger-hover:
+    inset 0 1px 0 oklch(1 0 0 / 0.55),
+    inset 0 -2px 3px oklch(0.3 0.1 30 / 0.3),
+    0 1px 2px oklch(0.35 0.1 30 / 0.3),
+    0 12px 28px -10px color-mix(in oklab, var(--destructive) 85%, transparent);
+
+  /* Лунка поля ввода и её свечение в фокусе (`.field-surface`). */
+  --field-shadow:
+    inset 0 1px 2px oklch(0.4 0.08 245 / 0.12),
+    inset 0 -1px 0 oklch(1 0 0 / 0.55),
+    0 1px 0 oklch(1 0 0 / 0.6);
+  --field-glow:
+    0 0 0 3px color-mix(in oklab, var(--ring) 22%, transparent),
+    0 6px 18px -8px color-mix(in oklab, var(--ring) 55%, transparent);
 }
 
 [data-theme='dark'] {
@@ -264,6 +310,44 @@
   --gradient-ink: linear-gradient(135deg, oklch(0.97 0.01 230), oklch(0.88 0.03 225));
   --gradient-chip: linear-gradient(135deg, oklch(0.31 0.045 245), oklch(0.27 0.04 225));
   --field-ring: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
+  --button-sheen: linear-gradient(
+    180deg,
+    oklch(1 0 0 / 0.45) 0%,
+    oklch(1 0 0 / 0.12) 30%,
+    oklch(1 0 0 / 0) 55%,
+    oklch(1 0 0 / 0) 78%,
+    oklch(1 0 0 / 0.16) 100%
+  );
+  --btn-edge: oklch(1 0 0 / 0.35);
+  --badge-drop: oklch(0 0 0 / 0.45);
+  --btn-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.55),
+    inset 0 -2px 3px oklch(0.25 0.08 250 / 0.3),
+    0 1px 2px oklch(0 0 0 / 0.4),
+    0 8px 22px -8px color-mix(in oklab, var(--primary) 55%, transparent);
+  --btn-shadow-hover:
+    inset 0 1px 0 oklch(1 0 0 / 0.65),
+    inset 0 -2px 3px oklch(0.25 0.08 250 / 0.3),
+    0 1px 2px oklch(0 0 0 / 0.45),
+    0 12px 30px -8px color-mix(in oklab, var(--primary) 75%, transparent);
+  --btn-shadow-danger:
+    inset 0 1px 0 oklch(1 0 0 / 0.5),
+    inset 0 -2px 3px oklch(0.25 0.08 30 / 0.3),
+    0 1px 2px oklch(0 0 0 / 0.4),
+    0 8px 22px -8px color-mix(in oklab, var(--destructive) 55%, transparent);
+  --btn-shadow-danger-hover:
+    inset 0 1px 0 oklch(1 0 0 / 0.6),
+    inset 0 -2px 3px oklch(0.25 0.08 30 / 0.3),
+    0 1px 2px oklch(0 0 0 / 0.45),
+    0 12px 30px -8px color-mix(in oklab, var(--destructive) 75%, transparent);
+
+  --field-shadow:
+    inset 0 1px 3px oklch(0 0 0 / 0.35),
+    inset 0 -1px 0 oklch(1 0 0 / 0.05),
+    0 1px 0 oklch(1 0 0 / 0.04);
+  --field-glow:
+    0 0 0 3px color-mix(in oklab, var(--ring) 28%, transparent),
+    0 6px 20px -8px color-mix(in oklab, var(--ring) 60%, transparent);
 }
 
 @theme inline {
@@ -774,6 +858,171 @@
     --btn-fill: var(--gradient-danger);
   }
 
+  /*
+    ── Жидкое стекло ──────────────────────────────────────────────────────
+
+    Второй вид интерфейса, включается переключателем-пузыриком в шапке
+    (`data-glass="liquid"` на `<html>`, `src/lib/glass.ts`). Матовое стекло
+    остаётся видом по умолчанию; здесь к нему добавляется объём:
+      — кнопки и бейджики: блик `--button-sheen`, светлая кромка, рельеф и
+        свечение цвета самого элемента, по кнопке на наведении пробегает блеск;
+      — второстепенные кнопки: светлая кромка сверху и мягкая тень;
+      — поля: лунка (внутренняя тень) и свечение фокуса;
+      — подписи полей: блик и кромка линзы выбранного раздела (`.nav-pill`);
+      — пузырьки: блик и свечение тона.
+
+    Размеры в обоих видах одни и те же: кромки — внутренние тени, а не рамки,
+    и переключение ничего не сдвигает. Плавность даёт View Transition
+    (`setGlass`), а не переходы свойств: градиенты и блики не анимируются.
+
+    Блик лежит в `::before` за содержимым (`isolation: isolate` на самом
+    элементе), поэтому текст и значки остаются над ним.
+  */
+  [data-glass='liquid'] :is(.btn-fill, .badge-gloss) {
+    position: relative;
+    isolation: isolate;
+  }
+
+  /*
+    Обрезка нужна только кнопке — блеску на наведении. Бейджику её не дают:
+    у бейджика-кнопки чека мишень пальца выступает за края (`.badge-tap`).
+  */
+  [data-glass='liquid'] .btn-fill {
+    overflow: hidden;
+  }
+
+  [data-glass='liquid'] :is(.btn-fill, .badge-gloss)::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background-image: var(--button-sheen);
+    pointer-events: none;
+  }
+
+  [data-glass='liquid'] .btn-fill {
+    box-shadow:
+      inset 0 0 0 1px var(--btn-edge),
+      var(--btn-shadow);
+  }
+
+  [data-glass='liquid'] .btn-fill-danger {
+    --btn-shadow: var(--btn-shadow-danger);
+    --btn-shadow-hover: var(--btn-shadow-danger-hover);
+  }
+
+  [data-glass='liquid'] .btn-fill:hover:not(:disabled) {
+    box-shadow:
+      inset 0 0 0 1px var(--btn-edge),
+      var(--btn-shadow-hover);
+  }
+
+  /* Блеск, пробегающий по кнопке на наведении. */
+  [data-glass='liquid'] .btn-fill::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset-block: -50%;
+    left: -60%;
+    width: 45%;
+    background-image: linear-gradient(
+      100deg,
+      oklch(1 0 0 / 0) 0%,
+      oklch(1 0 0 / 0.28) 50%,
+      oklch(1 0 0 / 0) 100%
+    );
+    transform: skewX(-18deg);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      transform 650ms cubic-bezier(0.2, 0, 0.2, 1),
+      opacity 200ms ease;
+  }
+
+  [data-glass='liquid'] .btn-fill:hover:not(:disabled)::after {
+    opacity: 1;
+    transform: translateX(420%) skewX(-18deg);
+  }
+
+  [data-glass='liquid'] .btn-glass {
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.55),
+      0 1px 2px oklch(0.45 0.07 245 / 0.1),
+      0 4px 12px -6px oklch(0.45 0.09 245 / 0.25);
+  }
+
+  [data-theme='dark'][data-glass='liquid'] .btn-glass {
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.1),
+      0 1px 2px oklch(0 0 0 / 0.35),
+      0 6px 14px -8px oklch(0 0 0 / 0.6);
+  }
+
+  /* Бейджик-бусина: тон тени задаёт вариант (`--badge-tone`). */
+  [data-glass='liquid'] .badge-gloss {
+    box-shadow:
+      inset 0 0 0 1px oklch(1 0 0 / 0.28),
+      inset 0 1px 0 oklch(1 0 0 / 0.5),
+      inset 0 -1px 2px oklch(0.25 0.06 250 / 0.22),
+      0 1px 2px var(--badge-drop),
+      0 3px 8px -3px color-mix(in oklab, var(--badge-tone, var(--primary)) 55%, transparent);
+  }
+
+  [data-theme='dark'][data-glass='liquid'] .badge-gloss {
+    box-shadow:
+      inset 0 0 0 1px oklch(1 0 0 / 0.2),
+      inset 0 1px 0 oklch(1 0 0 / 0.4),
+      inset 0 -1px 2px oklch(0 0 0 / 0.3),
+      0 1px 2px var(--badge-drop),
+      0 3px 10px -3px color-mix(in oklab, var(--badge-tone, var(--primary)) 50%, transparent);
+  }
+
+  [data-glass='liquid'] .field-surface {
+    box-shadow: var(--field-shadow);
+  }
+
+  [data-glass='liquid'] .field-surface:focus-visible,
+  [data-glass='liquid'] .field-surface:has(:focus-visible) {
+    box-shadow: var(--field-shadow), var(--field-glow);
+  }
+
+  [data-glass='liquid'] .field-surface[aria-invalid='true'] {
+    box-shadow:
+      var(--field-shadow),
+      0 0 0 3px color-mix(in oklab, var(--destructive) 18%, transparent);
+  }
+
+  [data-glass='liquid'] .field-chip {
+    background-image: var(--nav-pill-sheen), var(--gradient-chip);
+    box-shadow: var(--nav-pill-shadow);
+  }
+
+  [data-glass='liquid'] .field-chip-host:focus-within .field-chip {
+    box-shadow:
+      var(--nav-pill-shadow),
+      0 0 0 2px color-mix(in oklab, var(--ring) 16%, transparent),
+      0 0 10px color-mix(in oklab, var(--ring) 45%, transparent);
+  }
+
+  [data-glass='liquid'] .bubble {
+    background-image: var(--glass-sheen), var(--bubble-fill);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.35),
+      0 8px 20px -10px color-mix(in oklab, var(--bubble-tone) 65%, transparent);
+  }
+
+  /*
+    Смена вида — медленное растворение старой страницы в новой. Остальные
+    переходы страниц (если появятся) этим правилом не задеты: оно действует,
+    только пока на `<html>` стоит `data-view-transition="glass"`.
+  */
+  :root[data-view-transition='glass']::view-transition-old(root),
+  :root[data-view-transition='glass']::view-transition-new(root) {
+    animation-duration: 650ms;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
   @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
     .field-surface {
       background-color: color-mix(in oklab, var(--card) 68%, transparent);
@@ -861,8 +1110,14 @@
     .glass-strong::before,
     .glass-soft::before,
     .field-chip,
-    .bubble {
+    .bubble,
+    [data-glass='liquid'] :is(.btn-fill, .badge-gloss)::before,
+    [data-glass='liquid'] .btn-fill::after {
       background-image: none;
+    }
+
+    [data-glass='liquid'] :is(.btn-fill, .btn-glass, .badge-gloss, .field-surface, .field-chip, .bubble) {
+      box-shadow: none;
     }
   }
 
@@ -1074,6 +1329,10 @@
     /* Пузырёк появляется сразу. */
     .bubble {
       animation: none;
+    }
+
+    [data-glass='liquid'] .btn-fill::after {
+      display: none;
     }
 
     /* Раскрытие — тоже движение: содержимое появляется, анимации нет. */

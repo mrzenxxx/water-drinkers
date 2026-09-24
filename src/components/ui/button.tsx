@@ -9,7 +9,9 @@ import { cn } from '@/lib/utils';
  *
  * Стиль — матовое стекло. Основное и опасное действия залиты градиентом
  * (`.btn-fill` в `globals.css`) без бликов, рельефа и свечения;
- * второстепенные — матовое стекло карточки (`glass-soft`). Оба конца
+ * второстепенные — матовое стекло карточки (`glass-soft`). В режиме жидкого
+ * стекла (`data-glass="liquid"`) те же классы получают блик, кромку и
+ * свечение — см. раздел «Жидкое стекло» в `globals.css`. Оба конца
  * градиента проверены на контраст с текстом кнопки по отдельности
  * (`npm run check:contrast`): градиент — это не один цвет, и «в среднем
  * проходит» здесь не считается.
@@ -27,11 +29,11 @@ const buttonVariants = cva(
         default:
           'btn-fill text-primary-foreground hover:brightness-95 dark:hover:brightness-110',
         secondary:
-          'glass-soft text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground',
+          'glass-soft btn-glass text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground',
         destructive:
           'btn-fill btn-fill-danger text-destructive-foreground hover:brightness-95 dark:hover:brightness-110',
         outline:
-          'glass-soft text-foreground hover:border-primary/50 hover:text-primary',
+          'glass-soft btn-glass text-foreground hover:border-primary/50 hover:text-primary',
         ghost: 'hover:bg-secondary hover:text-secondary-foreground',
         link: 'text-primary underline-offset-4 hover:underline',
       },
