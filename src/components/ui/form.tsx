@@ -309,8 +309,9 @@ export function Form({
  * подписи — второй нажимаемый элемент там, где браузер ждёт один.
  *
  * Пояснение (`hint`) получает `id` вида `<htmlFor>-hint` — на него поле
- * ссылается своим `aria-describedby`. Пока у поля ошибка, пояснение
- * уступает место пузырьку: два текста под одним полем читаются хуже одного.
+ * ссылается своим `aria-describedby`. Пузырёк ошибки висит над формой под
+ * правым краем поля (`.bubble-field`), а не встаёт в поток: появляясь и
+ * исчезая, он не сдвигает ни пояснение, ни поля ниже.
  */
 export function Field({
   htmlFor,
@@ -339,17 +340,19 @@ export function Field({
         {note !== undefined && <span className="text-muted-foreground text-xs">{note}</span>}
       </div>
 
-      {/* Обёртка ровно по полю: кнопки внутри поля отмеряются от его краёв, не от подписи. */}
-      <div className="relative">{children}</div>
+      {/*
+        Обёртка ровно по полю: кнопки внутри поля и пузырёк ошибки под ним
+        отмеряются от его краёв, не от подписи.
+      */}
+      <div className="relative">
+        {children}
+        {error !== undefined && <FieldBubble id={errorId(htmlFor)}>{error}</FieldBubble>}
+      </div>
 
-      {error !== undefined ? (
-        <FieldBubble id={errorId(htmlFor)}>{error}</FieldBubble>
-      ) : (
-        hint !== undefined && (
-          <p id={`${htmlFor}-hint`} className="text-muted-foreground mt-1.5 text-xs">
-            {hint}
-          </p>
-        )
+      {hint !== undefined && (
+        <p id={`${htmlFor}-hint`} className="text-muted-foreground mt-1.5 text-xs">
+          {hint}
+        </p>
       )}
     </div>
   );
@@ -364,7 +367,7 @@ export function Field({
  */
 function FieldBubble({ id, children }: { id: string; children: ReactNode }): ReactNode {
   return (
-    <p id={id} role="alert" className="bubble bubble-error">
+    <p id={id} role="alert" className="bubble bubble-error bubble-field">
       <CircleAlert aria-hidden className="bubble-icon" />
       <span>{children}</span>
     </p>

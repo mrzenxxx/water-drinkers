@@ -80,7 +80,7 @@ export function ReceiptPreview({
             )}
           >
             <ReceiptText aria-hidden />
-            {label}
+            <span className="text-trim">{label}</span>
           </button>
         ) : (
           <Button type="button" variant="outline" size="sm">

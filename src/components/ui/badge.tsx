@@ -35,10 +35,26 @@ const badgeVariants = cva(
   }
 )
 
+/**
+ * Строки среди детей оборачиваются в `.text-trim`: так надпись встаёт по
+ * середине бейджика по заглавным буквам, а не ниже неё (см. `globals.css`).
+ * При `asChild` ребёнок — чужой элемент, и его содержимое не трогаем.
+ */
+function trimText(children: React.ReactNode): React.ReactNode {
+  return React.Children.map(children, (child) =>
+    typeof child === "string" || typeof child === "number" ? (
+      <span className="text-trim">{child}</span>
+    ) : (
+      child
+    )
+  )
+}
+
 function Badge({
   className,
   variant = "default",
   asChild = false,
+  children,
   ...props
 }: React.ComponentProps<"span"> &
   VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
@@ -50,7 +66,9 @@ function Badge({
       data-variant={variant}
       className={cn(badgeVariants({ variant }), className)}
       {...props}
-    />
+    >
+      {asChild ? children : trimText(children)}
+    </Comp>
   )
 }
 
