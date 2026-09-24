@@ -201,11 +201,11 @@ function run(): boolean {
     const PAGE_TEXTS = ['основной текст', 'приглушённый текст', 'кольцо фокуса'];
 
     /*
-      Стёклышко `.nav-pill` стоит в двух местах: плитка выбранного раздела и
-      подпись поля. В обоих на нём ровно одно слово цветом `--foreground` —
-      и кольцо фокуса вокруг. Ни поля ввода, ни сумм там нет и быть не может.
-      Счётчик непрочитанного — своя пара цветов (`--primary-foreground` на
-      `--primary`), от подложки не зависящая.
+      Стёклышко `.nav-pill` отмечает выбранный раздел. На нём ровно одно
+      слово цветом `--foreground` — и кольцо фокуса вокруг. Ни поля ввода,
+      ни сумм там нет и быть не может. Счётчик непрочитанного — своя пара
+      цветов (`--primary-foreground` на `--gradient-primary`), от подложки не
+      зависящая и проверенная ниже вместе с кнопкой действия.
     */
     const PILL_TEXTS = ['основной текст', 'кольцо фокуса'];
 
@@ -214,7 +214,7 @@ function run(): boolean {
       ['карточка', '--glass-bg', null, true],
       ['шапка и диалог', '--glass-bg-strong', null, true],
       ['плитка', '--glass-bg-soft', null, true],
-      ['стёклышко: раздел и подпись поля — середина, блика нет', '--glass-bg-soft', PILL_TEXTS, false],
+      ['стёклышко выбранного раздела — середина, блика нет', '--glass-bg-soft', PILL_TEXTS, false],
       ['фон приложения (заголовки, пояснения)', null, PAGE_TEXTS, true],
     ] as const) {
       const surface = surfaceOf(tokens, token, sheened);
@@ -258,6 +258,10 @@ function run(): boolean {
       ['кнопка действия', '--gradient-primary', '--primary-foreground', 4.5],
       ['значок-капля', '--gradient-water', '--primary-foreground', 3],
       ['бейджик «внесён администратором»', '--gradient-mint', '--mint-foreground', 4.5],
+      ['опасная кнопка и бейджик', '--gradient-danger', '--destructive-foreground', 4.5],
+      ['бейджик вторичный', '--gradient-secondary', '--secondary-foreground', 4.5],
+      ['бейджик чека', '--gradient-ink', '--background', 4.5],
+      ['подпись поля', '--gradient-chip', '--card-foreground', 4.5],
     ] as const) {
       const foreground = parseOklch(tokens.get(text)!);
       for (const [index, stop] of [...tokens.get(gradient)!.matchAll(OKLCH_ALL)].entries()) {
@@ -266,35 +270,6 @@ function run(): boolean {
         if (!passed) ok = false;
         console.log(
           `  ${passed ? '✓' : '✗'} ${`${name}, конец ${index + 1}`.padEnd(22)} ${ratio.toFixed(2)}:1 (нужно ${min}:1)`,
-        );
-      }
-    }
-
-    /*
-      Кнопки и бейджики из жидкого стекла (`.btn-liquid`, `.badge-bead`):
-      поверх градиента лежит блик.
-      Под буквами он не гаснет до нуля — второй упор `--button-sheen` стоит
-      ровно на строке текста (30% высоты), и именно его яркость накладывается
-      на каждый конец градиента. Выше строки букв блик ярче, но текста там нет.
-    */
-    const sheenStops = [...tokens.get('--button-sheen')!.matchAll(OKLCH_ALL)];
-    const textLineSheen = parseOklch(sheenStops[1]![0]);
-    for (const [name, gradient, text] of [
-      ['кнопка действия под бликом', '--gradient-primary', '--primary-foreground'],
-      ['опасная кнопка под бликом', '--gradient-danger', '--destructive-foreground'],
-      // Бейджики-бусины носят тот же блик, что и кнопка (`.badge-bead`).
-      ['бейджик вторичный под бликом', '--gradient-secondary', '--secondary-foreground'],
-      ['бейджик «внёс админ» под бликом', '--gradient-mint', '--mint-foreground'],
-      ['бейджик чека под бликом', '--gradient-ink', '--background'],
-    ] as const) {
-      const foreground = parseOklch(tokens.get(text)!);
-      for (const [index, stop] of [...tokens.get(gradient)!.matchAll(OKLCH_ALL)].entries()) {
-        const surface = over(textLineSheen, parseOklch(stop[0]));
-        const ratio = contrast(foreground, surface);
-        const passed = ratio >= 4.5;
-        if (!passed) ok = false;
-        console.log(
-          `  ${passed ? '✓' : '✗'} ${`${name}, конец ${index + 1}`.padEnd(22)} ${ratio.toFixed(2)}:1 (нужно 4.5:1)`,
         );
       }
     }

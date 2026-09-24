@@ -163,54 +163,17 @@
   --mint-foreground: oklch(0.36 0.08 180);
 
   /*
-    Кнопка из жидкого стекла (`.btn-liquid`). Блик: яркая плёнка у верхней
-    кромки, к строке букв (30% высоты) почти гаснет, у нижней кромки —
-    слабый отсвет. Второй упор — тот, что стоит под буквами, и именно его
-    `check:contrast` накладывает на градиент кнопки.
+    Градиенты заливок для матовых кнопок и бейджиков. Как и у остальных
+    градиентов, оба конца проверены с текстом по отдельности (`check:contrast`).
+    Бликов и рельефа поверх заливок нет: стиль — матовое стекло, а не глянец.
   */
-  --button-sheen: linear-gradient(
-    180deg,
-    oklch(1 0 0 / 0.42) 0%,
-    oklch(1 0 0 / 0.1) 30%,
-    oklch(1 0 0 / 0) 55%,
-    oklch(1 0 0 / 0) 78%,
-    oklch(1 0 0 / 0.14) 100%
-  );
   --gradient-danger: linear-gradient(135deg, oklch(0.52 0.17 35), oklch(0.47 0.16 28));
-  --btn-edge: oklch(1 0 0 / 0.28);
-  /* Бейджики-бусины (`.badge-bead`): вторичный и перевёрнутый (чек) градиенты. */
   --gradient-secondary: linear-gradient(135deg, oklch(0.96 0.02 220), oklch(0.9 0.04 235));
   --gradient-ink: linear-gradient(135deg, oklch(0.32 0.06 250), oklch(0.22 0.045 255));
-  --badge-drop: oklch(0.4 0.08 245 / 0.22);
-  --btn-shadow:
-    inset 0 1px 0 oklch(1 0 0 / 0.5),
-    inset 0 -2px 3px oklch(0.3 0.1 255 / 0.28),
-    0 1px 2px oklch(0.35 0.1 250 / 0.25),
-    0 8px 20px -8px color-mix(in oklab, var(--primary) 75%, transparent);
-  --btn-shadow-hover:
-    inset 0 1px 0 oklch(1 0 0 / 0.6),
-    inset 0 -2px 3px oklch(0.3 0.1 255 / 0.28),
-    0 1px 2px oklch(0.35 0.1 250 / 0.3),
-    0 12px 28px -10px color-mix(in oklab, var(--primary) 90%, transparent);
-  --btn-shadow-danger:
-    inset 0 1px 0 oklch(1 0 0 / 0.45),
-    inset 0 -2px 3px oklch(0.3 0.1 30 / 0.3),
-    0 1px 2px oklch(0.35 0.1 30 / 0.25),
-    0 8px 20px -8px color-mix(in oklab, var(--destructive) 70%, transparent);
-  --btn-shadow-danger-hover:
-    inset 0 1px 0 oklch(1 0 0 / 0.55),
-    inset 0 -2px 3px oklch(0.3 0.1 30 / 0.3),
-    0 1px 2px oklch(0.35 0.1 30 / 0.3),
-    0 12px 28px -10px color-mix(in oklab, var(--destructive) 85%, transparent);
-
-  /* Лунка поля ввода и её свечение в фокусе (`.field-surface`). */
-  --field-shadow:
-    inset 0 1px 2px oklch(0.4 0.08 245 / 0.12),
-    inset 0 -1px 0 oklch(1 0 0 / 0.55),
-    0 1px 0 oklch(1 0 0 / 0.6);
-  --field-glow:
-    0 0 0 3px color-mix(in oklab, var(--ring) 22%, transparent),
-    0 6px 18px -8px color-mix(in oklab, var(--ring) 55%, transparent);
+  /* Подпись поля: матовая плашка, чуть голубее карточки. */
+  --gradient-chip: linear-gradient(135deg, oklch(0.97 0.018 225), oklch(0.93 0.03 215));
+  /* Кольцо фокуса поля: тонкое и без свечения. */
+  --field-ring: 0 0 0 3px color-mix(in oklab, var(--ring) 22%, transparent);
 }
 
 [data-theme='dark'] {
@@ -296,52 +259,11 @@
   --gradient-mint: linear-gradient(135deg, oklch(0.82 0.11 165), oklch(0.77 0.11 185));
   --mint-foreground: oklch(0.2 0.04 190);
 
-  /*
-    В тёмной теме кнопка светлая, а текст на ней тёмный: светлая плёнка
-    здесь контраст только растит. Свечение сильнее тени — на тёмной воде
-    глубину даёт свет, а не темнота под предметом.
-  */
-  --button-sheen: linear-gradient(
-    180deg,
-    oklch(1 0 0 / 0.45) 0%,
-    oklch(1 0 0 / 0.12) 30%,
-    oklch(1 0 0 / 0) 55%,
-    oklch(1 0 0 / 0) 78%,
-    oklch(1 0 0 / 0.16) 100%
-  );
   --gradient-danger: linear-gradient(135deg, oklch(0.74 0.15 40), oklch(0.69 0.15 30));
-  --btn-edge: oklch(1 0 0 / 0.35);
   --gradient-secondary: linear-gradient(135deg, oklch(0.35 0.05 245), oklch(0.28 0.045 255));
   --gradient-ink: linear-gradient(135deg, oklch(0.97 0.01 230), oklch(0.88 0.03 225));
-  --badge-drop: oklch(0 0 0 / 0.45);
-  --btn-shadow:
-    inset 0 1px 0 oklch(1 0 0 / 0.55),
-    inset 0 -2px 3px oklch(0.25 0.08 250 / 0.3),
-    0 1px 2px oklch(0 0 0 / 0.4),
-    0 8px 22px -8px color-mix(in oklab, var(--primary) 55%, transparent);
-  --btn-shadow-hover:
-    inset 0 1px 0 oklch(1 0 0 / 0.65),
-    inset 0 -2px 3px oklch(0.25 0.08 250 / 0.3),
-    0 1px 2px oklch(0 0 0 / 0.45),
-    0 12px 30px -8px color-mix(in oklab, var(--primary) 75%, transparent);
-  --btn-shadow-danger:
-    inset 0 1px 0 oklch(1 0 0 / 0.5),
-    inset 0 -2px 3px oklch(0.25 0.08 30 / 0.3),
-    0 1px 2px oklch(0 0 0 / 0.4),
-    0 8px 22px -8px color-mix(in oklab, var(--destructive) 55%, transparent);
-  --btn-shadow-danger-hover:
-    inset 0 1px 0 oklch(1 0 0 / 0.6),
-    inset 0 -2px 3px oklch(0.25 0.08 30 / 0.3),
-    0 1px 2px oklch(0 0 0 / 0.45),
-    0 12px 30px -8px color-mix(in oklab, var(--destructive) 75%, transparent);
-
-  --field-shadow:
-    inset 0 1px 3px oklch(0 0 0 / 0.35),
-    inset 0 -1px 0 oklch(1 0 0 / 0.05),
-    0 1px 0 oklch(1 0 0 / 0.04);
-  --field-glow:
-    0 0 0 3px color-mix(in oklab, var(--ring) 28%, transparent),
-    0 6px 20px -8px color-mix(in oklab, var(--ring) 60%, transparent);
+  --gradient-chip: linear-gradient(135deg, oklch(0.31 0.045 245), oklch(0.27 0.04 225));
+  --field-ring: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
 }
 
 @theme inline {
@@ -587,9 +509,10 @@
   /*
     ── Подпись поля ───────────────────────────────────────────────────────
 
-    Подпись — маленькое стёклышко над полем. Приём тот же, что отмечает
-    выбранный раздел в шапке (`.nav-pill` рядом): одна идея на два места, а
-    не два похожих приёма, поэтому и блик, и кромка, и тень здесь общие.
+    Подпись — матовая плашка над полем: градиент `--gradient-chip`, тонкая
+    кромка, без блика и тени. Стеклянная линза с бликом (`.nav-pill`)
+    остаётся только у выбранного раздела в шапке: подпись поля — справка,
+    а не место, где ты сейчас находишься, и выглядеть одинаково им незачем.
 
     Поля подпись не касается. Наползающая плашка закрывает кусок рамки и
     спорит с ней за внимание: рамка говорит «сюда пишут», плашка — «вот как
@@ -623,24 +546,31 @@
     width: fit-content;
     max-width: 100%;
     align-items: center;
-    height: 1.625rem;
-    padding-inline: 0.6875rem;
+    height: 1.25rem;
+    padding-inline: 0.5625rem;
+    border: 1px solid var(--glass-border-soft);
     border-radius: 999px;
+    background-image: var(--gradient-chip);
     color: var(--card-foreground);
     font-size: 0.75rem;
     font-weight: 500;
     line-height: 1;
     white-space: nowrap;
-    transition: border-color 200ms ease;
+    transition:
+      border-color 200ms ease,
+      box-shadow 200ms ease;
   }
 
   /*
-    Поле в фокусе — подпись подхватывает его кольцо. Состояние «в это поле
-    сейчас пишут» знает `:focus-within`, и знает точнее любого значения в
-    React: оно переживает перерисовку и не требует обработчиков.
+    Поле в фокусе — подпись чуть подсвечивается по краю: кромка цвета
+    `--ring` и мягкий ореол вокруг. Подложку свет не трогает, поэтому
+    контраст текста остаётся проверенным. Состояние «в это поле сейчас
+    пишут» знает `:focus-within`, и знает точнее любого значения в React.
   */
   .field-chip-host:focus-within .field-chip {
     border-color: var(--ring);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 16%, transparent),
+      0 0 8px color-mix(in oklab, var(--ring) 35%, transparent);
   }
 
   /* Поле с ошибкой — подпись краснеет кромкой вместе с ним. */
@@ -648,29 +578,27 @@
     border-color: var(--destructive);
   }
 
+  .field-chip-host[data-invalid]:focus-within .field-chip {
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--destructive) 14%, transparent),
+      0 0 8px color-mix(in oklab, var(--destructive) 30%, transparent);
+  }
+
   /*
-    Поле ввода — лунка в стекле.
+    Поле ввода — матовое стекло.
 
-    Стекло здесь тише, чем на карточке, а граница остаётся цветом `--input`
-    (не менее 3:1 к фону): именно граница говорит, что сюда можно писать, и
-    растворять её в блике нельзя.
+    Подложка полупрозрачная и размывает фон под собой (правило в `@supports`
+    ниже), а граница остаётся цветом `--input` (не менее 3:1 к фону): именно
+    граница говорит, что сюда можно писать. Рельефа и бликов нет.
 
-    Глубину дают тени, а не подложка: внутренняя тень сверху — край лунки,
-    светлая линия снизу — свет, отражённый её дном. Подложку под текстом тени
-    не трогают, поэтому проверка контраста её по-прежнему описывает.
-
-    Фокус — мягкое свечение цвета `--ring` вокруг кромки: поле будто
-    наливается светом. Кольцо задано здесь, а не утилитами `ring-*`: те
-    перезаписали бы `box-shadow` целиком, и лунка на фокусе исчезала бы.
+    Фокус — граница цвета `--ring` и тонкое кольцо вокруг. Кольцо задано
+    здесь, а не утилитами `ring-*`: так у всех полей оно одно и то же.
   */
   .field-surface {
     background-color: var(--card);
     border-color: var(--input);
-    box-shadow: var(--field-shadow);
     transition:
       border-color 200ms ease,
-      box-shadow 200ms ease,
-      background-color 200ms ease;
+      box-shadow 200ms ease;
   }
 
   .field-surface:hover:not(:disabled, :focus-visible, :focus-within) {
@@ -681,59 +609,53 @@
   .field-surface:has(:focus-visible) {
     outline: none;
     border-color: var(--ring);
-    box-shadow: var(--field-shadow), var(--field-glow);
+    box-shadow: var(--field-ring);
   }
 
   .field-surface[aria-invalid='true'] {
     border-color: var(--destructive);
-    box-shadow:
-      var(--field-shadow),
-      0 0 0 3px color-mix(in oklab, var(--destructive) 18%, transparent);
   }
 
   .field-surface[aria-invalid='true']:focus-visible {
-    box-shadow:
-      var(--field-shadow),
-      0 0 0 3px color-mix(in oklab, var(--destructive) 28%, transparent),
-      0 6px 18px -8px color-mix(in oklab, var(--destructive) 60%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--destructive) 22%, transparent);
   }
 
   /*
     ── Пузырёк ────────────────────────────────────────────────────────────
 
-    Сообщение формы: ошибка под полем или итог отправки. Капля стекла с
+    Сообщение формы: ошибка под полем или итог отправки. Матовая капля с
     хвостиком из двух пузырьков, поднимающихся к полю, — как облачко мысли.
+    Размер текста — как у пояснений под полями: пузырёк не должен кричать
+    громче самого поля.
 
     Текст — `--card-foreground` на почти карточной подложке: смысл несут
-    значок и слова, а тон ошибки или успеха лежит только на кромке, свечении
-    и значке. Так контраст текста остаётся тем же, что у основного текста, а
-    цвет — не единственный носитель смысла (§12).
-
-    Появление — всплытие с лёгкой отдачей, из точки у хвостика.
+    значок и слова, а тон ошибки или успеха лежит только на кромке, лёгком
+    оттенке подложки и значке. Цвет — не единственный носитель смысла (§12).
   */
   .bubble {
     --bubble-tone: var(--destructive);
+    --bubble-bg: color-mix(in oklab, var(--card) 92%, var(--bubble-tone));
+    --bubble-fill: linear-gradient(
+      135deg,
+      color-mix(in oklab, var(--card) 95%, var(--bubble-tone)),
+      color-mix(in oklab, var(--card) 88%, var(--bubble-tone))
+    );
     position: relative;
     display: flex;
     width: fit-content;
     max-width: 100%;
     align-items: flex-start;
-    gap: 0.4375rem;
-    margin-top: 0.875rem;
-    padding: 0.4375rem 0.8125rem 0.4375rem 0.625rem;
-    border: 1px solid color-mix(in oklab, var(--bubble-tone) 55%, var(--glass-border));
-    border-radius: 1.125rem;
-    background-color: color-mix(in oklab, var(--card) 93%, var(--bubble-tone));
-    background-image: var(--glass-sheen);
+    gap: 0.375rem;
+    margin-top: 0.6875rem;
+    padding: 0.125rem 0.5625rem 0.125rem 0.4375rem;
+    border: 1px solid color-mix(in oklab, var(--bubble-tone) 45%, var(--border));
+    border-radius: 0.75rem;
+    background-color: var(--bubble-bg);
+    background-image: var(--bubble-fill);
     color: var(--card-foreground);
-    font-size: 0.8125rem;
-    font-weight: 500;
-    line-height: 1.35;
-    box-shadow:
-      inset 0 1px 0 oklch(1 0 0 / 0.35),
-      0 8px 20px -10px color-mix(in oklab, var(--bubble-tone) 65%, transparent);
-    transform-origin: 1rem 0;
-    animation: bubble-rise 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    font-size: 0.75rem;
+    line-height: 1.25rem;
+    animation: bubble-rise 200ms ease-out both;
   }
 
   .bubble-success {
@@ -751,35 +673,35 @@
     position: absolute;
     border: inherit;
     border-radius: 999px;
-    background-color: color-mix(in oklab, var(--card) 93%, var(--bubble-tone));
+    background-color: var(--bubble-bg);
   }
 
   .bubble::before {
-    top: -0.5625rem;
-    left: 0.875rem;
-    width: 0.5rem;
-    height: 0.5rem;
+    top: -0.5rem;
+    left: 0.75rem;
+    width: 0.4375rem;
+    height: 0.4375rem;
   }
 
   .bubble::after {
-    top: -0.875rem;
-    left: 0.625rem;
-    width: 0.3125rem;
-    height: 0.3125rem;
+    top: -0.75rem;
+    left: 0.5625rem;
+    width: 0.25rem;
+    height: 0.25rem;
   }
 
   .bubble-icon {
     flex-shrink: 0;
-    width: 1rem;
-    height: 1rem;
-    margin-top: 0.0625rem;
+    width: 0.8125rem;
+    height: 0.8125rem;
+    margin-top: 0.21875rem;
     color: var(--bubble-tone);
   }
 
   @keyframes bubble-rise {
     from {
       opacity: 0;
-      transform: translateY(-0.25rem) scale(0.85);
+      transform: translateY(-0.125rem);
     }
     to {
       opacity: 1;
@@ -788,144 +710,19 @@
   }
 
   /*
-    ── Кнопка основного действия: жидкое стекло ───────────────────────────
+    ── Залитая кнопка ─────────────────────────────────────────────────────
 
-    Водный градиент под толстой линзой. Слои снизу вверх:
-      1. градиент — сама вода (`--btn-fill`);
-      2. блик `::before` — светлая плёнка по верхней кромке и отсвет у нижней,
-         как у капли, в которой свет преломляется и выходит снизу;
-      3. кромка — полупрозрачная светлая граница и внутренние тени;
-      4. тень цвета самой кнопки — стекло светится водой, а не лежит серым пятном.
-    На наведении по кнопке проходит блик (`::after`) и свечение густеет.
-
-    Блик в строке букв ограничен упором `--button-sheen` на 30% высоты:
-    проверка `check:contrast` накладывает именно этот упор на оба конца
-    градиента. Поднимешь упор — проверка скажет, хватает ли контраста.
+    Основное и опасное действия — заливка градиентом (`--btn-fill`) и ничего
+    сверх неё: ни блика, ни рельефа, ни свечения. Стиль — матовое стекло.
+    Тень кнопкам не ставится утилитой `shadow-*`: плоская заливка на
+    матовой карточке читается и так.
   */
-  .btn-liquid {
-    position: relative;
-    isolation: isolate;
-    overflow: hidden;
-    border: 1px solid var(--btn-edge);
+  .btn-fill {
     background-image: var(--btn-fill, var(--gradient-primary));
-    box-shadow: var(--btn-shadow);
   }
 
-  .btn-liquid::before,
-  .btn-liquid::after {
-    content: '';
-    position: absolute;
-    z-index: -1;
-    pointer-events: none;
-  }
-
-  .btn-liquid::before {
-    inset: 0;
-    border-radius: inherit;
-    background-image: var(--button-sheen);
-  }
-
-  .btn-liquid::after {
-    inset-block: -50%;
-    left: -60%;
-    width: 45%;
-    background-image: linear-gradient(
-      100deg,
-      oklch(1 0 0 / 0) 0%,
-      oklch(1 0 0 / 0.28) 50%,
-      oklch(1 0 0 / 0) 100%
-    );
-    transform: translateX(0) skewX(-18deg);
-    opacity: 0;
-    transition:
-      transform 650ms cubic-bezier(0.2, 0, 0.2, 1),
-      opacity 200ms ease;
-  }
-
-  .btn-liquid:hover:not(:disabled) {
-    box-shadow: var(--btn-shadow-hover);
-  }
-
-  .btn-liquid:hover:not(:disabled)::after {
-    opacity: 1;
-    transform: translateX(420%) skewX(-18deg);
-  }
-
-  /* Разрушительное действие — та же линза, но вода окрашена предупреждением. */
-  .btn-liquid-danger {
+  .btn-fill-danger {
     --btn-fill: var(--gradient-danger);
-    --btn-shadow: var(--btn-shadow-danger);
-    --btn-shadow-hover: var(--btn-shadow-danger-hover);
-  }
-
-  /*
-    ── Бейджик-бусина ─────────────────────────────────────────────────────
-
-    Бейджик — маленькая капля того же жидкого стекла, что и кнопка действия:
-    заливка градиентом (`--badge-fill`), блик `--button-sheen` по верхней
-    кромке, светлый ободок, затемнение у дна и тень цвета самого бейджика
-    (`--badge-tone`). Блик общий с кнопкой нарочно: его упор в строке букв
-    уже наложен на каждую пару «текст — заливка» в `check:contrast`.
-
-    Стеклянный вариант (`outline`, «на рассмотрении») заливки не имеет —
-    у него только ободок, блик и тень: бусина из чистого стекла.
-  */
-  .badge-bead {
-    position: relative;
-    isolation: isolate;
-    border: 1px solid oklch(1 0 0 / 0.3);
-    background-image: var(--badge-fill, none);
-    box-shadow:
-      inset 0 1px 0 oklch(1 0 0 / 0.5),
-      inset 0 -1px 2px oklch(0.25 0.06 250 / 0.22),
-      0 1px 2px var(--badge-drop),
-      0 3px 8px -3px color-mix(in oklab, var(--badge-tone, var(--primary)) 55%, transparent);
-  }
-
-  .badge-bead::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    border-radius: inherit;
-    background-image: var(--button-sheen);
-    pointer-events: none;
-  }
-
-  [data-theme='dark'] .badge-bead {
-    border-color: oklch(1 0 0 / 0.22);
-    box-shadow:
-      inset 0 1px 0 oklch(1 0 0 / 0.4),
-      inset 0 -1px 2px oklch(0 0 0 / 0.3),
-      0 1px 2px var(--badge-drop),
-      0 3px 10px -3px color-mix(in oklab, var(--badge-tone, var(--primary)) 50%, transparent);
-  }
-
-  .badge-bead-glass {
-    --badge-tone: var(--foreground);
-    border-color: var(--glass-border);
-  }
-
-  [data-theme='dark'] .badge-bead-glass {
-    --badge-tone: black;
-  }
-
-  /*
-    Второстепенные кнопки — стекло без воды: светлая кромка сверху и тень,
-    чтобы и они читались выпуклыми, а не нарисованными на карточке.
-  */
-  .btn-glass {
-    box-shadow:
-      inset 0 1px 0 oklch(1 0 0 / 0.55),
-      0 1px 2px oklch(0.45 0.07 245 / 0.1),
-      0 4px 12px -6px oklch(0.45 0.09 245 / 0.25);
-  }
-
-  [data-theme='dark'] .btn-glass {
-    box-shadow:
-      inset 0 1px 0 oklch(1 0 0 / 0.1),
-      0 1px 2px oklch(0 0 0 / 0.35),
-      0 6px 14px -8px oklch(0 0 0 / 0.6);
   }
 
   @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
@@ -933,6 +730,21 @@
       background-color: color-mix(in oklab, var(--card) 68%, transparent);
       backdrop-filter: blur(8px) saturate(1.2);
       -webkit-backdrop-filter: blur(8px) saturate(1.2);
+    }
+
+    .bubble {
+      --bubble-bg: color-mix(
+        in oklab,
+        color-mix(in oklab, var(--card) 92%, var(--bubble-tone)) 80%,
+        transparent
+      );
+      --bubble-fill: linear-gradient(
+        135deg,
+        color-mix(in oklab, color-mix(in oklab, var(--card) 95%, var(--bubble-tone)) 82%, transparent),
+        color-mix(in oklab, color-mix(in oklab, var(--card) 88%, var(--bubble-tone)) 82%, transparent)
+      );
+      backdrop-filter: blur(12px) saturate(1.2);
+      -webkit-backdrop-filter: blur(12px) saturate(1.2);
     }
 
     .glass {
@@ -962,7 +774,8 @@
     .glass,
     .glass-strong,
     .glass-soft,
-    .field-surface {
+    .field-surface,
+    .bubble {
       background-color: var(--card);
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
@@ -970,7 +783,8 @@
 
     .glass::before,
     .glass-strong::before,
-    .glass-soft::before {
+    .glass-soft::before,
+    .bubble {
       background-image: none;
     }
   }
@@ -986,8 +800,7 @@
     .nav-pill,
     .field-chip,
     .field-surface,
-    .bubble,
-    .btn-glass {
+    .bubble {
       background-color: Canvas;
       border-color: CanvasText;
       box-shadow: none;
@@ -998,21 +811,9 @@
     .glass::before,
     .glass-strong::before,
     .glass-soft::before,
-    .btn-liquid::before,
-    .btn-liquid::after,
-    .badge-bead::before {
+    .field-chip,
+    .bubble {
       background-image: none;
-    }
-
-    .badge-bead {
-      border-color: CanvasText;
-      box-shadow: none;
-    }
-
-    /* Кнопка действия — системная кнопка: заливку и рамку держит система. */
-    .btn-liquid {
-      border-color: ButtonText;
-      box-shadow: none;
     }
   }
 
@@ -1221,13 +1022,9 @@
       transition-duration: 0.01ms;
     }
 
-    /* Пузырёк появляется сразу, блик по кнопке не пробегает. */
+    /* Пузырёк появляется сразу. */
     .bubble {
       animation: none;
-    }
-
-    .btn-liquid::after {
-      display: none;
     }
 
     /* Раскрытие — тоже движение: содержимое появляется, анимации нет. */

@@ -26,7 +26,7 @@ export function AbsenceForm({ today }: { today: string }): ReactNode {
   return (
     <Form action={action} state={state} className="space-y-4">
       <fieldset className="space-y-2">
-        <legend className="field-chip glass-soft nav-pill mb-2">Тип</legend>
+        <legend className="field-chip mb-2">Тип</legend>
         <div className="flex flex-wrap gap-4">
           {(['VACATION', 'SICK_LEAVE'] as const).map((type, index) => (
             <label key={type} className="flex items-center gap-2 text-sm">

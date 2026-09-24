@@ -114,7 +114,7 @@ export function OpeningBalancesForm({
           </div>
 
           <fieldset className="flex flex-col gap-2">
-            <legend className="field-chip glass-soft nav-pill mb-2">Начальные сальдо участников</legend>
+            <legend className="field-chip mb-2">Начальные сальдо участников</legend>
             <div className="grid gap-2 sm:grid-cols-2">
               {participants.map((participant) => (
                 <div key={participant.id} className="flex items-center justify-between gap-3">

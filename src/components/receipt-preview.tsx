@@ -76,7 +76,7 @@ export function ReceiptPreview({
             type="button"
             className={cn(
               badgeVariants({ variant: 'ghost' }),
-              'badge-tap badge-bead press text-background [--badge-fill:var(--gradient-ink)] [--badge-tone:var(--foreground)] focus-visible:outline-ring cursor-pointer transition-[filter] duration-200 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2',
+              'badge-tap press bg-[image:var(--gradient-ink)] text-background focus-visible:outline-ring cursor-pointer transition-[filter] duration-200 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2',
             )}
           >
             <ReceiptText aria-hidden />
