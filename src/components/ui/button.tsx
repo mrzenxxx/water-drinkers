@@ -7,10 +7,15 @@ import { cn } from '@/lib/utils';
 /**
  * Кнопка.
  *
- * Основное действие залито водным градиентом, второстепенные — стеклом.
- * Оба конца градиента проверены на контраст с текстом кнопки по отдельности
- * (`npm run check:contrast`): градиент — это не один цвет, и «в среднем
- * проходит» здесь не считается.
+ * Основное действие — жидкое стекло (`.btn-liquid` в `globals.css`): водный
+ * градиент под линзой с бликом, светлой кромкой и свечением цвета самой
+ * кнопки. Второстепенные — стекло без воды (`.btn-glass`). Оба конца
+ * градиента проверены на контраст с текстом кнопки по отдельности, вместе с
+ * бликом в строке букв (`npm run check:contrast`): градиент — это не один
+ * цвет, и «в среднем проходит» здесь не считается.
+ *
+ * Тени кнопок живут в классах, а не в утилитах `shadow-*`: утилита стоит
+ * слоем выше и перезаписала бы тень линзы целиком.
  *
  * Наведение меняет яркость в ту сторону, где контраст растёт: в светлой теме
  * заливка темнеет под светлым текстом, в тёмной — светлеет под тёмным.
@@ -23,13 +28,13 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          'bg-[image:var(--gradient-primary)] text-primary-foreground shadow-sm hover:brightness-95 hover:shadow-md dark:hover:brightness-110',
+          'btn-liquid text-primary-foreground hover:brightness-95 dark:hover:brightness-110',
         secondary:
-          'glass-soft text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground',
+          'glass-soft btn-glass text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground',
         destructive:
-          'bg-destructive text-destructive-foreground shadow-sm hover:brightness-95 dark:hover:brightness-110',
+          'btn-liquid btn-liquid-danger text-destructive-foreground hover:brightness-95 dark:hover:brightness-110',
         outline:
-          'glass-soft text-foreground hover:border-primary/50 hover:text-primary',
+          'glass-soft btn-glass text-foreground hover:border-primary/50 hover:text-primary',
         ghost: 'hover:bg-secondary hover:text-secondary-foreground',
         link: 'text-primary underline-offset-4 hover:underline',
       },

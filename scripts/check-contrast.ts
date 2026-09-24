@@ -271,6 +271,30 @@ function run(): boolean {
     }
 
     /*
+      Кнопки из жидкого стекла (`.btn-liquid`): поверх градиента лежит блик.
+      Под буквами он не гаснет до нуля — второй упор `--button-sheen` стоит
+      ровно на строке текста (30% высоты), и именно его яркость накладывается
+      на каждый конец градиента. Выше строки букв блик ярче, но текста там нет.
+    */
+    const sheenStops = [...tokens.get('--button-sheen')!.matchAll(OKLCH_ALL)];
+    const textLineSheen = parseOklch(sheenStops[1]![0]);
+    for (const [name, gradient, text] of [
+      ['кнопка действия под бликом', '--gradient-primary', '--primary-foreground'],
+      ['опасная кнопка под бликом', '--gradient-danger', '--destructive-foreground'],
+    ] as const) {
+      const foreground = parseOklch(tokens.get(text)!);
+      for (const [index, stop] of [...tokens.get(gradient)!.matchAll(OKLCH_ALL)].entries()) {
+        const surface = over(textLineSheen, parseOklch(stop[0]));
+        const ratio = contrast(foreground, surface);
+        const passed = ratio >= 4.5;
+        if (!passed) ok = false;
+        console.log(
+          `  ${passed ? '✓' : '✗'} ${`${name}, конец ${index + 1}`.padEnd(22)} ${ratio.toFixed(2)}:1 (нужно 4.5:1)`,
+        );
+      }
+    }
+
+    /*
       Название приложения набрано градиентом. Своё место у него одно — шапка
       поверх стекла, — но та же пара цветов может однажды встать прямо на
       фоне, и подложки эти разные: пройденной на стекле за фон не поручиться.

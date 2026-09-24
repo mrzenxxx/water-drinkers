@@ -277,7 +277,7 @@ function DateField({
       value={value}
       disabled={!enabled}
       onChange={(event) => onChange(event.target.value)}
-      className="field-surface focus-visible:border-ring focus-visible:ring-ring/50 h-(--control-h) w-full min-w-0 rounded-md border px-2 text-sm sm:w-36 transition-[opacity,border-color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50"
+      className="field-surface h-(--control-h) w-full min-w-0 rounded-md border px-2 text-sm sm:w-36 outline-none disabled:cursor-not-allowed disabled:opacity-50"
     />
   );
 }
