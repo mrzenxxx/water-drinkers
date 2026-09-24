@@ -3,8 +3,8 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 
+import { Field } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 
 export type DepartmentOption = { id: string; name: string };
@@ -30,8 +30,7 @@ export function DepartmentField({
   const [choice, setChoice] = useState(defaultNew ? NEW : (defaultId ?? ''));
 
   return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={`${idPrefix}-department`}>Отдел</Label>
+    <Field htmlFor={`${idPrefix}-department`} label="Отдел" note="необязательно">
       <NativeSelect
         id={`${idPrefix}-department`}
         name={choice === NEW ? undefined : 'departmentId'}
@@ -54,8 +53,9 @@ export function DepartmentField({
           placeholder="Например, Бухгалтерия"
           required
           autoFocus
+          className="mt-2"
         />
       )}
-    </div>
+    </Field>
   );
 }

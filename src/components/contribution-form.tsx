@@ -4,8 +4,8 @@ import { Clock3 } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { SubmitButton } from '@/components/submit-button';
+import { Field, Form, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import type { ActionState } from '@/lib/actions/state';
 import type { IsoDate } from '@/lib/calc/types';
 import { formatDate } from '@/lib/format';
@@ -48,7 +48,7 @@ export function ContributionForm({
   const locked = pending !== null;
 
   return (
-    <form action={action} className="space-y-4">
+    <Form action={action} state={state} className="space-y-4">
       {locked && (
         <p
           role="status"
@@ -65,8 +65,7 @@ export function ContributionForm({
 
       <fieldset disabled={locked} className="space-y-4 disabled:opacity-60">
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="amount">Сумма, ₽</Label>
+          <Field htmlFor="amount" label="Сумма, ₽" hint="Рубли и копейки: 500 или 500,50">
             <Input
               id="amount"
               name="amount"
@@ -76,13 +75,9 @@ export function ContributionForm({
               placeholder="500"
               aria-describedby="amount-hint"
             />
-            <p id="amount-hint" className="text-muted-foreground text-xs">
-              Рубли и копейки: 500 или 500,50.
-            </p>
-          </div>
+          </Field>
 
-          <div className="space-y-2">
-            <Label htmlFor="paidAt">Дата платежа</Label>
+          <Field htmlFor="paidAt" label="Дата платежа" hint="День, когда деньги действительно ушли">
             <Input
               id="paidAt"
               name="paidAt"
@@ -90,18 +85,13 @@ export function ContributionForm({
               required
               defaultValue={today}
               max={today}
+              aria-describedby="paidAt-hint"
             />
-            <p className="text-muted-foreground text-xs">День, когда деньги действительно ушли.</p>
-          </div>
+          </Field>
         </div>
 
         {!locked && state.status !== 'idle' && state.message !== null && (
-          <p
-            role={state.status === 'error' ? 'alert' : 'status'}
-            className={state.status === 'error' ? 'text-owes text-sm' : 'text-credit text-sm'}
-          >
-            {state.message}
-          </p>
+          <FormMessage tone={state.status === 'error' ? 'error' : 'success'}>{state.message}</FormMessage>
         )}
 
         {/*
@@ -112,6 +102,6 @@ export function ContributionForm({
           Зарегистрировать взнос
         </SubmitButton>
       </fieldset>
-    </form>
+    </Form>
   );
 }

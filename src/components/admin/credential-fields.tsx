@@ -6,9 +6,8 @@ import { useFormStatus } from 'react-dom';
 
 import type { CredentialsFormState } from '@/components/admin/credentials-state';
 import { Button, type ButtonProps } from '@/components/ui/button';
+import { Field, FormMessage as Bubble } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
 
 /**
  * Кнопка одного из шагов формы. Шаг уходит полем `intent`, а ожидание
@@ -31,15 +30,19 @@ export function IntentButton({
   );
 }
 
-/** Строка результата под формой. Цвет — не единственный носитель смысла (§12). */
+/**
+ * Пузырёк результата под формой. Ошибка, привязанная к полю, стоит под самим
+ * полем (`Form fieldError`) и здесь не повторяется.
+ */
 export function FormMessage({ state }: { state: CredentialsFormState }): ReactNode {
-  if (state.status === 'idle' || state.status === 'issued') return null;
-  return (
-    <p role="status" className={cn('text-sm', state.status === 'error' ? 'text-destructive' : 'text-muted-foreground')}>
-      {state.status === 'error' && <span aria-hidden="true">✕ </span>}
-      {state.message}
-    </p>
-  );
+  if (state.status === 'idle' || state.status === 'issued' || state.message === '') return null;
+  if (state.status === 'error' && state.field !== null) return null;
+  return <Bubble tone={state.status === 'error' ? 'error' : 'info'}>{state.message}</Bubble>;
+}
+
+/** Ошибка, которую сервер привязал к полю, — в том виде, что ждёт `Form`. */
+export function credentialsFieldError(state: CredentialsFormState): { name: string; message: string } | null {
+  return state.status === 'error' && state.field !== null ? { name: state.field, message: state.message } : null;
 }
 
 /**
@@ -48,12 +51,9 @@ export function FormMessage({ state }: { state: CredentialsFormState }): ReactNo
  * обязательных полей (`formNoValidate`), запись — с ней.
  */
 export function CredentialFields({ state, idPrefix }: { state: CredentialsFormState; idPrefix: string }): ReactNode {
-  const invalid = (field: string) => (state.status === 'error' && state.field === field ? true : undefined);
-
   return (
-    <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={`${idPrefix}-login`}>Логин</Label>
+    <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-start">
+      <Field htmlFor={`${idPrefix}-login`} label="Логин">
         <Input
           id={`${idPrefix}-login`}
           name="login"
@@ -61,12 +61,10 @@ export function CredentialFields({ state, idPrefix }: { state: CredentialsFormSt
           required
           autoComplete="off"
           spellCheck={false}
-          aria-invalid={invalid('login')}
           className="font-mono"
         />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={`${idPrefix}-password`}>Пароль</Label>
+      </Field>
+      <Field htmlFor={`${idPrefix}-password`} label="Пароль">
         <Input
           id={`${idPrefix}-password`}
           name="password"
@@ -75,11 +73,16 @@ export function CredentialFields({ state, idPrefix }: { state: CredentialsFormSt
           minLength={8}
           autoComplete="off"
           spellCheck={false}
-          aria-invalid={invalid('password')}
           className="font-mono"
         />
-      </div>
-      <IntentButton intent="suggest" pendingLabel="Генерируем…" variant="outline" formNoValidate>
+      </Field>
+      <IntentButton
+        intent="suggest"
+        pendingLabel="Генерируем…"
+        variant="outline"
+        formNoValidate
+        className="sm:mt-[2.125rem]"
+      >
         <KeyRound aria-hidden />
         Сгенерировать учётные данные
       </IntentButton>

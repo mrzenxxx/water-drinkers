@@ -4,8 +4,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useFormStatus } from 'react-dom';
 
 import { ReceiptPreview } from '@/components/receipt-preview';
+import { Field } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { formatFileSize } from '@/lib/format';
 import { MAX_RECEIPT_BYTES, RECEIPT_ACCEPT } from '@/lib/receipts/file';
 
@@ -30,6 +30,10 @@ import { MAX_RECEIPT_BYTES, RECEIPT_ACCEPT } from '@/lib/receipts/file';
  * пересоздавать поле по `key` из родителя — работает так же, но заставила
  * бы владеть ключом состояние формы целиком там, где сейчас достаточно этого
  * компонента.
+ *
+ * Исключение — отказ сервера: тогда `Form` возвращает отправленный файл в
+ * поле, чтобы человек не выбирал его заново. Поэтому плашка гаснет, только
+ * если поле после отправки действительно пусто.
  */
 export function ReceiptField({
   name = 'receipt',
@@ -44,10 +48,11 @@ export function ReceiptField({
 
   const { pending } = useFormStatus();
   const wasPending = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (wasPending.current && !pending) {
-      // Отправка только что завершилась, и поле уже сброшено формой —
+    if (wasPending.current && !pending && (inputRef.current?.files?.length ?? 0) === 0) {
+      // Отправка только что завершилась, и поле сброшено формой —
       // плашка выбранного файла обязана исчезнуть вместе с ним.
       setPicked(null);
     }
@@ -60,10 +65,13 @@ export function ReceiptField({
   }, [picked]);
 
   return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={id}>Чек</Label>
-
+    <Field
+      htmlFor={id}
+      label="Чек"
+      hint={`PDF или снимок экрана, до ${Math.round(MAX_RECEIPT_BYTES / 1024 / 1024)} МБ. Поставка отмечается только с подтверждением оплаты.`}
+    >
       <Input
+        ref={inputRef}
         id={id}
         name={name}
         type="file"
@@ -81,13 +89,8 @@ export function ReceiptField({
         }}
       />
 
-      <p id={`${id}-hint`} className="text-muted-foreground text-xs">
-        PDF или снимок экрана, до {Math.round(MAX_RECEIPT_BYTES / 1024 / 1024)} МБ. Поставка
-        отмечается только с подтверждением оплаты.
-      </p>
-
       {picked !== null && (
-        <div className="flex flex-wrap items-center gap-2 text-xs">
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
           <span className="text-muted-foreground truncate">
             {picked.name} · {formatFileSize(picked.size)}
           </span>
@@ -100,6 +103,6 @@ export function ReceiptField({
           />
         </div>
       )}
-    </div>
+    </Field>
   );
 }

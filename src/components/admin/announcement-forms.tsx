@@ -3,8 +3,8 @@ import type { ReactNode } from 'react';
 import { ActionForm } from '@/components/admin/action-form';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
   createAnnouncementAction,
@@ -31,11 +31,11 @@ import { MAX_PINNED_ANNOUNCEMENTS, type AnnouncementView } from '@/lib/view/anno
 /** Подсказка про разметку текста — одна на обе формы, чтобы не разъехалась. */
 function BodyHint(): ReactNode {
   return (
-    <p className="text-muted-foreground text-xs">
+    <>
       Пустая строка начинает абзац. Строка, начатая с «-», становится пунктом списка,
       а начатая с «1.» — шагом инструкции. Другой разметки нет: объявление показывается
       текстом, а не разбирается как HTML.
-    </p>
+    </>
   );
 }
 
@@ -48,8 +48,7 @@ function Fields({
 }): ReactNode {
   return (
     <>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={`${idPrefix}-title`}>Заголовок</Label>
+      <Field htmlFor={`${idPrefix}-title`} label="Заголовок">
         <Input
           id={`${idPrefix}-title`}
           name="title"
@@ -58,20 +57,19 @@ function Fields({
           defaultValue={item?.title}
           placeholder="Как пользоваться кассой"
         />
-      </div>
+      </Field>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={`${idPrefix}-body`}>Текст</Label>
+      <Field htmlFor={`${idPrefix}-body`} label="Текст" hint={<BodyHint />}>
         <Textarea
           id={`${idPrefix}-body`}
           name="body"
           required
           rows={item === undefined ? 6 : 10}
           defaultValue={item?.body}
+          aria-describedby={`${idPrefix}-body-hint`}
           placeholder={'Что произошло и что с этим делать.\n\n- первый пункт\n- второй пункт'}
         />
-        <BodyHint />
-      </div>
+      </Field>
 
       <ImageFields idPrefix={idPrefix} item={item} />
 
@@ -121,58 +119,58 @@ function ImageFields({
   const limitMb = Math.round(MAX_IMAGE_BYTES / 1024 / 1024);
 
   return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={`${idPrefix}-image`}>Картинка</Label>
+    <Field
+      htmlFor={`${idPrefix}-image`}
+      label="Картинка"
+      hint={`До ${limitMb} МБ, форматы: PNG, JPEG, GIF, WebP. Описание обязательно — без него картинка молчит для читалки экрана. Картинка у объявления одна.`}
+    >
+      <div className="flex flex-col gap-2">
+        {current !== null && (
+          <div className="flex flex-wrap items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={current.url}
+              alt={current.alt}
+              width={current.width}
+              height={current.height}
+              className="border-border h-16 w-auto rounded-md border"
+            />
+            <span className="text-muted-foreground text-xs">
+              {current.width}×{current.height}, {current.mediaType}. Новый файл заменит эту картинку.
+            </span>
+          </div>
+        )}
 
-      {current !== null && (
-        <div className="flex flex-wrap items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={current.url}
-            alt={current.alt}
-            width={current.width}
-            height={current.height}
-            className="border-border h-16 w-auto rounded-md border"
-          />
-          <span className="text-muted-foreground text-xs">
-            {current.width}×{current.height}, {current.mediaType}. Новый файл заменит эту картинку.
-          </span>
-        </div>
-      )}
+        <Input
+          id={`${idPrefix}-image`}
+          name="image"
+          type="file"
+          accept={SUPPORTED_IMAGE_TYPES.join(',')}
+          aria-describedby={`${idPrefix}-image-hint`}
+          className="file:text-foreground file:mr-3 file:cursor-pointer file:border-0 file:bg-transparent file:text-sm"
+        />
 
-      <Input
-        id={`${idPrefix}-image`}
-        name="image"
-        type="file"
-        accept={SUPPORTED_IMAGE_TYPES.join(',')}
-        className="file:text-foreground file:mr-3 file:cursor-pointer file:border-0 file:bg-transparent file:text-sm"
-      />
+        <Input
+          name="imageAlt"
+          maxLength={300}
+          defaultValue={current?.alt}
+          placeholder="Что на картинке — для тех, кто её не видит"
+          aria-label="Описание картинки"
+        />
 
-      <Input
-        name="imageAlt"
-        maxLength={300}
-        defaultValue={current?.alt}
-        placeholder="Что на картинке — для тех, кто её не видит"
-        aria-label="Описание картинки"
-      />
-
-      <p className="text-muted-foreground text-xs">
-        До {limitMb} МБ, форматы: PNG, JPEG, GIF, WebP. Описание обязательно — без него
-        картинка молчит для читалки экрана. Картинка у объявления одна.
-      </p>
-
-      {current !== null && (
-        <label className="flex items-center gap-2 text-sm" htmlFor={`${idPrefix}-remove-image`}>
-          <input
-            id={`${idPrefix}-remove-image`}
-            name="removeImage"
-            type="checkbox"
-            className="accent-primary size-4"
-          />
-          Убрать картинку
-        </label>
-      )}
-    </div>
+        {current !== null && (
+          <label className="flex items-center gap-2 text-sm" htmlFor={`${idPrefix}-remove-image`}>
+            <input
+              id={`${idPrefix}-remove-image`}
+              name="removeImage"
+              type="checkbox"
+              className="accent-primary size-4"
+            />
+            Убрать картинку
+          </label>
+        )}
+      </div>
+    </Field>
   );
 }
 

@@ -6,8 +6,8 @@ import { IssueCredentialsForm } from '@/components/admin/issue-credentials-form'
 import { BalanceAmount, MoneyAmount } from '@/components/admin/money-amount';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Field } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 import {
   Table,
@@ -83,20 +83,23 @@ function EditParticipantForm({
   return (
     <ActionForm action={updateParticipantAction} submitLabel="Сохранить" size="sm" className="mt-2">
       <input type="hidden" name="id" value={participant.id} />
-      <Label htmlFor={`${id}-last`}>Фамилия</Label>
-      <Input id={`${id}-last`} name="lastName" defaultValue={participant.lastName ?? ''} required />
-      <Label htmlFor={`${id}-first`}>Имя</Label>
-      <Input id={`${id}-first`} name="firstName" defaultValue={participant.firstName ?? ''} required />
-      <Label htmlFor={`${id}-middle`}>Отчество</Label>
-      <Input id={`${id}-middle`} name="middleName" defaultValue={participant.middleName ?? ''} />
+      <Field htmlFor={`${id}-last`} label="Фамилия">
+        <Input id={`${id}-last`} name="lastName" defaultValue={participant.lastName ?? ''} required />
+      </Field>
+      <Field htmlFor={`${id}-first`} label="Имя">
+        <Input id={`${id}-first`} name="firstName" defaultValue={participant.firstName ?? ''} required />
+      </Field>
+      <Field htmlFor={`${id}-middle`} label="Отчество" note="необязательно">
+        <Input id={`${id}-middle`} name="middleName" defaultValue={participant.middleName ?? ''} />
+      </Field>
       <DepartmentField
         departments={departments}
         idPrefix={id}
         defaultId={participant.departmentId ?? undefined}
       />
-      <Label htmlFor={`${id}-email`}>Почта</Label>
-      <Input id={`${id}-email`} name="email" type="email" defaultValue={participant.email ?? ''} />
-      <p className="text-muted-foreground text-xs">Логин от смены ФИО не меняется.</p>
+      <Field htmlFor={`${id}-email`} label="Почта" note="необязательно" hint="Логин от смены ФИО не меняется">
+        <Input id={`${id}-email`} name="email" type="email" defaultValue={participant.email ?? ''} />
+      </Field>
     </ActionForm>
   );
 }
@@ -110,12 +113,13 @@ function RestrictionForm({ participant }: { participant: ParticipantRow }): Reac
   return (
     <ActionForm action={setRestrictionAction} submitLabel="Применить" variant="outline" size="sm" className="mt-2">
       <input type="hidden" name="id" value={participant.id} />
-      <Label htmlFor={id}>Ограничение</Label>
-      <NativeSelect id={id} name="restriction" defaultValue={participant.restriction}>
-        <option value="NONE">{RESTRICTION_LABEL.NONE}</option>
-        <option value="MUTED">{RESTRICTION_LABEL.MUTED} — не может добавлять записи</option>
-        <option value="BANNED">{RESTRICTION_LABEL.BANNED} — не может войти</option>
-      </NativeSelect>
+      <Field htmlFor={id} label="Ограничение">
+        <NativeSelect id={id} name="restriction" defaultValue={participant.restriction}>
+          <option value="NONE">{RESTRICTION_LABEL.NONE}</option>
+          <option value="MUTED">{RESTRICTION_LABEL.MUTED} — не может добавлять записи</option>
+          <option value="BANNED">{RESTRICTION_LABEL.BANNED} — не может войти</option>
+        </NativeSelect>
+      </Field>
     </ActionForm>
   );
 }
@@ -181,17 +185,19 @@ function ParticipantActions({
             className="mt-2"
           >
             <input type="hidden" name="id" value={participant.id} />
-            <Label htmlFor={`left-${participant.id}`}>Дата выхода</Label>
-            <Input
-              id={`left-${participant.id}`}
-              name="leftAt"
-              type="date"
-              defaultValue={today}
-              required
-            />
-            <p className="text-muted-foreground text-xs">
-              Взносы и доли в заказах останутся в истории, доступ сохранится.
-            </p>
+            <Field
+              htmlFor={`left-${participant.id}`}
+              label="Дата выхода"
+              hint="Взносы и доли в заказах останутся в истории, доступ сохранится"
+            >
+              <Input
+                id={`left-${participant.id}`}
+                name="leftAt"
+                type="date"
+                defaultValue={today}
+                required
+              />
+            </Field>
           </ActionForm>
         </details>
       ) : (
@@ -213,21 +219,23 @@ function ParticipantActions({
             className="mt-2"
           >
             <input type="hidden" name="id" value={participant.id} />
-            <Label htmlFor={`settle-${participant.id}`}>Сумма выплаты, ₽</Label>
-            <Input
-              id={`settle-${participant.id}`}
-              name="amount"
-              inputMode="decimal"
-              defaultValue={toRublesString(participant.balance)}
-              required
-            />
-            <Label htmlFor={`settle-note-${participant.id}`}>Комментарий</Label>
-            <Input
-              id={`settle-note-${participant.id}`}
-              name="note"
-              defaultValue="Возврат остатка при выходе"
-              required
-            />
+            <Field htmlFor={`settle-${participant.id}`} label="Сумма выплаты, ₽">
+              <Input
+                id={`settle-${participant.id}`}
+                name="amount"
+                inputMode="decimal"
+                defaultValue={toRublesString(participant.balance)}
+                required
+              />
+            </Field>
+            <Field htmlFor={`settle-note-${participant.id}`} label="Комментарий">
+              <Input
+                id={`settle-note-${participant.id}`}
+                name="note"
+                defaultValue="Возврат остатка при выходе"
+                required
+              />
+            </Field>
             <p className="text-muted-foreground text-xs">
               В журнал операций уйдёт запись SETTLEMENT на эту сумму со знаком минус.
             </p>

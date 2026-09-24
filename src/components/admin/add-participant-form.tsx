@@ -3,13 +3,18 @@
 import type { ReactNode } from 'react';
 import { useActionState } from 'react';
 
-import { CredentialFields, FormMessage, IntentButton } from '@/components/admin/credential-fields';
+import {
+  CredentialFields,
+  FormMessage,
+  IntentButton,
+  credentialsFieldError,
+} from '@/components/admin/credential-fields';
 import { CredentialsCard } from '@/components/admin/credentials-card';
 import { CREDENTIALS_IDLE } from '@/components/admin/credentials-state';
 import { DepartmentField, type DepartmentOption } from '@/components/admin/department-field';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field, Form } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { participantFormAction } from '@/lib/actions/participants';
 
 /**
@@ -33,7 +38,6 @@ export function AddParticipantForm({
 }): ReactNode {
   const [state, formAction] = useActionState(participantFormAction, CREDENTIALS_IDLE);
   const values = state.values;
-  const invalid = (field: string) => (state.status === 'error' && state.field === field ? true : undefined);
 
   return (
     <Card>
@@ -47,34 +51,22 @@ export function AddParticipantForm({
       <CardContent className="flex flex-col gap-4">
         {state.credentials !== null && <CredentialsCard credentials={state.credentials} />}
 
-        <form key={state.version} action={formAction} className="flex flex-col gap-4">
+        <Form
+          key={state.version}
+          action={formAction}
+          fieldError={credentialsFieldError(state)}
+          className="flex flex-col gap-4"
+        >
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="participant-last">Фамилия</Label>
-              <Input
-                id="participant-last"
-                name="lastName"
-                defaultValue={values.lastName}
-                required
-                aria-invalid={invalid('lastName')}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="participant-first">Имя</Label>
-              <Input
-                id="participant-first"
-                name="firstName"
-                defaultValue={values.firstName}
-                required
-                aria-invalid={invalid('firstName')}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="participant-middle">
-                Отчество <span className="text-muted-foreground font-normal">— необязательно</span>
-              </Label>
+            <Field htmlFor="participant-last" label="Фамилия">
+              <Input id="participant-last" name="lastName" defaultValue={values.lastName} required />
+            </Field>
+            <Field htmlFor="participant-first" label="Имя">
+              <Input id="participant-first" name="firstName" defaultValue={values.firstName} required />
+            </Field>
+            <Field htmlFor="participant-middle" label="Отчество" note="необязательно">
               <Input id="participant-middle" name="middleName" defaultValue={values.middleName} />
-            </div>
+            </Field>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
@@ -84,8 +76,7 @@ export function AddParticipantForm({
               defaultId={values.departmentId}
               defaultNew={values.newDepartment}
             />
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="participant-joined">Дата вступления</Label>
+            <Field htmlFor="participant-joined" label="Дата вступления">
               <Input
                 id="participant-joined"
                 name="joinedAt"
@@ -93,9 +84,8 @@ export function AddParticipantForm({
                 defaultValue={values.joinedAt || today}
                 required
               />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="participant-opening">Начальное сальдо, ₽</Label>
+            </Field>
+            <Field htmlFor="participant-opening" label="Начальное сальдо, ₽" note="необязательно">
               <Input
                 id="participant-opening"
                 name="openingBalance"
@@ -103,22 +93,17 @@ export function AddParticipantForm({
                 placeholder="0"
                 defaultValue={values.openingBalance}
               />
-            </div>
+            </Field>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="participant-email">
-              Почта <span className="text-muted-foreground font-normal">— необязательно, для справки</span>
-            </Label>
-            <Input
-              id="participant-email"
-              name="email"
-              type="email"
-              defaultValue={values.email}
-              aria-invalid={invalid('email')}
-              className="sm:max-w-sm"
-            />
-          </div>
+          <Field
+            htmlFor="participant-email"
+            label="Почта"
+            note="необязательно, для справки"
+            className="sm:max-w-sm"
+          >
+            <Input id="participant-email" name="email" type="email" defaultValue={values.email} />
+          </Field>
 
           <CredentialFields state={state} idPrefix="participant" />
 
@@ -134,7 +119,7 @@ export function AddParticipantForm({
               потому, что его деньги уже лежат в кассе (§4.2).
             </p>
           </div>
-        </form>
+        </Form>
       </CardContent>
     </Card>
   );

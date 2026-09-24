@@ -3,8 +3,8 @@ import type { ReactNode } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 import {
   Table,
@@ -48,8 +48,7 @@ export function AuditFilters({
       <CardContent>
         <form method="get" className="flex flex-col gap-3">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="filter-user">Участник</Label>
+            <Field htmlFor="filter-user" label="Участник">
               <NativeSelect id="filter-user" name="userId" defaultValue={query.userId ?? ''}>
                 <option value="">Все</option>
                 {participants.map((participant) => (
@@ -58,10 +57,9 @@ export function AuditFilters({
                   </option>
                 ))}
               </NativeSelect>
-            </div>
+            </Field>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="filter-action">Действие</Label>
+            <Field htmlFor="filter-action" label="Действие">
               <NativeSelect id="filter-action" name="action" defaultValue={query.action ?? ''}>
                 <option value="">Все</option>
                 {Object.entries(AUDIT_ACTION_LABELS).map(([value, label]) => (
@@ -70,17 +68,15 @@ export function AuditFilters({
                   </option>
                 ))}
               </NativeSelect>
-            </div>
+            </Field>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="filter-from">С</Label>
+            <Field htmlFor="filter-from" label="С">
               <Input id="filter-from" name="from" type="date" defaultValue={query.from ?? ''} />
-            </div>
+            </Field>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="filter-to">По</Label>
+            <Field htmlFor="filter-to" label="По">
               <Input id="filter-to" name="to" type="date" defaultValue={query.to ?? ''} />
-            </div>
+            </Field>
           </div>
 
           <div className="flex flex-wrap gap-2">

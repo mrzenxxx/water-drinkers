@@ -4,8 +4,8 @@ import type { ReactNode } from 'react';
 import { useActionState } from 'react';
 
 import { SubmitButton } from '@/components/submit-button';
+import { Field, Form, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { addAbsenceAction } from '@/lib/actions/absences';
 import { IDLE } from '@/lib/actions/state';
 import { ABSENCE_TYPE_LABEL } from '@/lib/format';
@@ -24,9 +24,9 @@ export function AbsenceForm({ today }: { today: string }): ReactNode {
   const overlap = state.status === 'error' && state.code === 'ABSENCE_OVERLAP';
 
   return (
-    <form action={action} className="space-y-4">
+    <Form action={action} state={state} className="space-y-4">
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium">Тип</legend>
+        <legend className="field-chip glass-soft nav-pill mb-2">Тип</legend>
         <div className="flex flex-wrap gap-4">
           {(['VACATION', 'SICK_LEAVE'] as const).map((type, index) => (
             <label key={type} className="flex items-center gap-2 text-sm">
@@ -44,37 +44,31 @@ export function AbsenceForm({ today }: { today: string }): ReactNode {
       </fieldset>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="startsOn">С</Label>
+        <Field htmlFor="startsOn" label="С">
           <Input id="startsOn" name="startsOn" type="date" required defaultValue={today} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="endsOn">По включительно</Label>
+        </Field>
+        <Field htmlFor="endsOn" label="По включительно">
           <Input id="endsOn" name="endsOn" type="date" required defaultValue={today} />
-        </div>
+        </Field>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="note">Примечание, необязательно</Label>
+      <Field htmlFor="note" label="Примечание" note="необязательно">
         <Input id="note" name="note" placeholder="Например: командировка" />
-      </div>
+      </Field>
 
       {state.status !== 'idle' && state.message !== null && (
-        <p
-          role={state.status === 'error' ? 'alert' : 'status'}
-          className={state.status === 'error' ? 'text-owes text-sm' : 'text-credit text-sm'}
-        >
+        <FormMessage tone={state.status === 'error' ? 'error' : 'success'}>
           {state.message}
           {overlap && (
-            <span className="text-muted-foreground mt-1 block text-xs">
+            <span className="text-muted-foreground mt-1 block text-xs font-normal">
               Нельзя быть одновременно в отпуске и на больничном: день вычелся бы дважды,
               и расчёт поехал бы. Удалите старую запись или измените даты.
             </span>
           )}
-        </p>
+        </FormMessage>
       )}
 
       <SubmitButton pendingLabel="Сохраняем…">Отметить отсутствие</SubmitButton>
-    </form>
+    </Form>
   );
 }

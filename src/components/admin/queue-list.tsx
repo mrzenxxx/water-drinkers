@@ -4,7 +4,7 @@ import { ActionForm } from '@/components/admin/action-form';
 import { MoneyAmount } from '@/components/admin/money-amount';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
+import { Field } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { confirmContributionAction, rejectContributionAction } from '@/lib/actions/admin';
 import type { QueueItem } from '@/lib/data/admin';
@@ -145,14 +145,15 @@ export function QueueList({ items }: { items: readonly QueueItem[] }): ReactNode
                     className="mt-3"
                   >
                     <input type="hidden" name="id" value={item.id} />
-                    <Label htmlFor={`reject-${item.id}`}>Причина отказа</Label>
-                    <Textarea
-                      id={`reject-${item.id}`}
-                      name="comment"
-                      required
-                      rows={2}
-                      placeholder="Чек не читается"
-                    />
+                    <Field htmlFor={`reject-${item.id}`} label="Причина отказа">
+                      <Textarea
+                        id={`reject-${item.id}`}
+                        name="comment"
+                        required
+                        rows={2}
+                        placeholder="Чек не читается"
+                      />
+                    </Field>
                   </ActionForm>
                 </details>
               </div>

@@ -4,52 +4,16 @@ import { Eye, EyeOff } from 'lucide-react';
 import { useActionState, useState, type ReactNode } from 'react';
 
 import { SubmitButton } from '@/components/submit-button';
+import { Field, Form, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { loginAction } from '@/lib/actions/session';
 import { IDLE } from '@/lib/actions/state';
-import { cn } from '@/lib/utils';
-
-const FIELD =
-  'field-surface focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-sm transition-[color,box-shadow,border-color] focus-visible:ring-2 focus-visible:outline-none';
 
 /**
- * Поле с подписью-стёклышком над ним.
- *
- * Подпись набрана тем же приёмом, что выбранный раздел в шапке
- * (`glass-soft nav-pill`): одна идея на два места, а не два похожих приёма.
- *
- * Оба поля формы собраны одной функцией, и это не ради краткости: подписи
- * разъезжались по высоте, хотя в разметке стояло одно и то же число.
- * Собранные из одного места, они разъехаться не могут — расстояние задано
- * один раз, в `.field-chip` (`globals.css`).
- *
- * Подпись связана с полем через `htmlFor`, а не объятием `<label>`: внутри
- * поля пароля живёт кнопка, а кнопка внутри подписи — это второй нажимаемый
- * элемент там, где браузер ждёт один.
- */
-function Field({
-  id,
-  label,
-  children,
-}: {
-  id: string;
-  label: string;
-  children: ReactNode;
-}): ReactNode {
-  return (
-    <div className="field-chip-host">
-      <label htmlFor={id} className="field-chip glass-soft nav-pill">
-        {label}
-      </label>
-      {/* Обёртка ровно по полю: кнопка-глаз отмеряется от его краёв, не от подписи. */}
-      <div className="relative">{children}</div>
-    </div>
-  );
-}
-
-/**
- * Логин и пароль (§7). `<form action>` + `useActionState`: ошибка приходит
- * состоянием, ожидание — из `useFormStatus` в кнопке, переход после успеха
- * делает само действие.
+ * Логин и пароль (§7). `<Form action>` + `useActionState`: ошибка приходит
+ * состоянием и встаёт пузырьком под кнопкой, набранное при этом остаётся в
+ * полях (`Form`). Ожидание — из `useFormStatus` в кнопке, переход после
+ * успеха делает само действие.
  *
  * У пароля есть глаз — показать набранное. Пароль выдаёт администратор, и
  * набирают его с бумажки или из сообщения, вслепую и почти всегда с ошибкой;
@@ -64,9 +28,9 @@ export function LoginForm(): ReactNode {
   const toggleLabel = shown ? 'Скрыть пароль' : 'Показать пароль';
 
   return (
-    <form action={formAction} className="space-y-5">
-      <Field id="login" label="Логин">
-        <input
+    <Form action={formAction} state={state} className="space-y-5">
+      <Field htmlFor="login" label="Логин">
+        <Input
           id="login"
           name="login"
           required
@@ -75,12 +39,11 @@ export function LoginForm(): ReactNode {
           autoCapitalize="none"
           spellCheck={false}
           placeholder="i.ivanov"
-          className={FIELD}
         />
       </Field>
 
-      <Field id="password" label="Пароль">
-        <input
+      <Field htmlFor="password" label="Пароль">
+        <Input
           id="password"
           name="password"
           type={shown ? 'text' : 'password'}
@@ -88,7 +51,7 @@ export function LoginForm(): ReactNode {
           autoComplete="current-password"
           autoCapitalize="none"
           spellCheck={false}
-          className={cn(FIELD, 'pr-11')}
+          className="pr-11"
         />
         {/*
           Значок показывает, что произойдёт по нажатию, а не что включено
@@ -114,11 +77,7 @@ export function LoginForm(): ReactNode {
         Войти
       </SubmitButton>
 
-      {state.status === 'error' && (
-        <p role="alert" className="text-destructive text-sm">
-          {state.message}
-        </p>
-      )}
-    </form>
+      {state.status === 'error' && <FormMessage tone="error">{state.message}</FormMessage>}
+    </Form>
   );
 }

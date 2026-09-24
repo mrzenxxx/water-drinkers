@@ -3,8 +3,8 @@ import type { ReactNode } from 'react';
 import { ActionForm } from '@/components/admin/action-form';
 import { ReceiptField } from '@/components/receipt-field';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { createWaterOrderAction } from '@/lib/actions/orders';
 
 /**
@@ -29,13 +29,11 @@ export function OrderForm({ today }: { today: string }): ReactNode {
       <CardContent>
         <ActionForm action={createWaterOrderAction} submitLabel="Отметить поставку">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="order-ordered-at">Дата поставки</Label>
+            <Field htmlFor="order-ordered-at" label="Дата поставки">
               <Input id="order-ordered-at" name="orderedAt" type="date" defaultValue={today} required />
-            </div>
+            </Field>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="order-amount">Сумма, ₽</Label>
+            <Field htmlFor="order-amount" label="Сумма, ₽" hint="Рубли и копейки: 3000 или 3000,50">
               <Input
                 id="order-amount"
                 name="amount"
@@ -44,27 +42,21 @@ export function OrderForm({ today }: { today: string }): ReactNode {
                 required
                 aria-describedby="order-amount-hint"
               />
-              <p id="order-amount-hint" className="text-muted-foreground text-xs">
-                Рубли и копейки: 3000 или 3000,50.
-              </p>
-            </div>
+            </Field>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="order-bottles">Бутылей</Label>
+            <Field htmlFor="order-bottles" label="Бутылей">
               <Input id="order-bottles" name="bottlesCount" inputMode="numeric" placeholder="10" />
-            </div>
+            </Field>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="order-supplier">Поставщик</Label>
+            <Field htmlFor="order-supplier" label="Поставщик">
               <Input id="order-supplier" name="supplier" placeholder="Аквафор Доставка" />
-            </div>
+            </Field>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="order-note">Примечание</Label>
+            <Field htmlFor="order-note" label="Примечание">
               <Input id="order-note" name="note" placeholder="Привезли на два дня позже" />
-            </div>
+            </Field>
 
             <ReceiptField />
           </div>

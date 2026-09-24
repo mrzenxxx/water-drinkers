@@ -6,6 +6,7 @@ import { useActionState } from 'react';
 import { IDLE, type ActionState } from '@/components/admin/action-state';
 import { SubmitButton } from '@/components/admin/submit-button';
 import type { ButtonProps } from '@/components/ui/button';
+import { Form, FormMessage } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
 
 /**
@@ -15,8 +16,9 @@ import { cn } from '@/lib/utils';
  * серверного компонента — в бандл едет только эта обвязка, а не сами экраны.
  *
  * Ни `onSubmit` с `preventDefault`, ни ручного `fetch`, ни флага занятости:
- * всё это React 19 умеет сам (CLAUDE.md). Результат показывается текстом
- * с `role="status"` — цвет здесь не единственный носитель смысла (§12).
+ * всё это React 19 умеет сам (CLAUDE.md). Проверку полей, пузырьки ошибок и
+ * возврат набранного после отказа сервера берёт на себя `Form`. Результат —
+ * пузырёк со значком и словами: цвет здесь не единственный носитель смысла (§12).
  */
 export type ActionFormProps = {
   action: (state: ActionState, form: FormData) => Promise<ActionState>;
@@ -43,7 +45,7 @@ export function ActionForm({
   const [state, formAction] = useActionState(action, IDLE);
 
   return (
-    <form action={formAction} className={cn('flex flex-col gap-3', className)}>
+    <Form action={formAction} state={state} className={cn('flex flex-col gap-3', className)}>
       {children}
 
       <div className="flex flex-wrap items-center gap-2">
@@ -53,18 +55,9 @@ export function ActionForm({
         {extraActions}
       </div>
 
-      {state.status !== 'idle' && (
-        <p
-          role="status"
-          className={cn(
-            'text-sm',
-            state.status === 'error' ? 'text-destructive' : 'text-credit',
-          )}
-        >
-          <span aria-hidden="true">{state.status === 'error' ? '✕ ' : '✓ '}</span>
-          {state.message}
-        </p>
+      {state.status !== 'idle' && state.message !== '' && (
+        <FormMessage tone={state.status === 'error' ? 'error' : 'success'}>{state.message}</FormMessage>
       )}
-    </form>
+    </Form>
   );
 }

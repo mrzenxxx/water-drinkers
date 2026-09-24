@@ -3,8 +3,8 @@ import type { ReactNode } from 'react';
 import { ActionForm } from '@/components/admin/action-form';
 import { UNATTRIBUTED } from '@/components/admin/action-state';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
 import { createAdjustmentAction } from '@/lib/actions/admin';
@@ -37,8 +37,7 @@ export function AdjustmentForm({
       <CardContent>
         <ActionForm action={createAdjustmentAction} submitLabel="Внести корректировку">
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="adjustment-user">Кого касается</Label>
+            <Field htmlFor="adjustment-user" label="Кого касается">
               <NativeSelect id="adjustment-user" name="userId" required defaultValue="">
                 <option value="" disabled>
                   Выберите участника
@@ -51,9 +50,8 @@ export function AdjustmentForm({
                 ))}
                 <option value={UNATTRIBUTED}>Не знаю, чьи деньги — разделить поровну</option>
               </NativeSelect>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="adjustment-amount">Сумма, ₽</Label>
+            </Field>
+            <Field htmlFor="adjustment-amount" label="Сумма, ₽">
               <Input
                 id="adjustment-amount"
                 name="amount"
@@ -61,11 +59,10 @@ export function AdjustmentForm({
                 placeholder="-500,00"
                 required
               />
-            </div>
+            </Field>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="adjustment-comment">Комментарий</Label>
+          <Field htmlFor="adjustment-comment" label="Комментарий">
             <Textarea
               id="adjustment-comment"
               name="comment"
@@ -73,7 +70,7 @@ export function AdjustmentForm({
               required
               placeholder="Подтверждён взнос, которого не было"
             />
-          </div>
+          </Field>
 
           <p className="text-muted-foreground text-xs">
             Корректировка без участника делится поровну между активными на дату операции (§2.4):

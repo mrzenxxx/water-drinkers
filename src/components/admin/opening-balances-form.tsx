@@ -6,6 +6,7 @@ import { useActionState, useState } from 'react';
 import { IDLE } from '@/components/admin/action-state';
 import { SubmitButton } from '@/components/admin/submit-button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field, Form, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { setOpeningBalancesAction } from '@/lib/actions/admin';
@@ -89,10 +90,9 @@ export function OpeningBalancesForm({
       </CardHeader>
 
       <CardContent>
-        <form action={formAction} className="flex flex-col gap-4">
+        <Form action={formAction} state={state} className="flex flex-col gap-4">
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="opening-start">Дата начала учёта</Label>
+            <Field htmlFor="opening-start" label="Дата начала учёта">
               <Input
                 id="opening-start"
                 name="startDate"
@@ -100,9 +100,8 @@ export function OpeningBalancesForm({
                 defaultValue={startDate ?? today}
                 required
               />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="opening-fund">Денег в фонде, ₽</Label>
+            </Field>
+            <Field htmlFor="opening-fund" label="Денег в фонде, ₽">
               <Input
                 id="opening-fund"
                 name="fundOpeningBalance"
@@ -111,11 +110,11 @@ export function OpeningBalancesForm({
                 onChange={(event) => setFundValue(event.target.value)}
                 required
               />
-            </div>
+            </Field>
           </div>
 
           <fieldset className="flex flex-col gap-2">
-            <legend className="mb-2 text-sm font-medium">Начальные сальдо участников</legend>
+            <legend className="field-chip glass-soft nav-pill mb-2">Начальные сальдо участников</legend>
             <div className="grid gap-2 sm:grid-cols-2">
               {participants.map((participant) => (
                 <div key={participant.id} className="flex items-center justify-between gap-3">
@@ -181,16 +180,10 @@ export function OpeningBalancesForm({
             равными долями, и в журнале аудита останется пометка equal-split (§4.2).
           </p>
 
-          {state.status !== 'idle' && (
-            <p
-              role="status"
-              className={cn('text-sm', state.status === 'error' ? 'text-destructive' : 'text-credit')}
-            >
-              <span aria-hidden="true">{state.status === 'error' ? '✕ ' : '✓ '}</span>
-              {state.message}
-            </p>
+          {state.status !== 'idle' && state.message !== '' && (
+            <FormMessage tone={state.status === 'error' ? 'error' : 'success'}>{state.message}</FormMessage>
           )}
-        </form>
+        </Form>
       </CardContent>
     </Card>
   );

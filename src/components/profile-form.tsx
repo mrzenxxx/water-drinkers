@@ -4,8 +4,8 @@ import type { ReactNode } from 'react';
 import { useActionState } from 'react';
 
 import { SubmitButton } from '@/components/submit-button';
+import { Field, Form, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { updateProfileAction } from '@/lib/actions/session';
 import { IDLE } from '@/lib/actions/state';
 
@@ -32,34 +32,26 @@ export function ProfileForm({
   const [state, action] = useActionState(updateProfileAction, IDLE);
 
   return (
-    <form action={action} className="space-y-4">
+    <Form action={action} state={state} className="space-y-4">
       {redirectTo !== undefined && <input type="hidden" name="redirectTo" value={redirectTo} />}
 
-      <div className="space-y-2">
-        <Label htmlFor="firstName">Имя</Label>
+      <Field htmlFor="firstName" label="Имя">
         <Input id="firstName" name="firstName" defaultValue={firstName} required autoFocus />
-      </div>
+      </Field>
 
-      <div className="space-y-2">
-        <Label htmlFor="lastName">Фамилия</Label>
+      <Field htmlFor="lastName" label="Фамилия">
         <Input id="lastName" name="lastName" defaultValue={lastName} required />
-      </div>
+      </Field>
 
-      {state.status === 'error' && (
-        <p role="alert" className="text-owes text-sm">
-          {state.message}
-        </p>
-      )}
+      {state.status === 'error' && <FormMessage tone="error">{state.message}</FormMessage>}
 
       {state.status === 'success' && state.message !== null && (
-        <p role="status" className="text-credit text-sm">
-          {state.message}
-        </p>
+        <FormMessage tone="success">{state.message}</FormMessage>
       )}
 
       <SubmitButton className="w-full" pendingLabel="Сохраняем…">
         {submitLabel}
       </SubmitButton>
-    </form>
+    </Form>
   );
 }

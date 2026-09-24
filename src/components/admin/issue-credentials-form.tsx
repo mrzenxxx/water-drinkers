@@ -3,9 +3,15 @@
 import type { ReactNode } from 'react';
 import { useActionState } from 'react';
 
-import { CredentialFields, FormMessage, IntentButton } from '@/components/admin/credential-fields';
+import {
+  CredentialFields,
+  FormMessage,
+  IntentButton,
+  credentialsFieldError,
+} from '@/components/admin/credential-fields';
 import { CredentialsCard } from '@/components/admin/credentials-card';
 import { CREDENTIALS_IDLE } from '@/components/admin/credentials-state';
+import { Form } from '@/components/ui/form';
 import { credentialsFormAction } from '@/lib/actions/participants';
 import type { ParticipantRow } from '@/lib/data/admin';
 
@@ -23,7 +29,12 @@ export function IssueCredentialsForm({ participant }: { participant: Participant
     <div className="mt-2 flex flex-col gap-3">
       {state.credentials !== null && <CredentialsCard credentials={state.credentials} />}
 
-      <form key={state.version} action={formAction} className="flex flex-col gap-3">
+      <Form
+        key={state.version}
+        action={formAction}
+        fieldError={credentialsFieldError(state)}
+        className="flex flex-col gap-3"
+      >
         <input type="hidden" name="id" value={participant.id} />
         <input type="hidden" name="firstName" value={participant.firstName ?? ''} />
         <input type="hidden" name="middleName" value={participant.middleName ?? ''} />
@@ -42,7 +53,7 @@ export function IssueCredentialsForm({ participant }: { participant: Participant
             ? 'Старый пароль и ссылка перестанут работать, открытые сессии завершатся.'
             : 'У участника ещё нет пароля — без него войти нельзя.'}
         </p>
-      </form>
+      </Form>
     </div>
   );
 }

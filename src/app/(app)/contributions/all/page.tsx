@@ -7,8 +7,8 @@ import { ContributionsList } from '@/components/contributions-list';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { requirePageUser } from '@/lib/auth/current-user';
 import { isCountedStatus } from '@/lib/calc';
 import { listContributions, listPeople, peopleById } from '@/lib/data/queries';
@@ -52,7 +52,7 @@ export default async function AllContributionsPage({
     .reduce((sum, row) => sum + row.amount, 0);
 
   const fieldClass =
-    'field-surface focus-visible:ring-ring h-9 w-full rounded-md border px-3 text-sm transition-[color,box-shadow,border-color] focus-visible:ring-2 focus-visible:outline-none';
+    'field-surface h-9 w-full cursor-pointer rounded-md border px-3 text-sm outline-none';
 
   return (
     <div className="flex flex-col gap-6">
@@ -69,8 +69,7 @@ export default async function AllContributionsPage({
         </CardHeader>
         <CardContent>
           <form method="get" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <div className="space-y-2">
-              <Label htmlFor="user">Участник</Label>
+            <Field htmlFor="user" label="Участник">
               <select
                 id="user"
                 name="user"
@@ -84,10 +83,9 @@ export default async function AllContributionsPage({
                   </option>
                 ))}
               </select>
-            </div>
+            </Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="status">Статус</Label>
+            <Field htmlFor="status" label="Статус">
               <select
                 id="status"
                 name="status"
@@ -101,17 +99,15 @@ export default async function AllContributionsPage({
                   </option>
                 ))}
               </select>
-            </div>
+            </Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="from">Платёж с</Label>
+            <Field htmlFor="from" label="Платёж с">
               <Input id="from" name="from" type="date" defaultValue={filters.from ?? ''} />
-            </div>
+            </Field>
 
-            <div className="space-y-2">
-              <Label htmlFor="to">по</Label>
+            <Field htmlFor="to" label="по">
               <Input id="to" name="to" type="date" defaultValue={filters.to ?? ''} />
-            </div>
+            </Field>
 
             <div className="flex items-end gap-2">
               <Button type="submit">Показать</Button>
