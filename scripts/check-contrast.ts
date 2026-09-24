@@ -271,7 +271,8 @@ function run(): boolean {
     }
 
     /*
-      Кнопки из жидкого стекла (`.btn-liquid`): поверх градиента лежит блик.
+      Кнопки и бейджики из жидкого стекла (`.btn-liquid`, `.badge-bead`):
+      поверх градиента лежит блик.
       Под буквами он не гаснет до нуля — второй упор `--button-sheen` стоит
       ровно на строке текста (30% высоты), и именно его яркость накладывается
       на каждый конец градиента. Выше строки букв блик ярче, но текста там нет.
@@ -281,6 +282,10 @@ function run(): boolean {
     for (const [name, gradient, text] of [
       ['кнопка действия под бликом', '--gradient-primary', '--primary-foreground'],
       ['опасная кнопка под бликом', '--gradient-danger', '--destructive-foreground'],
+      // Бейджики-бусины носят тот же блик, что и кнопка (`.badge-bead`).
+      ['бейджик вторичный под бликом', '--gradient-secondary', '--secondary-foreground'],
+      ['бейджик «внёс админ» под бликом', '--gradient-mint', '--mint-foreground'],
+      ['бейджик чека под бликом', '--gradient-ink', '--background'],
     ] as const) {
       const foreground = parseOklch(tokens.get(text)!);
       for (const [index, stop] of [...tokens.get(gradient)!.matchAll(OKLCH_ALL)].entries()) {

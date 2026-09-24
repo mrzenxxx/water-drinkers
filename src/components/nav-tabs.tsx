@@ -51,7 +51,7 @@ function TabLink({ item, active }: { item: NavItem; active: boolean }): ReactNod
         <>
           <span
             aria-hidden
-            className="bg-primary text-primary-foreground ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold tabular-nums"
+            className="badge-bead [--badge-fill:var(--gradient-primary)] text-primary-foreground ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold tabular-nums"
           >
             {badge}
           </span>

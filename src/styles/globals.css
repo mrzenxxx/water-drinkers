@@ -178,6 +178,10 @@
   );
   --gradient-danger: linear-gradient(135deg, oklch(0.52 0.17 35), oklch(0.47 0.16 28));
   --btn-edge: oklch(1 0 0 / 0.28);
+  /* Бейджики-бусины (`.badge-bead`): вторичный и перевёрнутый (чек) градиенты. */
+  --gradient-secondary: linear-gradient(135deg, oklch(0.96 0.02 220), oklch(0.9 0.04 235));
+  --gradient-ink: linear-gradient(135deg, oklch(0.32 0.06 250), oklch(0.22 0.045 255));
+  --badge-drop: oklch(0.4 0.08 245 / 0.22);
   --btn-shadow:
     inset 0 1px 0 oklch(1 0 0 / 0.5),
     inset 0 -2px 3px oklch(0.3 0.1 255 / 0.28),
@@ -307,6 +311,9 @@
   );
   --gradient-danger: linear-gradient(135deg, oklch(0.74 0.15 40), oklch(0.69 0.15 30));
   --btn-edge: oklch(1 0 0 / 0.35);
+  --gradient-secondary: linear-gradient(135deg, oklch(0.35 0.05 245), oklch(0.28 0.045 255));
+  --gradient-ink: linear-gradient(135deg, oklch(0.97 0.01 230), oklch(0.88 0.03 225));
+  --badge-drop: oklch(0 0 0 / 0.45);
   --btn-shadow:
     inset 0 1px 0 oklch(1 0 0 / 0.55),
     inset 0 -2px 3px oklch(0.25 0.08 250 / 0.3),
@@ -852,6 +859,58 @@
   }
 
   /*
+    ── Бейджик-бусина ─────────────────────────────────────────────────────
+
+    Бейджик — маленькая капля того же жидкого стекла, что и кнопка действия:
+    заливка градиентом (`--badge-fill`), блик `--button-sheen` по верхней
+    кромке, светлый ободок, затемнение у дна и тень цвета самого бейджика
+    (`--badge-tone`). Блик общий с кнопкой нарочно: его упор в строке букв
+    уже наложен на каждую пару «текст — заливка» в `check:contrast`.
+
+    Стеклянный вариант (`outline`, «на рассмотрении») заливки не имеет —
+    у него только ободок, блик и тень: бусина из чистого стекла.
+  */
+  .badge-bead {
+    position: relative;
+    isolation: isolate;
+    border: 1px solid oklch(1 0 0 / 0.3);
+    background-image: var(--badge-fill, none);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.5),
+      inset 0 -1px 2px oklch(0.25 0.06 250 / 0.22),
+      0 1px 2px var(--badge-drop),
+      0 3px 8px -3px color-mix(in oklab, var(--badge-tone, var(--primary)) 55%, transparent);
+  }
+
+  .badge-bead::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background-image: var(--button-sheen);
+    pointer-events: none;
+  }
+
+  [data-theme='dark'] .badge-bead {
+    border-color: oklch(1 0 0 / 0.22);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.4),
+      inset 0 -1px 2px oklch(0 0 0 / 0.3),
+      0 1px 2px var(--badge-drop),
+      0 3px 10px -3px color-mix(in oklab, var(--badge-tone, var(--primary)) 50%, transparent);
+  }
+
+  .badge-bead-glass {
+    --badge-tone: var(--foreground);
+    border-color: var(--glass-border);
+  }
+
+  [data-theme='dark'] .badge-bead-glass {
+    --badge-tone: black;
+  }
+
+  /*
     Второстепенные кнопки — стекло без воды: светлая кромка сверху и тень,
     чтобы и они читались выпуклыми, а не нарисованными на карточке.
   */
@@ -940,8 +999,14 @@
     .glass-strong::before,
     .glass-soft::before,
     .btn-liquid::before,
-    .btn-liquid::after {
+    .btn-liquid::after,
+    .badge-bead::before {
       background-image: none;
+    }
+
+    .badge-bead {
+      border-color: CanvasText;
+      box-shadow: none;
     }
 
     /* Кнопка действия — системная кнопка: заливку и рамку держит система. */
