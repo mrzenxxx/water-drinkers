@@ -75,8 +75,8 @@ ssh $HOST 'cd /opt/waterdrinkers && docker tag waterdrinkers:previous waterdrink
 
 ```bash
 # Черновая база в том же контейнере, что и база разработки (порт 5433).
-docker exec waterdrinkers-db createdb -U waterdrinkers waterdrinkers_fill
-export DATABASE_URL=postgresql://waterdrinkers:waterdrinkers@localhost:5433/waterdrinkers_fill
+docker exec waterdrinkers-db createdb -U waterdrinkers waterdrinkers_final
+export DATABASE_URL=postgresql://waterdrinkers:waterdrinkers@localhost:5433/waterdrinkers_final
 npx prisma migrate deploy
 npm run db:seed
 npm run credentials -- e.kondobarov
@@ -93,8 +93,9 @@ npm run dev          # в этом же терминале: переменная
 Перенос:
 
 ```bash
-docker exec waterdrinkers-db pg_dump -U waterdrinkers -d waterdrinkers_fill --format=custom > fill.dump
-scp fill.dump $HOST:/tmp/fill.dump
+mkdir -p dumps
+docker exec waterdrinkers-db pg_dump -U waterdrinkers -d waterdrinkers_final --format=custom > dumps/final.dump
+scp dumps/final.dump $HOST:/tmp/fill.dump
 ssh $HOST 'set -e; cd /opt/waterdrinkers
   ./backup.sh
   docker compose stop app
