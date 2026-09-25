@@ -9,6 +9,8 @@ coverage
 .env.*
 !.env.example
 deploy/.env
+# Дампы базы с живыми данными в контекст сборки не попадают.
+dumps
 
 .git
 .claude
