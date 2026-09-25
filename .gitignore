@@ -14,9 +14,9 @@ dist/
 /src/generated/
 
 # Окружение — секреты в репозиторий не попадают
+# Любые копии окружения тоже: `.env.bak`, `.env.production` и т. п.
 .env
-.env.local
-.env.*.local
+.env.*
 !.env.example
 
 # Тесты и покрытие
