@@ -147,7 +147,15 @@ export default async function StatisticsPage({
         </div>
       </header>
 
-      <FoldCard title="Фильтры">
+      {/*
+        Фильтры прилипают под шапкой: графики и ленты ниже длинные, и менять
+        период или участников удобно, не прокручивая страницу обратно к
+        началу. Только на широком экране — на телефоне липкий блок фильтров
+        закрыл бы собой почти весь экран; свернуть его можно всегда. Стекло
+        плотнее обычного (`glass-strong`, как у шапки): блок ездит поверх
+        графиков, и сквозь обычное стекло читались бы их подписи.
+      */}
+      <FoldCard title="Фильтры" className="glass-strong md:sticky md:top-[4.75rem] md:z-30">
         <StatisticsFilters
           filters={filters}
           people={people.map((person) => ({ id: person.id, name: fullName(person) }))}
