@@ -26,7 +26,7 @@ export function IssueCredentialsForm({ participant }: { participant: Participant
   });
 
   return (
-    <div className="mt-2 flex flex-col gap-3">
+    <div className="flex flex-col gap-3">
       {state.credentials !== null && <CredentialsCard credentials={state.credentials} />}
 
       <Form

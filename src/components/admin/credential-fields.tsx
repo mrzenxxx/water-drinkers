@@ -49,43 +49,48 @@ export function credentialsFieldError(state: CredentialsFormState): { name: stri
  * Логин и пароль: пусты до «Сгенерировать», дальше — предложенные значения,
  * которые администратор может поправить. Генерация идёт без проверки
  * обязательных полей (`formNoValidate`), запись — с ней.
+ *
+ * Раскладка следует за шириной места, а не экрана (`@container`): те же поля
+ * стоят и в широкой форме добавления, и в узкой панели раскрытого участника.
  */
 export function CredentialFields({ state, idPrefix }: { state: CredentialsFormState; idPrefix: string }): ReactNode {
   return (
-    <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-start">
-      <Field htmlFor={`${idPrefix}-login`} label="Логин">
-        <Input
-          id={`${idPrefix}-login`}
-          name="login"
-          defaultValue={state.values.login}
-          required
-          autoComplete="off"
-          spellCheck={false}
-          className="font-mono"
-        />
-      </Field>
-      <Field htmlFor={`${idPrefix}-password`} label="Пароль">
-        <Input
-          id={`${idPrefix}-password`}
-          name="password"
-          defaultValue={state.values.password}
-          required
-          minLength={8}
-          autoComplete="off"
-          spellCheck={false}
-          className="font-mono"
-        />
-      </Field>
-      <IntentButton
-        intent="suggest"
-        pendingLabel="Генерируем…"
-        variant="outline"
-        formNoValidate
-        className="sm:mt-[2.125rem]"
-      >
-        <KeyRound aria-hidden />
-        Сгенерировать учётные данные
-      </IntentButton>
+    <div className="@container">
+      <div className="grid items-start gap-3 @sm:grid-cols-2 @3xl:grid-cols-[1fr_1fr_auto]">
+        <Field htmlFor={`${idPrefix}-login`} label="Логин">
+          <Input
+            id={`${idPrefix}-login`}
+            name="login"
+            defaultValue={state.values.login}
+            required
+            autoComplete="off"
+            spellCheck={false}
+            className="font-mono"
+          />
+        </Field>
+        <Field htmlFor={`${idPrefix}-password`} label="Пароль">
+          <Input
+            id={`${idPrefix}-password`}
+            name="password"
+            defaultValue={state.values.password}
+            required
+            minLength={8}
+            autoComplete="off"
+            spellCheck={false}
+            className="font-mono"
+          />
+        </Field>
+        <IntentButton
+          intent="suggest"
+          pendingLabel="Генерируем…"
+          variant="outline"
+          formNoValidate
+          className="@sm:col-span-2 @sm:justify-self-start @3xl:col-span-1 @3xl:mt-[2.125rem]"
+        >
+          <KeyRound aria-hidden />
+          Сгенерировать учётные данные
+        </IntentButton>
+      </div>
     </div>
   );
 }
