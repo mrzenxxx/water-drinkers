@@ -28,35 +28,64 @@ export function GlassToggle(): ReactNode {
       aria-pressed={liquid}
       title={label}
     >
-      <BubbleIcon filled={liquid} />
+      <BubbleIcon />
     </Button>
   );
 }
 
-/** Пузырик: большая капля с бликом и две маленькие рядом. */
-function BubbleIcon({ filled }: { filled: boolean }): ReactNode {
+/**
+ * Пузырик, который вытягивается в три.
+ *
+ * Матовое стекло — один объёмный пузырёк: заливка с бликом внутри. Жидкое —
+ * три пересекающиеся окружности, уходящие вдаль по диагонали в 45°: каждая
+ * следующая меньше и дальше, как пузырьки, поднимающиеся в толще воды.
+ *
+ * Все три окружности есть всегда. В матовом виде они стоят друг на друге и
+ * читаются одним пузырьком; при переключении разъезжаются по диагонали, а
+ * заливка и блик гаснут. Положение задаёт CSS по атрибуту `data-glass` на
+ * `<html>` (`.glass-bubble` в `globals.css`), а не состояние React: атрибут
+ * стоит ещё до первой отрисовки, и в жидком виде пузырьки не разъезжаются
+ * заново при каждой загрузке страницы — только по нажатию.
+ */
+function BubbleIcon(): ReactNode {
   return (
     <svg
       viewBox="0 0 24 24"
       aria-hidden
       focusable="false"
-      className="size-5"
+      className="glass-bubbles size-5 overflow-visible"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.75}
-      strokeLinecap="round"
+      strokeWidth={1.6}
     >
-      <circle
-        cx="10"
-        cy="13"
-        r="7"
-        fill={filled ? 'currentColor' : 'none'}
-        fillOpacity={filled ? 0.2 : 0}
-        className="transition-[fill-opacity] duration-500"
-      />
-      <path d="M6.8 11.2a3.6 3.6 0 0 1 2.4-2.4" />
-      <circle cx="18.5" cy="6.5" r="2.25" />
-      <circle cx="19.5" cy="12.5" r="1" />
+      <defs>
+        <radialGradient id="glass-toggle-fill" cx="0.35" cy="0.32" r="0.8">
+          <stop offset="0" stopColor="var(--primary)" stopOpacity="0.08" />
+          <stop offset="0.6" stopColor="var(--primary)" stopOpacity="0.28" />
+          <stop offset="1" stopColor="var(--primary)" stopOpacity="0.6" />
+        </radialGradient>
+      </defs>
+
+      {/* Дальний рисуется первым, ближний — поверх. */}
+      <g className="glass-bubble glass-bubble-3">
+        <circle r="8" vectorEffect="non-scaling-stroke" />
+      </g>
+      <g className="glass-bubble glass-bubble-2">
+        <circle r="8" vectorEffect="non-scaling-stroke" />
+      </g>
+      <g className="glass-bubble glass-bubble-1">
+        <circle r="8" vectorEffect="non-scaling-stroke" fill="url(#glass-toggle-fill)" className="glass-bubble-fill" />
+        {/* Блик: светлая дуга и искра в верхней левой четверти. */}
+        <g className="glass-bubble-glint">
+          <path
+            d="M-5.2 -1.2a5.4 5.4 0 0 1 4-4"
+            stroke="currentColor"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+          <circle cx="3.4" cy="-4.2" r="1" fill="currentColor" stroke="none" />
+        </g>
+      </g>
     </svg>
   );
 }

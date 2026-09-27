@@ -214,10 +214,14 @@ function run(): boolean {
       ['карточка', '--glass-bg', null, true],
       ['шапка и диалог', '--glass-bg-strong', null, true],
       ['плитка', '--glass-bg-soft', null, true],
-      ['стёклышко выбранного раздела — середина, блика нет', '--glass-bg-soft', PILL_TEXTS, false],
+      ['линза выбранного раздела на шапке — середина, блика нет', '--nav-pill-bg', PILL_TEXTS, false],
       ['фон приложения (заголовки, пояснения)', null, PAGE_TEXTS, true],
     ] as const) {
-      const surface = surfaceOf(tokens, token, sheened);
+      // Линза лежит на шапке: её голубоватая подложка — поверх стекла шапки.
+      const surface =
+        token === '--nav-pill-bg'
+          ? over(parseOklch(tokens.get(token)!), surfaceOf(tokens, '--glass-bg-strong', false))
+          : surfaceOf(tokens, token, sheened);
       console.log(`\n${themeName} тема · ${layerName} — подложка ${hex(surface)}`);
 
       for (const check of checks.filter((item) => only === null || only.includes(item.name))) {

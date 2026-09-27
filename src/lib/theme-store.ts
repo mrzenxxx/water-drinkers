@@ -80,11 +80,34 @@ export function getServerSnapshot(): ThemeState {
   return SERVER_STATE;
 }
 
+/**
+ * Сменить тему — плавно.
+ *
+ * Смена темы перекрашивает все переменные сразу, и браузер перерисовывает
+ * каждый слой стекла с размытием фона. На телефоне эта перерисовка видна как
+ * вспышка: страница будто собирается заново. Поэтому смена идёт через View
+ * Transition — браузер снимает старый кадр и растворяет его в новом, а
+ * промежуточная перерисовка остаётся за кадром. Длительность задаёт
+ * `globals.css` по атрибуту `data-view-transition="theme"`. Где API нет или
+ * просили меньше движения, тема меняется сразу.
+ */
 export function setPreference(preference: ThemePreference): void {
   try {
     localStorage.setItem(THEME_STORAGE_KEY, preference);
   } catch {
     // Тема просто не запомнится между визитами.
   }
-  refresh();
+
+  const root = document.documentElement;
+  const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (calm || typeof document.startViewTransition !== 'function') {
+    refresh();
+    return;
+  }
+
+  root.dataset.viewTransition = 'theme';
+  const transition = document.startViewTransition(refresh);
+  void transition.finished.finally(() => {
+    delete root.dataset.viewTransition;
+  });
 }
