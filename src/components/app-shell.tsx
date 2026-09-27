@@ -8,6 +8,7 @@ import { GlassToggle } from '@/components/glass-toggle';
 import { SectionTabs } from '@/components/nav-tabs';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ROLE_LABEL, fullName, type NamedUser } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { adminContactsFromEnv } from '@/lib/view/admin-contact';
 import { APP_NAME } from '@/lib/view/app';
 import { APP_SECTIONS, ADMIN_SECTION, type NavSection } from '@/lib/view/nav';
@@ -66,6 +67,7 @@ export function AppShell({ user, unreadNotices = 0, children }: AppShellProps): 
   // удобство, а не защита: сами страницы закрыты `requirePageAdmin`.
   const withAdmin: NavSection[] =
     user.role === 'ADMIN' ? [...APP_SECTIONS, ADMIN_SECTION] : [...APP_SECTIONS];
+  const isAdmin = user.role === 'ADMIN';
 
   const sections: NavSection[] = withAdmin.map((item) =>
     item.href === '/notices' && unreadNotices > 0 ? { ...item, badge: unreadNotices } : item,
@@ -124,13 +126,18 @@ export function AppShell({ user, unreadNotices = 0, children }: AppShellProps): 
               разделам по той же причине, что и название приложения: значок
               рядом уже говорит «это вы». Подпись для чтения с экрана
               появляется ровно там, где исчезает видимая.
+
+              У администратора имени в шапке нет вовсе, на любой ширине: у
+              него на один раздел больше («Админ-панель»), и с именем полоса
+              разделов не помещалась. Имя и роль остаются в подсказке и на
+              странице профиля.
             */}
             <Link
               href="/profile"
-              title="Профиль"
+              title={isAdmin ? `${fullName(user)} · ${ROLE_LABEL[user.role]}` : 'Профиль'}
               className="hover:bg-secondary/70 focus-visible:ring-ring flex items-center gap-2 rounded-full px-1.5 py-1 transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none"
             >
-              <span className="hidden text-right text-sm xl:block">
+              <span className={cn('hidden text-right text-sm', !isAdmin && 'xl:block')}>
                 <span className="block leading-tight font-medium">{fullName(user)}</span>
                 <span className="text-muted-foreground block text-xs leading-tight">
                   {ROLE_LABEL[user.role] ?? 'Участник'}
@@ -139,7 +146,7 @@ export function AppShell({ user, unreadNotices = 0, children }: AppShellProps): 
               <span className="droplet-mark flex size-8 shrink-0 items-center justify-center rounded-full">
                 <UserRound aria-hidden className="size-4" />
               </span>
-              <span className="sr-only xl:hidden">Профиль</span>
+              <span className={cn('sr-only', !isAdmin && 'xl:hidden')}>Профиль</span>
             </Link>
           </div>
         </div>
