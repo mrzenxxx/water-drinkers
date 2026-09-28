@@ -24,7 +24,9 @@ shift 2
 [ $# -gt 0 ] || { echo 'укажите команду' >&2; exit 2; }
 contour_vars "$contour"
 
-LOCAL_PORT=${LOCAL_PORT:-15432}
+# Случайный порт: туннель прошлой команды может ещё держать свой, и две
+# выкладки подряд на фиксированном порту сталкивались.
+LOCAL_PORT=${LOCAL_PORT:-$((20000 + RANDOM % 20000))}
 sock=$(mktemp -u "${TMPDIR:-/tmp}/wd-tunnel.XXXXXX")
 
 password=$(remote_env "$host" "$C_PASSWORD_VAR")
