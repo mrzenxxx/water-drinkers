@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 
 import { AdminContactLinks } from '@/components/admin-contact-links';
 import { LoginForm } from '@/components/login-form';
+import { demoUrlFromEnv } from '@/lib/demo/guest';
 import { adminContactsFromEnv } from '@/lib/view/admin-contact';
 import { APP_NAME, pageTitle } from '@/lib/view/app';
 
@@ -17,6 +18,11 @@ import { APP_NAME, pageTitle } from '@/lib/view/app';
  * не у каждого — выбор отдан человеку. Без переменных знаков нет.
  * Схему адреса дописывает `adminContactHref`: `t.me/ivanov` без неё браузер
  * считает путём внутри сайта, и ссылка открывает свою же страницу 404.
+ *
+ * Под карточкой — «Смотреть демо-версию», если задан `DEMO_URL` (прод и тест).
+ * Это кнопка в обличье ссылки: форма шлёт POST на демо-контур, тот заводит
+ * гостя-администратора и уводит на его ссылку входа (src/app/demo/route.ts).
+ * Обычная ссылка по GET создавала бы гостей каждому роботу, что её откроет.
  */
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +33,7 @@ export default async function LoginPage({
 }): Promise<ReactNode> {
   const { link } = await searchParams;
   const contacts = adminContactsFromEnv();
+  const demoUrl = demoUrlFromEnv();
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-6 py-12">
@@ -44,9 +51,7 @@ export default async function LoginPage({
           <h1 className="text-gradient-water text-3xl font-semibold tracking-tight">
             {APP_NAME}
           </h1>
-          <p className="text-muted-foreground text-sm">
-            Фонд питьевой воды в офисе
-          </p>
+          <p className="text-muted-foreground text-sm">Гидро Измерительный Счетчик</p>
         </header>
 
         {link === 'invalid' && (
@@ -74,6 +79,17 @@ export default async function LoginPage({
           </div>
         )}
       </div>
+
+      {demoUrl !== null && (
+        <form action={`${demoUrl}/demo`} method="post" className="mt-6 text-center">
+          <button
+            type="submit"
+            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded-sm text-sm underline underline-offset-4 focus-visible:ring-2 focus-visible:outline-none"
+          >
+            Смотреть демо-версию
+          </button>
+        </form>
+      )}
     </main>
   );
 }

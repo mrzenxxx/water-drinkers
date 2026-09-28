@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!--
+    Пузырик — знак «ГИС Пузырик» во вкладке браузера. Цвета — от primary
+    обеих тем (globals.css): тело светлое к центру и глубокое к краю, ободок
+    тёмный, чтобы пузырь не растворялся ни на светлой, ни на тёмной полосе
+    вкладок. Блик — крупный вверху слева и отсвет внизу справа, как у
+    настоящего пузыря под лампой.
+  -->
+  <defs>
+    <radialGradient id="body" cx="0.38" cy="0.34" r="0.72">
+      <stop offset="0" stop-color="#d6f1ff" />
+      <stop offset="0.45" stop-color="#6cc4f0" />
+      <stop offset="0.85" stop-color="#2a7fd0" />
+      <stop offset="1" stop-color="#1d5aa6" />
+    </radialGradient>
+  </defs>
+  <circle cx="32" cy="32" r="28.5" fill="url(#body)" stroke="#123f7a" stroke-width="3" />
+  <ellipse cx="22" cy="20" rx="9.5" ry="5.5" fill="#ffffff" fill-opacity="0.92" transform="rotate(-38 22 20)" />
+  <circle cx="14.8" cy="30.5" r="2.4" fill="#ffffff" fill-opacity="0.75" />
+  <path d="M44 50.5 A 21 21 0 0 0 52.5 40" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="3" stroke-linecap="round" />
+</svg>

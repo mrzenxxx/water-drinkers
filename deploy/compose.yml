@@ -60,6 +60,8 @@ services:
       DATABASE_URL: postgresql://waterdrinkers:${POSTGRES_PASSWORD}@db:5432/waterdrinkers
       SESSION_SECRET: ${SESSION_SECRET:?задайте SESSION_SECRET в .env}
       APP_URL: https://puzyrik.${BASE_HOST:?задайте BASE_HOST в .env}
+      # Кнопка «Смотреть демо-версию» на странице входа (src/lib/demo/guest.ts).
+      DEMO_URL: https://demo-puzyrik.${BASE_HOST}
       ADMIN_TELEGRAM_URL: ${ADMIN_TELEGRAM_URL:-}
       NODE_OPTIONS: --max-old-space-size=384
 
@@ -71,6 +73,8 @@ services:
       DATABASE_URL: postgresql://wd_demo:${DEMO_DB_PASSWORD:?задайте DEMO_DB_PASSWORD в .env}@db:5432/waterdrinkers_demo
       SESSION_SECRET: ${DEMO_SESSION_SECRET:?задайте DEMO_SESSION_SECRET в .env}
       APP_URL: https://demo-puzyrik.${BASE_HOST}
+      # Каждому нажавшему «Смотреть демо-версию» — свой гость-администратор.
+      DEMO_MODE: '1'
       ADMIN_TELEGRAM_URL: ${ADMIN_TELEGRAM_URL:-}
       NODE_OPTIONS: --max-old-space-size=256
 
@@ -81,6 +85,7 @@ services:
       DATABASE_URL: postgresql://wd_test:${TEST_DB_PASSWORD:?задайте TEST_DB_PASSWORD в .env}@db:5432/waterdrinkers_test
       SESSION_SECRET: ${TEST_SESSION_SECRET:?задайте TEST_SESSION_SECRET в .env}
       APP_URL: https://test-puzyrik.${BASE_HOST}
+      DEMO_URL: https://demo-puzyrik.${BASE_HOST}
       ADMIN_TELEGRAM_URL: ${ADMIN_TELEGRAM_URL:-}
       NODE_OPTIONS: --max-old-space-size=256
 
