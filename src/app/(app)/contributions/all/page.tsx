@@ -2,6 +2,7 @@ import { Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { Amount } from '@/components/amount';
+import { CollapseWhenStuck } from '@/components/collapse-when-stuck';
 import { ContributionFilters } from '@/components/contribution-filters';
 import { ContributionsList } from '@/components/contributions-list';
 import { FoldCard } from '@/components/fold-card';
@@ -56,20 +57,22 @@ export default async function AllContributionsPage({
       {/*
         Отбор прилипает под шапкой, как фильтры статистики: список взносов
         длинный, и менять участника или статус удобно, не прокручивая назад.
-        Только на широком экране — на телефоне липкая панель закрыла бы
-        почти весь экран; свернуть её можно всегда. Стекло плотнее обычного
+        На телефоне, прилипнув, панель сворачивается в строку заголовка
+        (`CollapseWhenStuck`) — раскрытая, она закрыла бы список. Стекло плотнее обычного
         (`glass-strong`): панель ездит поверх списка.
       */}
-      <FoldCard
-        title="Отбор"
-        meta="Фильтры попадают в адрес — ссылкой можно поделиться"
-        className="glass-strong md:sticky md:top-[4.75rem] md:z-30"
-      >
-        <ContributionFilters
-          filters={filters}
-          people={people.map((person) => ({ id: person.id, name: fullName(person) }))}
-        />
-      </FoldCard>
+      <CollapseWhenStuck>
+        <FoldCard
+          title="Отбор"
+          meta={<span className="max-sm:hidden">Фильтры попадают в адрес — ссылкой можно поделиться</span>}
+          className="glass-strong sticky-filters"
+        >
+          <ContributionFilters
+            filters={filters}
+            people={people.map((person) => ({ id: person.id, name: fullName(person) }))}
+          />
+        </FoldCard>
+      </CollapseWhenStuck>
 
       <Card>
         <CardHeader>

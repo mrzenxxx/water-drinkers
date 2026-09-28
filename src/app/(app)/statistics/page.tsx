@@ -14,6 +14,7 @@ import type { ReactNode } from 'react';
 import { ActivityFeed } from '@/components/activity-feed';
 import { Amount } from '@/components/amount';
 import { StatisticsFilters } from '@/components/statistics-filters';
+import { CollapseWhenStuck } from '@/components/collapse-when-stuck';
 import { FoldCard } from '@/components/fold-card';
 import { FundBalanceChart } from '@/components/charts/fund-balance-chart';
 import { ParticipantBalanceChart } from '@/components/charts/participant-balance-chart';
@@ -150,17 +151,19 @@ export default async function StatisticsPage({
       {/*
         Фильтры прилипают под шапкой: графики и ленты ниже длинные, и менять
         период или участников удобно, не прокручивая страницу обратно к
-        началу. Только на широком экране — на телефоне липкий блок фильтров
-        закрыл бы собой почти весь экран; свернуть его можно всегда. Стекло
+        началу. На телефоне, прилипнув, блок сворачивается в строку заголовка
+        (`CollapseWhenStuck`) — раскрытый, он закрыл бы собой список. Стекло
         плотнее обычного (`glass-strong`, как у шапки): блок ездит поверх
         графиков, и сквозь обычное стекло читались бы их подписи.
       */}
-      <FoldCard title="Фильтры" className="glass-strong md:sticky md:top-[4.75rem] md:z-30">
-        <StatisticsFilters
-          filters={filters}
-          people={people.map((person) => ({ id: person.id, name: fullName(person) }))}
-        />
-      </FoldCard>
+      <CollapseWhenStuck>
+        <FoldCard title="Фильтры" className="glass-strong sticky-filters">
+          <StatisticsFilters
+            filters={filters}
+            people={people.map((person) => ({ id: person.id, name: fullName(person) }))}
+          />
+        </FoldCard>
+      </CollapseWhenStuck>
 
       <FoldCard
         title="Сводка за период"
