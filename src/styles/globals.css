@@ -1290,6 +1290,32 @@
   }
 
   /*
+    Значки «Главная» (капля приложения) и «Профиль» в жидком виде —
+    капли с бликом: светлая плёнка сверху (`--button-sheen`, как у кнопки
+    действия), ободок, рельеф и свечение цвета воды вокруг.
+  */
+  [data-glass='liquid'] .droplet-mark {
+    position: relative;
+    isolation: isolate;
+    box-shadow:
+      inset 0 0 0 1px oklch(1 0 0 / 0.32),
+      inset 0 1px 0 oklch(1 0 0 / 0.7),
+      inset 0 -2px 4px oklch(0.25 0.08 250 / 0.3),
+      0 0 14px -2px color-mix(in oklab, var(--accent) 65%, transparent),
+      0 6px 16px -6px color-mix(in oklab, var(--primary) 75%, transparent);
+  }
+
+  [data-glass='liquid'] .droplet-mark::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background-image: var(--button-sheen);
+    pointer-events: none;
+  }
+
+  /*
     Смена вида — медленное растворение старой страницы в новой. Остальные
     переходы страниц (если появятся) этим правилом не задеты: оно действует,
     только пока на `<html>` стоит `data-view-transition="glass"`.
@@ -1298,6 +1324,26 @@
   :root[data-view-transition='glass']::view-transition-new(root) {
     animation-duration: 650ms;
     animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /*
+    Шапка и нижняя полоса на время смены темы или вида стекла.
+
+    Пока идёт переход, на экране не живая страница, а два снимка, растворяемые
+    друг в друге. Полупрозрачная шапка в них просвечивает дважды — и
+    выглядит прозрачнее обеих тем, а на телефоне снимок может и вовсе лечь
+    без размытия, и сквозь шапку читается содержимое. Поэтому на время
+    перехода полосы почти непрозрачны, а после него плавно возвращаются к
+    стеклу. Вход в плотность — мгновенный (`transition: none`), чтобы старый
+    снимок уже был плотным; выход — растворением, заданным у самой полосы.
+  */
+  .glass-strong {
+    transition: background-color 450ms ease;
+  }
+
+  :root[data-view-transition] .glass-strong {
+    background-color: color-mix(in oklab, var(--card) 96%, transparent);
+    transition: none;
   }
 
   /* Смена темы — то же растворение, чуть быстрее: свет меняется, а не вид. */

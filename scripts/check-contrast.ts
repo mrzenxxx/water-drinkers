@@ -298,14 +298,17 @@ function run(): boolean {
       ['жидкое: бейджик вторичный', '--gradient-secondary', '--secondary-foreground'],
       ['жидкое: «внёс админ»', '--gradient-mint', '--mint-foreground'],
       ['жидкое: бейджик чека', '--gradient-ink', '--background'],
+      ['жидкое: значок-капля', '--gradient-water', '--primary-foreground'],
     ] as const) {
       const foreground = parseOklch(tokens.get(text)!);
       for (const [index, stop] of [...tokens.get(gradient)!.matchAll(OKLCH_ALL)].entries()) {
         const ratio = contrast(foreground, over(textLineSheen, parseOklch(stop[0])));
-        const passed = ratio >= 4.5;
+        // Значок — не текст: ему, как и в матовом виде, хватает 3:1.
+        const min = name.includes('значок') ? 3 : 4.5;
+        const passed = ratio >= min;
         if (!passed) ok = false;
         console.log(
-          `  ${passed ? '✓' : '✗'} ${`${name}, конец ${index + 1}`.padEnd(22)} ${ratio.toFixed(2)}:1 (нужно 4.5:1)`,
+          `  ${passed ? '✓' : '✗'} ${`${name}, конец ${index + 1}`.padEnd(22)} ${ratio.toFixed(2)}:1 (нужно ${min}:1)`,
         );
       }
     }
