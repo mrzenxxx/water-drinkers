@@ -37,7 +37,7 @@
   --destructive-foreground: oklch(0.99 0.005 230);
 
   --border: oklch(0.86 0.025 235);
-  --input: oklch(0.64 0.04 240); /* 3.2:1 с background */
+  --input: oklch(0.62 0.04 240); /* не ниже 3:1 и на тонкой плитке поверх воды */
   --ring: oklch(0.55 0.13 235);
 
   /*
@@ -82,9 +82,10 @@
     Яркое пятно увело бы контраст текста ниже AA в тех местах, где оно
     попадает под карточку, — а это уже баг, а не оформление (§12).
   */
-  --depth-1: oklch(0.86 0.085 215 / 0.85); /* верхний свет, голубой */
-  --depth-2: oklch(0.89 0.07 190 / 0.75); /* бирюзовый отблеск справа */
-  --depth-3: oklch(0.85 0.08 255 / 0.7); /* глубина снизу, синий */
+  --depth-1: oklch(0.84 0.11 212 / 0.9); /* верхний свет, голубой */
+  --depth-2: oklch(0.88 0.1 178 / 0.85); /* бирюзовый отблеск */
+  --depth-3: oklch(0.82 0.1 262 / 0.8); /* глубина снизу, синий */
+  --depth-4: oklch(0.9 0.06 310 / 0.45); /* сиреневая вода — косой градиент */
 
   /*
     ── Стекло ─────────────────────────────────────────────────────────────
@@ -97,6 +98,8 @@
   --glass-bg: color-mix(in oklab, var(--card) 62%, transparent);
   --glass-bg-strong: color-mix(in oklab, var(--card) 70%, transparent);
   --glass-bg-soft: color-mix(in oklab, var(--card) 42%, transparent);
+  /* Плитка жидкого вида: тоньше, сквозь неё видна подкрашенная водой карточка. */
+  --glass-bg-soft-liquid: color-mix(in oklab, var(--card) 28%, transparent);
   --glass-border: color-mix(in oklab, white 75%, var(--border));
   --glass-border-soft: color-mix(in oklab, white 55%, var(--border));
   /* Блик источника света: плёнка по верхней кромке, как на мокром стекле. */
@@ -196,12 +199,29 @@
     inset 0 1px 0 oklch(1 0 0 / 0.9),
     inset 0 -1px 0 oklch(1 0 0 / 0.45),
     inset 0 0 0 1px oklch(1 0 0 / 0.35),
+    inset 0 0 26px color-mix(in oklab, var(--accent) 22%, transparent),
     0 2px 6px oklch(0.45 0.07 245 / 0.08),
+    0 0 28px -6px color-mix(in oklab, var(--accent) 45%, transparent),
     0 24px 50px -22px color-mix(in oklab, var(--primary) 40%, transparent);
   --liquid-soft-shadow:
     inset 0 1px 0 oklch(1 0 0 / 0.8),
     inset 0 -1px 0 oklch(1 0 0 / 0.3),
+    inset 0 0 16px color-mix(in oklab, var(--accent) 28%, transparent),
+    0 0 16px -4px color-mix(in oklab, var(--accent) 45%, transparent),
     0 4px 12px -6px oklch(0.45 0.09 245 / 0.22);
+  /*
+    Блик жидкого стекла: диагональная плёнка через всю поверхность и отсвет
+    в противоположном углу. Самый светлый упор равен упору `--glass-sheen`,
+    поэтому контраст текста остаётся в пределах проверенного.
+  */
+  --glass-sheen-liquid: linear-gradient(
+    135deg,
+    oklch(1 0 0 / 0.6) 0%,
+    oklch(1 0 0 / 0.22) 22%,
+    oklch(1 0 0 / 0) 45%,
+    oklch(1 0 0 / 0) 68%,
+    oklch(1 0 0 / 0.3) 100%
+  );
   --badge-drop: oklch(0.4 0.08 245 / 0.22);
   --btn-shadow:
     inset 0 1px 0 oklch(1 0 0 / 0.5),
@@ -256,7 +276,7 @@
   --destructive-foreground: oklch(0.15 0.03 40);
 
   --border: oklch(0.36 0.04 245);
-  --input: oklch(0.58 0.06 240); /* 4.3:1 с background */
+  --input: oklch(0.62 0.06 240); /* не ниже 3:1 и на плитке поверх яркой воды */
   --ring: oklch(0.7 0.12 235);
 
   --owes: oklch(0.75 0.14 45); /* 7.9:1 */
@@ -281,13 +301,15 @@
     у прозрачности запас меньше — фон темнее карточки, и каждый процент
     прозрачности утягивает подложку вниз, к фону. Поэтому пятна ещё бледнее.
   */
-  --depth-1: oklch(0.4 0.1 225 / 0.22);
-  --depth-2: oklch(0.38 0.09 190 / 0.18);
-  --depth-3: oklch(0.32 0.1 270 / 0.24);
+  --depth-1: oklch(0.42 0.12 225 / 0.4);
+  --depth-2: oklch(0.4 0.1 185 / 0.32);
+  --depth-3: oklch(0.34 0.12 275 / 0.3);
+  --depth-4: oklch(0.34 0.1 320 / 0.22);
 
   --glass-bg: color-mix(in oklab, var(--card) 74%, transparent);
   --glass-bg-strong: color-mix(in oklab, var(--card) 80%, transparent);
   --glass-bg-soft: color-mix(in oklab, var(--card) 60%, transparent);
+  --glass-bg-soft-liquid: color-mix(in oklab, var(--card) 45%, transparent);
   --glass-border: color-mix(in oklab, white 16%, var(--border));
   --glass-border-soft: color-mix(in oklab, white 8%, var(--border));
   --glass-sheen: linear-gradient(
@@ -337,11 +359,23 @@
     inset 0 1px 0 oklch(1 0 0 / 0.16),
     inset 0 -1px 0 oklch(1 0 0 / 0.06),
     inset 0 0 0 1px oklch(1 0 0 / 0.05),
+    inset 0 0 24px color-mix(in oklab, var(--primary) 16%, transparent),
     0 2px 6px oklch(0 0 0 / 0.4),
+    0 0 30px -6px color-mix(in oklab, var(--primary) 35%, transparent),
     0 28px 60px -22px color-mix(in oklab, var(--primary) 30%, oklch(0 0 0 / 0.7));
   --liquid-soft-shadow:
     inset 0 1px 0 oklch(1 0 0 / 0.12),
+    inset 0 0 14px color-mix(in oklab, var(--primary) 18%, transparent),
+    0 0 16px -4px color-mix(in oklab, var(--primary) 35%, transparent),
     0 4px 12px -6px oklch(0 0 0 / 0.55);
+  --glass-sheen-liquid: linear-gradient(
+    135deg,
+    oklch(1 0 0 / 0.07) 0%,
+    oklch(1 0 0 / 0.03) 25%,
+    oklch(1 0 0 / 0) 48%,
+    oklch(1 0 0 / 0) 70%,
+    oklch(1 0 0 / 0.05) 100%
+  );
   --badge-drop: oklch(0 0 0 / 0.45);
   --btn-shadow:
     inset 0 1px 0 oklch(1 0 0 / 0.55),
@@ -410,6 +444,35 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/*
+  Положение воды на фоне. Зарегистрированы, чтобы переход между видами
+  стекла был плавным: у незарегистрированной переменной нет типа, и браузер
+  меняет её скачком.
+*/
+@property --water-angle {
+  syntax: '<angle>';
+  inherits: true;
+  initial-value: 135deg;
+}
+
+@property --water-x1 {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 8%;
+}
+
+@property --water-x2 {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 98%;
+}
+
+@property --water-x3 {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 45%;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -433,11 +496,23 @@
   html {
     background-color: var(--background);
     background-image:
-      radial-gradient(58rem 42rem at 8% -12%, var(--depth-1), transparent 70%),
-      radial-gradient(46rem 34rem at 98% 2%, var(--depth-2), transparent 68%),
-      radial-gradient(52rem 46rem at 45% 108%, var(--depth-3), transparent 72%);
+      radial-gradient(58rem 42rem at var(--water-x1) -12%, var(--depth-1), transparent 70%),
+      radial-gradient(46rem 34rem at var(--water-x2) 2%, var(--depth-2), transparent 68%),
+      radial-gradient(52rem 46rem at var(--water-x3) 108%, var(--depth-3), transparent 72%),
+      linear-gradient(var(--water-angle), var(--depth-4), transparent 60%);
     background-repeat: no-repeat;
     background-attachment: fixed;
+    /*
+      Смена вида стекла разворачивает воду: косой градиент поворачивается, а
+      пятна света переплывают на другую сторону. Переменные зарегистрированы
+      (`@property` выше), поэтому браузер умеет их плавно менять — обычную
+      переменную он переключил бы скачком.
+    */
+    transition:
+      --water-angle 1.4s cubic-bezier(0.4, 0, 0.2, 1),
+      --water-x1 1.4s cubic-bezier(0.4, 0, 0.2, 1),
+      --water-x2 1.4s cubic-bezier(0.4, 0, 0.2, 1),
+      --water-x3 1.4s cubic-bezier(0.4, 0, 0.2, 1);
     /* Служебная обвязка браузера подхватывает водный цвет: полосы прокрутки, галочки. */
     accent-color: var(--primary);
     scrollbar-color: color-mix(in oklab, var(--primary) 45%, transparent) transparent;
@@ -1068,6 +1143,25 @@
       0 8px 20px -10px color-mix(in oklab, var(--bubble-tone) 65%, transparent);
   }
 
+  /* Жидкий вид разворачивает воду на фоне — плавно, см. `html` в базовом слое. */
+  :root[data-glass='liquid'] {
+    --water-angle: 315deg;
+    --water-x1: 92%;
+    --water-x2: 4%;
+    --water-x3: 62%;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      transition: none;
+    }
+  }
+
+  /* Блик жидкого стекла: плёнка по диагонали и отсвет в дальнем углу. */
+  [data-glass='liquid'] :is(.glass, .glass-strong, .glass-soft:not(.nav-pill))::before {
+    background-image: var(--glass-sheen-liquid);
+  }
+
   /*
     Карточки, шапка и плитки в жидком виде — толстое стекло: светлая кромка
     по верху, отсвет по низу, тонкий светлый ободок и глубокая тень с
@@ -1081,6 +1175,19 @@
   [data-glass='liquid'] :is(.glass, .glass-strong) {
     border-color: var(--liquid-rim);
     box-shadow: var(--liquid-card-shadow);
+  }
+
+  /*
+    Плитка лежит на карточке, а карточка сама размывает фон — и браузер
+    размывает под плиткой только карточку, не страницу. Своё размытие плитке
+    поэтому ничего не даёт, а стекло читается прозрачностью: подложка тоньше,
+    и сквозь неё видна подкрашенная водой карточка.
+  */
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    [data-glass='liquid'] .glass-soft:not(.nav-pill) {
+      background-color: var(--glass-bg-soft-liquid);
+      backdrop-filter: none;
+    }
   }
 
   /* Линза выбранного раздела (`.nav-pill`) держит свою тень и кромку. */
@@ -1163,17 +1270,12 @@
     transition-delay: 80ms;
   }
 
-  .glass-bubble-fill,
   .glass-bubble-glint {
-    transition: opacity 300ms ease, fill-opacity 300ms ease;
+    transition: opacity 300ms ease;
   }
 
   .glass-bubble-glint {
     opacity: 0.85;
-  }
-
-  [data-glass='liquid'] .glass-bubble-fill {
-    fill-opacity: 0;
   }
 
   [data-glass='liquid'] .glass-bubble-glint {
@@ -1182,7 +1284,6 @@
 
   @media (prefers-reduced-motion: reduce) {
     .glass-bubble,
-    .glass-bubble-fill,
     .glass-bubble-glint {
       transition: none;
     }

@@ -159,7 +159,7 @@ function surfaceOf(
 ): Rgba {
   // Фон страницы: базовый цвет и три пятна света, наложенные друг на друга.
   let base = parseOklch(tokens.get('--background')!);
-  for (const depth of ['--depth-1', '--depth-2', '--depth-3']) {
+  for (const depth of ['--depth-1', '--depth-2', '--depth-3', '--depth-4']) {
     base = over(parseOklch(tokens.get(depth)!), base);
   }
   if (glassToken === null) return base;
@@ -168,7 +168,12 @@ function surfaceOf(
   const card = parseOklch(tokens.get('--card')!);
   const glass = over({ ...card, a: glassAlpha(tokens.get(glassToken)!) }, base);
   if (!sheened) return glass;
-  return over(sheenPeak(tokens.get('--glass-sheen')!), glass);
+  // Худший блик из двух видов стекла: матового и жидкого (`[data-glass='liquid']`).
+  const peaks = ['--glass-sheen', '--glass-sheen-liquid']
+    .filter((name) => tokens.has(name))
+    .map((name) => sheenPeak(tokens.get(name)!));
+  const brightest = peaks.reduce((a, b) => (b.a > a.a ? b : a));
+  return over(brightest, glass);
 }
 
 function run(): boolean {
@@ -214,6 +219,7 @@ function run(): boolean {
       ['карточка', '--glass-bg', null, true],
       ['шапка и диалог', '--glass-bg-strong', null, true],
       ['плитка', '--glass-bg-soft', null, true],
+      ['плитка жидкого стекла', '--glass-bg-soft-liquid', null, true],
       ['линза выбранного раздела на шапке — середина, блика нет', '--nav-pill-bg', PILL_TEXTS, false],
       ['фон приложения (заголовки, пояснения)', null, PAGE_TEXTS, true],
     ] as const) {
