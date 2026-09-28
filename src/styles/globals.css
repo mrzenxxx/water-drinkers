@@ -703,6 +703,28 @@
   }
 
   /*
+    Поле даты в Safari на iPhone.
+
+    Там у `<input type="date">` своя минимальная ширина по содержимому, и
+    ширину колонки он не слушает: в узкой сетке фильтров поле вылезало за
+    край карточки. Родной вид снимается — высоту и рамку полю и так задаёт
+    `.field-surface`, — а дата прижимается к началу, как у соседних полей.
+    `-webkit-touch-callout` есть только у Safari на iOS, поэтому правило
+    не трогает ни настольные браузеры, ни Android.
+  */
+  @supports (-webkit-touch-callout: none) {
+    input[type='date'] {
+      appearance: none;
+      -webkit-appearance: none;
+      min-inline-size: 0;
+    }
+
+    input[type='date']::-webkit-date-and-time-value {
+      text-align: start;
+    }
+  }
+
+  /*
     Поле ввода — матовое стекло.
 
     Подложка полупрозрачная и размывает фон под собой (правило в `@supports`

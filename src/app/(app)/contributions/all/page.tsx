@@ -1,31 +1,25 @@
-import Link from 'next/link';
 import { Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { Amount } from '@/components/amount';
+import { ContributionFilters } from '@/components/contribution-filters';
 import { ContributionsList } from '@/components/contributions-list';
+import { FoldCard } from '@/components/fold-card';
 import { PageHeader } from '@/components/page-header';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Field } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { requirePageUser } from '@/lib/auth/current-user';
 import { isCountedStatus } from '@/lib/calc';
 import { listContributions, listPeople, peopleById } from '@/lib/data/queries';
-import { CONTRIBUTION_STATUS_LABEL, CONTRIBUTIONS, fullName, withCount } from '@/lib/format';
+import { CONTRIBUTIONS, fullName, withCount } from '@/lib/format';
 import { pageTitle } from '@/lib/view/app';
-import {
-  hasContributionFilters,
-  parseContributionFilters,
-  type RawParams,
-} from '@/lib/view/filters';
+import { parseContributionFilters, type RawParams } from '@/lib/view/filters';
 
 /**
  * Все взносы (§6.3).
  *
- * Отбор — обычная `<form method="get">`: состояние экрана целиком в адресе,
- * ссылкой на отфильтрованную таблицу можно поделиться, и клиентский компонент
- * для этого не нужен вовсе. Разбор адреса — чистая функция с тестами.
+ * Отбор — та же панель, что у статистики: применяется сразу, без кнопки,
+ * а состояние экрана целиком в адресе — ссылкой на отфильтрованную таблицу
+ * можно поделиться. Разбор и сборка адреса — чистые функции с тестами.
  */
 export default async function AllContributionsPage({
   searchParams,
@@ -51,9 +45,6 @@ export default async function AllContributionsPage({
     .filter((row) => isCountedStatus(row.status))
     .reduce((sum, row) => sum + row.amount, 0);
 
-  const fieldClass =
-    'field-surface h-9 w-full cursor-pointer rounded-md border px-3 text-sm outline-none';
-
   return (
     <div className="flex flex-col gap-6">
       <title>{pageTitle('Все взносы')}</title>
@@ -62,64 +53,23 @@ export default async function AllContributionsPage({
         Приложение прозрачно: участник видит то же, что администратор.
       </PageHeader>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Отбор</CardTitle>
-          <CardDescription>Фильтры попадают в адрес — ссылкой можно поделиться.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form method="get" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <Field htmlFor="user" label="Участник">
-              <select
-                id="user"
-                name="user"
-                defaultValue={filters.userId ?? ''}
-                className={fieldClass}
-              >
-                <option value="">Все</option>
-                {people.map((person) => (
-                  <option key={person.id} value={person.id}>
-                    {fullName(person)}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            <Field htmlFor="status" label="Статус">
-              <select
-                id="status"
-                name="status"
-                defaultValue={filters.status ?? ''}
-                className={fieldClass}
-              >
-                <option value="">Любой</option>
-                {(['PENDING', 'CONFIRMED', 'RECORDED', 'REJECTED'] as const).map((status) => (
-                  <option key={status} value={status}>
-                    {CONTRIBUTION_STATUS_LABEL[status]}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            <Field htmlFor="from" label="Платёж с">
-              <Input id="from" name="from" type="date" defaultValue={filters.from ?? ''} />
-            </Field>
-
-            <Field htmlFor="to" label="по">
-              <Input id="to" name="to" type="date" defaultValue={filters.to ?? ''} />
-            </Field>
-
-            <div className="flex items-end gap-2">
-              <Button type="submit">Показать</Button>
-              {hasContributionFilters(filters) && (
-                <Button asChild variant="ghost">
-                  <Link href="/contributions/all">Сбросить</Link>
-                </Button>
-              )}
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+      {/*
+        Отбор прилипает под шапкой, как фильтры статистики: список взносов
+        длинный, и менять участника или статус удобно, не прокручивая назад.
+        Только на широком экране — на телефоне липкая панель закрыла бы
+        почти весь экран; свернуть её можно всегда. Стекло плотнее обычного
+        (`glass-strong`): панель ездит поверх списка.
+      */}
+      <FoldCard
+        title="Отбор"
+        meta="Фильтры попадают в адрес — ссылкой можно поделиться"
+        className="glass-strong md:sticky md:top-[4.75rem] md:z-30"
+      >
+        <ContributionFilters
+          filters={filters}
+          people={people.map((person) => ({ id: person.id, name: fullName(person) }))}
+        />
+      </FoldCard>
 
       <Card>
         <CardHeader>

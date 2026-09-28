@@ -1,13 +1,12 @@
 'use client';
 
-import { LoaderCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useId, useOptimistic, useState, useTransition, type ReactNode } from 'react';
 
 import { EVENT_COLOR, EVENT_LABEL_PLURAL } from '@/components/event-style';
+import { DateField, FilterRow as Row, PendingMark } from '@/components/filter-panel';
 import { PeoplePicker, type PickerPerson } from '@/components/people-picker';
 import { isIsoDate } from '@/lib/calc';
-import { cn } from '@/lib/utils';
 import { EVENT_KINDS, type EventKind } from '@/lib/view/events';
 import {
   FILTER_KINDS,
@@ -94,20 +93,7 @@ export function StatisticsFilters({
     <div className="flex flex-col gap-3" aria-busy={pending}>
       <Row
         label="Период"
-        aside={
-          <>
-            <LoaderCircle
-              aria-hidden
-              className={cn(
-                'size-3.5 animate-spin transition-opacity motion-reduce:animate-none',
-                pending ? 'opacity-100' : 'opacity-0',
-              )}
-            />
-            <span className="sr-only" aria-live="polite">
-              {pending ? 'Обновляю статистику' : ''}
-            </span>
-          </>
-        }
+        aside={<PendingMark pending={pending} text="Обновляю статистику" />}
       >
         {/* На телефоне пять сегментов в строку не влезают — там они сеткой
             в три колонки, а «Ручной ввод», самый длинный, занимает две. */}
@@ -227,57 +213,5 @@ export function StatisticsFilters({
         </div>
       </Row>
     </div>
-  );
-}
-
-/**
- * Строка панели: подпись и содержимое. На широком экране подпись слева
- * фиксированной ширины, ниже 1024px — над содержимым.
- * Подпись стоит по первой строке содержимого, а не по середине: когда
- * содержимое переносится, подпись по центру повисла бы между строк.
- */
-function Row({
-  label,
-  labelId,
-  aside,
-  children,
-}: {
-  label: string;
-  labelId?: string;
-  /** Мелочь рядом с подписью — например, индикатор обновления. */
-  aside?: ReactNode;
-  children: ReactNode;
-}): ReactNode {
-  return (
-    <div className="flex flex-col gap-1.5 lg:flex-row lg:items-start lg:gap-3">
-      <span className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs lg:h-(--control-h) lg:w-20">
-        <span id={labelId}>{label}</span>
-        {aside}
-      </span>
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2">{children}</div>
-    </div>
-  );
-}
-
-function DateField({
-  label,
-  value,
-  enabled,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  enabled: boolean;
-  onChange: (value: string) => void;
-}): ReactNode {
-  return (
-    <input
-      type="date"
-      aria-label={label}
-      value={value}
-      disabled={!enabled}
-      onChange={(event) => onChange(event.target.value)}
-      className="field-surface h-(--control-h) w-full min-w-0 rounded-md border px-2 text-sm sm:w-36 outline-none disabled:cursor-not-allowed disabled:opacity-50"
-    />
   );
 }

@@ -243,7 +243,7 @@ export function nextBucketKey(granularity: Granularity): (key: IsoDate) => IsoDa
 
 // ─── Фильтры таблицы взносов (§6.3) ────────────────────────────────────────
 
-const CONTRIBUTION_STATUSES = ['PENDING', 'CONFIRMED', 'RECORDED', 'REJECTED'] as const;
+export const CONTRIBUTION_STATUSES = ['PENDING', 'CONFIRMED', 'RECORDED', 'REJECTED'] as const;
 
 export type ContributionStatusFilter = (typeof CONTRIBUTION_STATUSES)[number];
 
@@ -264,9 +264,8 @@ export const EMPTY_CONTRIBUTION_FILTERS: ContributionFilters = {
 /**
  * Фильтры таблицы взносов из адреса страницы.
  *
- * Форма отбора — обычная `<form method="get">`, поэтому состояние экрана целиком
- * лежит в адресе: ссылкой на отфильтрованную таблицу можно поделиться, и никакой
- * клиентский компонент для этого не нужен.
+ * Панель отбора кладёт состояние экрана целиком в адрес (`contributionsHref`):
+ * ссылкой на отфильтрованную таблицу можно поделиться.
  */
 export function parseContributionFilters(params: RawParams): ContributionFilters {
   const userId = firstValue(params, 'user');
@@ -294,6 +293,26 @@ export function hasContributionFilters(filters: ContributionFilters): boolean {
     filters.from !== null ||
     filters.to !== null
   );
+}
+
+/**
+ * Адрес таблицы взносов с изменённой частью фильтров. Пара к
+ * `parseContributionFilters`: пустые фильтры в адрес не попадают.
+ */
+export function contributionsHref(
+  filters: ContributionFilters,
+  patch: Partial<ContributionFilters>,
+  basePath = '/contributions/all',
+): string {
+  const next = { ...filters, ...patch };
+  const params = new URLSearchParams();
+  if (next.userId !== null) params.set('user', next.userId);
+  if (next.status !== null) params.set('status', next.status);
+  if (next.from !== null) params.set('from', next.from);
+  if (next.to !== null) params.set('to', next.to);
+
+  const query = params.toString();
+  return query === '' ? basePath : `${basePath}?${query}`;
 }
 
 /** Сколько дней в периоде, включительно с обеих сторон. */

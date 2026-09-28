@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { EVENT_KINDS } from '@/lib/view/events';
 import {
   bucketKeyOf,
+  contributionsHref,
   statisticsHref,
   statisticsQuery,
   defaultGranularity,
@@ -199,5 +200,28 @@ describe('фильтры таблицы взносов', () => {
       to: '2026-06-30',
     });
     expect(hasContributionFilters(filters)).toBe(true);
+  });
+
+  it('собирает адрес обратно, пропуская пустое', () => {
+    const empty = parseContributionFilters({});
+    expect(contributionsHref(empty, {})).toBe('/contributions/all');
+    expect(contributionsHref(empty, { status: 'PENDING', from: '2026-06-01' })).toBe(
+      '/contributions/all?status=PENDING&from=2026-06-01',
+    );
+  });
+
+  it('адрес и разбор сходятся', () => {
+    const filters = parseContributionFilters({
+      user: 'u-1',
+      status: 'REJECTED',
+      from: '2026-06-01',
+      to: '2026-06-30',
+    });
+    const href = contributionsHref(filters, {});
+    const params = Object.fromEntries(new URL(href, 'http://x').searchParams);
+    expect(parseContributionFilters(params)).toEqual(filters);
+    expect(contributionsHref(filters, { userId: null, status: null })).toBe(
+      '/contributions/all?from=2026-06-01&to=2026-06-30',
+    );
   });
 });
