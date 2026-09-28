@@ -297,11 +297,18 @@ npm run check:contrast        # контраст текста на стекля�
 **Развёртывание подготовлено, на сервер ещё не выкладывали** (`deploy/README.md`).
 `Dockerfile` (standalone, сборка нативно на Mac, образ `linux/amd64`, ~65 МБ
 сжатым), `deploy/compose.yml` (Postgres + приложение + Caddy с HTTPS на
-`<IP>.sslip.io`), `server-setup.sh`, `ship.sh`, `with-prod-db.sh`, `backup.sh`.
+`<IP>.sslip.io`), `server-setup.sh`, `ship.sh`, `with-db.sh`, `backup.sh`.
 Проверено локально боевой связкой на чистой базе: миграции, сид, выдача пароля,
 `npm run smoke` через Caddy по HTTPS — всё ok; вход по паролю ставит cookie
 `Secure; HttpOnly`; дамп восстанавливается в пустую базу вместе с историей
-миграций. **Чистовая база `waterdrinkers_final` заполнена 25.09.2026** реальной историей
+миграций. **Три контура на сервере (28.09.2026):** прод `puzyrik.<IP>.sslip.io` (main,
+боевая база), демо `demo-puzyrik.` (образ прода, моковая база), тест
+`test-puzyrik.` (ветка `dev`, моковая база); голый адрес → прод. Один Postgres,
+у демо и теста свои роли без доступа к боевой базе. Выкладка
+`deploy/ship.sh <host> prod|test`, пароли `credentials.sh`, моки `seed-mock.sh`.
+Ветка `dev` заведена локально от `main`, на GitHub не отправлена.
+
+**Чистовая база `waterdrinkers_final` заполнена 25.09.2026** реальной историей
 08.07–22.09: 12 участников (Вера М. выбыла в день старта), сальдо 604 ₽ поровну
 пятерым первым плательщикам, 4 заказа с чеками, 19 взносов. Инвариант сходится,
 фонд −1 359 ₽. Дамп — `dumps/final.dump`, скрипт наполнения — `dumps/seed-final.ts`

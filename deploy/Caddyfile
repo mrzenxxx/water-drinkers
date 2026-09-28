@@ -1,8 +1,9 @@
-# SITE_HOST — адрес вида 203-0-113-7.sslip.io: имя, которое без покупки
-# домена указывает на IP сервера. Caddy сам получает на него сертификат
-# Let's Encrypt, продлевает его и уводит http на https.
+# BASE_HOST — адрес вида 203-0-113-7.sslip.io: имя, которое без покупки
+# домена указывает на IP сервера, и любые поддомены к нему тоже. Caddy сам
+# получает на каждое имя сертификат Let's Encrypt, продлевает его и уводит
+# http на https.
 
-{$SITE_HOST} {
+(common) {
 	encode zstd gzip
 
 	# Чек поставки до 5 МБ, лимит Next — 6 МБ (next.config.ts). Здесь чуть
@@ -16,8 +17,29 @@
 		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "same-origin"
+		# Касса офиса, а не сайт: поисковикам тут нечего делать ни в одном контуре.
+		X-Robots-Tag "noindex, nofollow"
 		-Server
 	}
+}
 
+# Голый адрес — на прод, с сохранением пути: магические ссылки, выданные
+# до появления поддоменов, ведут сюда и должны продолжать работать.
+{$BASE_HOST} {
+	redir https://puzyrik.{$BASE_HOST}{uri} permanent
+}
+
+puzyrik.{$BASE_HOST} {
+	import common
 	reverse_proxy app:3000
+}
+
+demo-puzyrik.{$BASE_HOST} {
+	import common
+	reverse_proxy app-demo:3000
+}
+
+test-puzyrik.{$BASE_HOST} {
+	import common
+	reverse_proxy app-test:3000
 }

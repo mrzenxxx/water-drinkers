@@ -1,10 +1,32 @@
-# Боевой запуск: база, приложение и Caddy с HTTPS. Порядок работы — в README.
+# Три контура на одном сервере: прод, демо и тест. Порядок работы — в README.
 #
-# Лежит на сервере в /opt/waterdrinkers рядом с `.env` (шаблон — env.template)
-# и `Caddyfile`. Образ приложения не собирается здесь: у сервера 1 ГБ памяти,
-# его привозит `deploy/ship.sh` готовым.
+#   https://puzyrik.<BASE_HOST>        прод   — образ из main, боевая база
+#   https://demo-puzyrik.<BASE_HOST>   демо   — тот же образ, моковая база
+#   https://test-puzyrik.<BASE_HOST>   тест   — образ из dev, моковая база
+#   https://<BASE_HOST>                → редирект на прод
+#
+# Лежит на сервере в /opt/waterdrinkers рядом с `.env` (шаблон — env.template),
+# `Caddyfile` и `init-contours.sh`. Образы не собираются здесь: у сервера 1 ГБ
+# памяти, их привозит `deploy/ship.sh` готовыми.
 
 name: waterdrinkers
+
+# Общее для трёх приложений. У каждого — своя база, своя роль в ней, свой
+# SESSION_SECRET и свой APP_URL: по нему строятся магические ссылки, а cookie
+# сессии без атрибута domain живёт только на своём поддомене.
+x-app: &app
+  restart: unless-stopped
+  depends_on:
+    db:
+      condition: service_healthy
+  expose:
+    - '3000'
+  healthcheck:
+    test: ['CMD-SHELL', 'wget -q --spider http://127.0.0.1:3000/login || exit 1']
+    interval: 30s
+    timeout: 5s
+    start_period: 20s
+    retries: 3
 
 services:
   db:
@@ -14,9 +36,11 @@ services:
       POSTGRES_USER: waterdrinkers
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в .env}
       POSTGRES_DB: waterdrinkers
-    # Под машину с 1 ГБ: умолчания Postgres рассчитаны на сервер побольше,
-    # а нам хватает десятка соединений на десяток участников.
-    command: postgres -c shared_buffers=64MB -c max_connections=20 -c work_mem=4MB
+    # Один Postgres на три контура: отдельный экземпляр на каждый не влез бы
+    # в 1 ГБ. Изоляция — ролями: демо и тест ходят под своими ролями и к
+    # боевой базе подключиться не могут (init-contours.sh). Соединений —
+    # с запасом на три пула приложения и миграции через туннель.
+    command: postgres -c shared_buffers=64MB -c max_connections=60 -c work_mem=4MB
     # Только на localhost сервера: снаружи база недоступна, а миграции и
     # перенос дампа идут через SSH-туннель (README, «Миграции»).
     ports:
@@ -30,36 +54,44 @@ services:
       retries: 20
 
   app:
-    image: waterdrinkers:${APP_TAG:-latest}
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
+    <<: *app
+    image: waterdrinkers:latest
     environment:
       DATABASE_URL: postgresql://waterdrinkers:${POSTGRES_PASSWORD}@db:5432/waterdrinkers
       SESSION_SECRET: ${SESSION_SECRET:?задайте SESSION_SECRET в .env}
-      # По этому адресу строятся магические ссылки, и от его схемы зависит
-      # флаг `secure` у cookie сессии (src/lib/auth/session.ts).
-      APP_URL: https://${SITE_HOST:?задайте SITE_HOST в .env}
+      APP_URL: https://puzyrik.${BASE_HOST:?задайте BASE_HOST в .env}
       ADMIN_TELEGRAM_URL: ${ADMIN_TELEGRAM_URL:-}
       NODE_OPTIONS: --max-old-space-size=384
-    # Наружу не публикуется: запросы приходят только через Caddy.
-    expose:
-      - '3000'
-    healthcheck:
-      test: ['CMD-SHELL', 'wget -q --spider http://127.0.0.1:3000/login || exit 1']
-      interval: 30s
-      timeout: 5s
-      start_period: 20s
-      retries: 3
+
+  # Демо крутит боевой код: выкладка прода перезапускает и его.
+  app-demo:
+    <<: *app
+    image: waterdrinkers:latest
+    environment:
+      DATABASE_URL: postgresql://wd_demo:${DEMO_DB_PASSWORD:?задайте DEMO_DB_PASSWORD в .env}@db:5432/waterdrinkers_demo
+      SESSION_SECRET: ${DEMO_SESSION_SECRET:?задайте DEMO_SESSION_SECRET в .env}
+      APP_URL: https://demo-puzyrik.${BASE_HOST}
+      ADMIN_TELEGRAM_URL: ${ADMIN_TELEGRAM_URL:-}
+      NODE_OPTIONS: --max-old-space-size=256
+
+  app-test:
+    <<: *app
+    image: waterdrinkers:test
+    environment:
+      DATABASE_URL: postgresql://wd_test:${TEST_DB_PASSWORD:?задайте TEST_DB_PASSWORD в .env}@db:5432/waterdrinkers_test
+      SESSION_SECRET: ${TEST_SESSION_SECRET:?задайте TEST_SESSION_SECRET в .env}
+      APP_URL: https://test-puzyrik.${BASE_HOST}
+      ADMIN_TELEGRAM_URL: ${ADMIN_TELEGRAM_URL:-}
+      NODE_OPTIONS: --max-old-space-size=256
 
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
-    depends_on:
-      - app
+    # Без depends_on на приложения: контуры выкладываются по отдельности, и
+    # Caddy не должен тянуть за собой тестовый образ, которого может ещё не
+    # быть. Упавший контур даёт 502 на своём поддомене, остальные работают.
     environment:
-      SITE_HOST: ${SITE_HOST}
+      BASE_HOST: ${BASE_HOST}
     # Только TCP: UDP 443 (HTTP/3) на боевом сервере занят другим сервисом,
     # а браузеры без него просто остаются на HTTP/2.
     ports:

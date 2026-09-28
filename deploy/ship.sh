@@ -1,67 +1,85 @@
 #!/usr/bin/env bash
-# Выкладка текущего коммита на сервер. Запускается с машины разработчика
-# из корня репозитория:
+# Выкладка контура. Запускается с машины разработчика из любого места
+# репозитория:
 #
-#   deploy/ship.sh root@IP
+#   deploy/ship.sh root@IP prod    # main → прод и демо (демо крутит боевой код)
+#   deploy/ship.sh root@IP test    # dev  → тест
 #
-# Шаги: сборка образа под linux/amd64 → копия базы → перенос образа и
-# конфигов → миграции → перезапуск приложения → проверка снаружи.
-# Предыдущий образ остаётся под тегом `previous` для отката (README).
+# Код берётся из ветки контура через `git archive`, а не из рабочей копии:
+# незакоммиченные правки и текущая ветка на выкладку не влияют, а миграции
+# выполняются из той же ревизии, что и собранный образ.
+#
+# Шаги: сборка образа под linux/amd64 → конфиги и базы контуров → копия
+# боевой базы → перенос образа → миграции → перезапуск → проверка снаружи.
+# Предыдущий образ контура остаётся под тегом для отката (README).
 
 set -euo pipefail
+. "$(dirname "$0")/lib.sh"
 
 host=${1:?укажите сервер: root@IP}
-APP_DIR=/opt/waterdrinkers
-here=$(cd "$(dirname "$0")" && pwd)
+target=${2:?укажите контур: prod или test}
 
-cd "$here/.."
+case "$target" in
+  prod) ref=main; image=latest; previous=previous;      contours='prod demo'; services='app app-demo' ;;
+  test) ref=dev;  image=test;   previous=test-previous; contours='test';      services='app-test' ;;
+  *) echo "выкладываются prod (вместе с демо) или test, а не «$target»" >&2; exit 2 ;;
+esac
 
-if [ -n "$(git status --porcelain)" ]; then
-  # Сборка берёт файлы с диска, а тег образа — от коммита: с правками
-  # в дереве тег врал бы о том, что на самом деле выложено.
-  echo 'В рабочем дереве есть незакоммиченные изменения. Закоммитьте их или уберите.' >&2
-  exit 1
-fi
-tag=$(git rev-parse --short HEAD)
-echo "==> Выкладываю $(git log --oneline -1)"
+src=$(checkout_ref "$ref")
+trap 'rm -rf "$src"' EXIT
+sha=$(git -C "$REPO_DIR" rev-parse --short "$ref")
+echo "==> $target: $(git -C "$REPO_DIR" log --oneline -1 "$ref")"
 
 echo '==> Сборка образа'
-docker buildx build --platform linux/amd64 -t "waterdrinkers:$tag" --load .
+docker buildx build --platform linux/amd64 -t "waterdrinkers:$sha" --load "$src"
 
-echo '==> Конфигурация на сервер'
+echo '==> Конфигурация и базы контуров'
 ssh "$host" "test -f $APP_DIR/.env" \
   || { echo "на сервере нет $APP_DIR/.env — см. README, «Первый запуск»" >&2; exit 1; }
-scp -q "$here/compose.yml" "$here/Caddyfile" "$here/backup.sh" "$host:$APP_DIR/"
-ssh "$host" "chmod +x $APP_DIR/backup.sh"
+scp -q "$DEPLOY_DIR/compose.yml" "$DEPLOY_DIR/Caddyfile" "$DEPLOY_DIR/backup.sh" \
+  "$DEPLOY_DIR/init-contours.sh" "$host:$APP_DIR/"
+ssh "$host" "chmod +x $APP_DIR/backup.sh $APP_DIR/init-contours.sh && $APP_DIR/init-contours.sh"
 
-echo '==> Копия базы перед выкладкой'
-ssh "$host" "cd $APP_DIR && docker compose up -d --wait db && ./backup.sh"
+if [ "$target" = prod ]; then
+  echo '==> Копия боевой базы перед выкладкой'
+  ssh "$host" "$APP_DIR/backup.sh"
+fi
 
 echo '==> Перенос образа (сжатый, по SSH)'
-docker save "waterdrinkers:$tag" | gzip | ssh "$host" 'gunzip | docker load'
+docker save "waterdrinkers:$sha" | gzip | ssh "$host" 'gunzip | docker load'
 
-echo '==> Миграции'
-"$here/with-prod-db.sh" "$host" npx prisma migrate deploy
+for contour in $contours; do
+  echo "==> Миграции: $contour"
+  (cd "$src" && "$DEPLOY_DIR/with-db.sh" "$host" "$contour" npx prisma migrate deploy)
+done
 
 echo '==> Перезапуск'
 ssh "$host" "set -e
   cd $APP_DIR
-  if docker image inspect waterdrinkers:latest >/dev/null 2>&1; then
-    docker tag waterdrinkers:latest waterdrinkers:previous
+  if docker image inspect waterdrinkers:$image >/dev/null 2>&1; then
+    docker tag waterdrinkers:$image waterdrinkers:$previous
   fi
-  docker tag waterdrinkers:$tag waterdrinkers:latest
-  docker compose up -d --wait
-  # Образы прошлых выкладок: остаются только latest и previous.
-  docker images waterdrinkers --format '{{.Tag}}' | grep -vxE 'latest|previous' \\
+  docker tag waterdrinkers:$sha waterdrinkers:$image
+  docker compose up -d --wait $services
+  # Caddy перечитывает Caddyfile только при пересоздании или reload.
+  docker compose up -d --wait caddy
+  docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null
+  # Образы прошлых выкладок: остаются только рабочие и предыдущие.
+  docker images waterdrinkers --format '{{.Tag}}' | grep -vxE 'latest|previous|test|test-previous' \\
     | xargs -r -I{} docker rmi waterdrinkers:{} >/dev/null
   docker image prune -f >/dev/null"
 
-site=$(ssh "$host" "grep -E '^SITE_HOST=' $APP_DIR/.env | cut -d= -f2-")
-echo "==> Проверка https://$site/login"
-code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "https://$site/login")
-if [ "$code" = 200 ]; then
-  echo "Готово: https://$site ($tag)"
-else
-  echo "Страница входа ответила $code — смотрите: ssh $host 'cd $APP_DIR && docker compose logs --tail=100 app caddy'" >&2
+base=$(remote_env "$host" BASE_HOST)
+failed=0
+for contour in $contours; do
+  contour_vars "$contour"
+  url="https://$C_SUB.$base/login"
+  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "$url")
+  echo "==> $url — $code"
+  [ "$code" = 200 ] || failed=1
+done
+if [ "$failed" = 1 ]; then
+  echo "смотрите: ssh $host 'cd $APP_DIR && docker compose logs --tail=100 $services caddy'" >&2
   exit 1
 fi
+echo "Готово: $target ($sha)"
