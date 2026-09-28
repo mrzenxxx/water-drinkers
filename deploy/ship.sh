@@ -63,7 +63,8 @@ ssh "$host" "set -e
   docker compose up -d --wait $services
   # Caddy перечитывает Caddyfile только при пересоздании или reload.
   docker compose up -d --wait caddy
-  docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null
+  # Адрес явно: без него reload стучится на [::1], а Caddy слушает 127.0.0.1.
+  docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile --address 127.0.0.1:2019 2>/dev/null
   # Образы прошлых выкладок: остаются только рабочие и предыдущие.
   docker images waterdrinkers --format '{{.Tag}}' | grep -vxE 'latest|previous|test|test-previous' \\
     | xargs -r -I{} docker rmi waterdrinkers:{} >/dev/null
